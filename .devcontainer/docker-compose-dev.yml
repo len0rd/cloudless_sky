@@ -1,0 +1,23 @@
+# docker-compose configuration for ara_common development
+version: '3'
+services:
+  cloudless_sky_dev:
+    build:
+      context: "."
+      args:
+        USER_UID: 1000
+        USER_GID: 1000
+    environment:
+      XDG_RUNTIME_DIR: "/tmp"
+      WAYLAND_DISPLAY: ${WAYLAND_DISPLAY}
+      SDL_VIDEODRIVER: ${SDL_VIDEODRIVER:-wayland}
+    user: ${USERNAME}
+    hostname: cloudless_sky_devcontainer
+    network_mode: host
+    tty: true
+    volumes:
+      - ../:/home/${USERNAME}/cloudless_sky
+      # bind mount users ssh dir as readonly so ssh-based git operations can function
+      - ~/.ssh/:/home/${USERNAME}/.ssh/:ro
+      # mount xdg runtime dir for graphics support on wayland host
+      - $XDG_RUNTIME_DIR/$WAYLAND_DISPLAY:/tmp/$WAYLAND_DISPLAY

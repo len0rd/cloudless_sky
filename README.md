@@ -1,0 +1,13 @@
+# Cloudless Sky
+
+## Dev Setup
+
+TODO: getting graphics forwarded in a container is hard..
+
+If using the container on Wayland, you need to enable local user access via xhost:
+
+```
+xhost +SI:localuser:$(id -un)
+```
+
+Then the user you run with needs to have a matching UID/GID

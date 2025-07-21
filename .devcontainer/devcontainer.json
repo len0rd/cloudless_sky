@@ -1,0 +1,17 @@
+{
+    "name": "cloudless_sky ${localWorkspaceFolder}",
+    "dockerComposeFile": "./docker-compose-dev.yml",
+    "service": "cloudless_sky_dev",
+    "workspaceFolder": "/home/dev/cloudless_sky",
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "sumneko.lua",
+                "ismoh-games.second-local-lua-debugger-vscode",
+            ],
+            "settings": {
+                "extensions.verifySignature": false
+            }
+        }
+    }
+}
