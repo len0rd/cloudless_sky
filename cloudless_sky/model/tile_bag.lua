@@ -5,13 +5,17 @@ local Object = require("cloudless_sky.extern.classic")
 local TileBag = Object:extend()
 
 -- @param gameRng The random generator being used by the game
-function TileBag:new(gameRng)
+-- @param startValue integer optional. Value to start the count of all TileTypes at. Default is 0
+function TileBag:new(gameRng, startValue)
     -- tracks how many of each tile type is present in the bag. Start with all 0's
+    local defaultValue = 0
+    if startValue ~= nil then
+        defaultValue = startValue
+    end
     self.tileCounts = {}
     self.gameRng = gameRng
     for _, tileType in pairs(TileType.ORDERED) do
-        self.tileCounts[tileType] = 0
-        -- table.insert(self.tileCounts, 0)
+        self.tileCounts[tileType] = defaultValue
     end
 end
 
@@ -67,9 +71,26 @@ function TileBag:takeRandomTile()
     return nil
 end
 
+--- Take \p count random tiles from the bag, or until its empty
+function TileBag:takeRandomTiles(count)
+    tiles = {}
+    for ii = 1, count do
+        local tile = self:takeRandomTile()
+        if tile == nil then
+            break
+        end
+        table.insert(tiles, tile)
+    end
+    return tiles
+end
+
 --- Take a tile of the given type from the bag (remove). Does nothing if there are
 -- no tiles of that type
-function TileBag:takeTile(tileType) end
+function TileBag:takeTile(tileType)
+    if self.tileCounts[tileType] ~= nil then
+        return self.tileCounts[tileType]
+    end
+end
 
 --- Add \p count number of \p tileType tiles to this bag
 function TileBag:addTiles(tileType, count)
@@ -79,6 +100,13 @@ function TileBag:addTiles(tileType, count)
     end
     -- shouldnt get here
     TileType.emitBadTileTypeError(type)
+end
+
+--- Add the list of tileTypes to this bag
+function TileBag:addTileList(tileTypes)
+    for _, tile in pairs(tileTypes) do
+        self:addTile(tile)
+    end
 end
 
 --- Add single tile of given TileType to this bag
