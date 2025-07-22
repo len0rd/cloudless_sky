@@ -10,7 +10,8 @@
                 "ismoh-games.second-local-lua-debugger-vscode",
                 "tamasfe.even-better-toml",
                 "ms-python.python",
-                "ms-python.black-formatter"
+                "ms-python.black-formatter",
+                "JohnnyMorganz.stylua"
             ]
         }
     }

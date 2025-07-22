@@ -26,6 +26,8 @@ RUN add-apt-repository -y ppa:bartbes/love-stable \
     && DEBIAN_FRONTEND=noninteractive apt install -yq \
         love \
         mesa-utils \
+        # lua package manager
+        luarocks \
     && rm -rf /var/lib/apt/list
 
 # build tools
@@ -41,9 +43,7 @@ RUN apt update \
         bash-completion \
     && pip install --break-system-packages -r reqs.txt \
     && rm ./reqs.txt \
-    && rm -rf /var/lib/apt/list \
-    # enable python argcomplete package bash completion    
-    && activate-global-python-argcomplete
+    && rm -rf /var/lib/apt/list
 
 # dev tools
 RUN apt update \
