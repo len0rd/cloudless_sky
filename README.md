@@ -11,3 +11,8 @@ xhost +SI:localuser:$(id -un)
 ```
 
 Then the user you run with needs to have a matching UID/GID
+
+
+## TODO
+
+- Win32/64 binaries via python makelove package + Wine

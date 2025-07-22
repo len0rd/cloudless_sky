@@ -8,10 +8,10 @@
             "extensions": [
                 "sumneko.lua",
                 "ismoh-games.second-local-lua-debugger-vscode",
-            ],
-            "settings": {
-                "extensions.verifySignature": false
-            }
+                "tamasfe.even-better-toml",
+                "ms-python.python",
+                "ms-python.black-formatter"
+            ]
         }
     }
 }

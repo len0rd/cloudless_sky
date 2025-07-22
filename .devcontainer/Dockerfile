@@ -28,6 +28,23 @@ RUN add-apt-repository -y ppa:bartbes/love-stable \
         mesa-utils \
     && rm -rf /var/lib/apt/list
 
+# build tools
+COPY python-requirements.txt reqs.txt
+RUN apt update \
+    && DEBIAN_FRONTEND=noninteractive apt install -yq --no-install-recommends \
+        python3 \
+        python3-pip \
+        python-is-python3 \
+        # needed by appimagetool
+        file \
+        # tab-completion of things while in a shell
+        bash-completion \
+    && pip install --break-system-packages -r reqs.txt \
+    && rm ./reqs.txt \
+    && rm -rf /var/lib/apt/list \
+    # enable python argcomplete package bash completion    
+    && activate-global-python-argcomplete
+
 # dev tools
 RUN apt update \
     && DEBIAN_FRONTEND=noninteractive apt install -yq --no-install-recommends \
