@@ -4,8 +4,8 @@ local TileType = require("cloudless_sky.model.tile_type")
 local Object = require("cloudless_sky.extern.classic")
 local TileBag = Object:extend()
 
--- @param gameRng The random generator being used by the game
--- @param startValue integer optional. Value to start the count of all TileTypes at. Default is 0
+--- @param gameRng RandomGenerator random generator being used by the game
+--- @param startValue integer optional. Value to start the count of all TileTypes at. Default is 0
 function TileBag:new(gameRng, startValue)
     -- tracks how many of each tile type is present in the bag. Start with all 0's
     local defaultValue = 0
@@ -46,7 +46,7 @@ end
 --- From the tiles currently in this bag, "take" a random one.
 --- "Take" means the tile is removed from the bag when returned by this function
 ---
--- @return TileType - Type of the tile taken from the bag. Or nil if the bag is empty
+--- @return TileType - Type of the tile taken from the bag. Or nil if the bag is empty
 function TileBag:takeRandomTile()
     if self:empty() then
         return nil
@@ -85,7 +85,7 @@ function TileBag:takeRandomTiles(count)
 end
 
 --- Take a tile of the given type from the bag (remove). Does nothing if there are
--- no tiles of that type
+--- no tiles of that type
 function TileBag:takeTile(tileType)
     if self.tileCounts[tileType] ~= nil then
         return self.tileCounts[tileType]
@@ -115,8 +115,8 @@ function TileBag:addTile(tileType)
 end
 
 --- Set number of tiles of type \p tileType in this bag
--- @param tileType string The type of tile to set the count of. Must be one of TileType
--- @param count integer Number of tiles to set the tileType to in this bag
+--- @param tileType string The type of tile to set the count of. Must be one of TileType
+--- @param count integer Number of tiles to set the tileType to in this bag
 function TileBag:setCountForTileType(tileType, count)
     if self.tileCounts[tileType] ~= nil then
         self.tileCounts[tileType] = count

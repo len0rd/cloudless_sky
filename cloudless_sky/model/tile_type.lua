@@ -1,11 +1,11 @@
 -- available tile types
 local TileType = {
-    RED = "red",
-    ORANGE = "orange",
-    YELLOW = "yellow",
-    GREEN = "green",
-    BLUE = "blue",
-    PURPLE = "purple",
+    RED = "RED",
+    ORANGE = "ORANGE",
+    YELLOW = "YELLOW",
+    GREEN = "GREEN",
+    BLUE = "BLUE",
+    PURPLE = "PURPLE",
 }
 
 -- Ordered list of tile types (useful for deterministic iteration)
