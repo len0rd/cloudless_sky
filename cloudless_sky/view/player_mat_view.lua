@@ -10,18 +10,32 @@ local STAR_PADDING = 2
 
 --- Create a new PlayerMatView
 --- @param size integer Square size of the mat. Width/Height will be equal
-function PlayerMatView:new(x, y, size)
+--- @param starTypes table List of each star's type in mat-index order
+function PlayerMatView:new(x, y, size, starTypes)
     self.mat_origin_x = x
     self.mat_origin_y = y
     self.size = size
     self.star_size = (self.size - STAR_PADDING) / 3
+    stypes = starTypes
+    if stypes == nil then
+        -- use types on base game mat
+        stypes = {
+            StarType.ORANGE,
+            StarType.RED,
+            StarType.BLUE,
+            StarType.YELLOW,
+            StarType.GREEN,
+            StarType.PURPLE,
+            StarType.MULTI,
+        }
+    end
 
     local threeQuarterStarSize = 3 * self.star_size / 4
 
     -- relative star origins (not in world coords yet)
     local starOrigins = {}
-    starOrigins[1] = { (self.star_size / 2) + (STAR_PADDING / 2), 0 }
-    starOrigins[2] = { starOrigins[1][1] + self.star_size + STAR_PADDING, 0 }
+    starOrigins[1] = { (self.star_size / 2) + (STAR_PADDING / 2), self.star_size / 4 }
+    starOrigins[2] = { starOrigins[1][1] + self.star_size + STAR_PADDING, self.star_size / 4 }
 
     local middleRowY = starOrigins[1][2] + threeQuarterStarSize + STAR_PADDING
     -- leftmost middle star
@@ -44,7 +58,7 @@ function PlayerMatView:new(x, y, size)
     -- this table has indicies that correspond to the PlayerMat star index setup
     self.stars = {}
     for ii, origin in ipairs(starOrigins) do
-        self.stars[ii] = StarView(StarType.RED, origin[1], origin[2], self.star_size)
+        self.stars[ii] = StarView(stypes[ii], origin[1], origin[2], self.star_size)
     end
 end
 

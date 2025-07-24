@@ -27,6 +27,26 @@ local function isPointInConvexQuad(vertices, px, py)
         and isLeft(vertices[7], vertices[8], vertices[1], vertices[2], px, py)
 end
 
+-- RGB color for each star type when a tile is not in a slot
+StarView.UNPLACED_SLOT_COLOR = {
+    [StarType.RED] = { 255, 179, 186 },
+    [StarType.ORANGE] = { 255, 222, 184 },
+    [StarType.YELLOW] = { 255, 255, 184 },
+    [StarType.GREEN] = { 184, 255, 187 },
+    [StarType.BLUE] = { 184, 224, 255 },
+    [StarType.PURPLE] = { 213, 184, 255 },
+    [StarType.MULTI] = { 245, 243, 228 },
+    [StarType.MONO] = { 245, 243, 228 },
+    [StarType.MULTI_STATIC] = { 245, 243, 228 },
+}
+
+-- transform into normallized values
+for ii, rgb in pairs(StarView.UNPLACED_SLOT_COLOR) do
+    for jj, value in ipairs(StarView.UNPLACED_SLOT_COLOR[ii]) do
+        StarView.UNPLACED_SLOT_COLOR[ii][jj] = value / 255
+    end
+end
+
 -- stylua: ignore start
 -- defines where the vertex for each slot in the star is placed as a scaler that can be
 -- applied to the overall size to get exact coords
@@ -76,6 +96,7 @@ StarView.SLOT_VERTEX_SCALARS = {
 --- @param y integer Top-most Y world coord of the stars rectangular bounding box
 --- @param size integer Overall width and height of stars rectangular bounding box. Always square
 function StarView:new(starType, x, y, size)
+    self.starType = starType
     self.star_origin_x = x
     self.star_origin_y = y
     self.size = size
@@ -164,28 +185,24 @@ end
 
 function StarView:draw()
     local origR, origG, origB, origA = love.graphics.getColor()
-
-    local colors = {
-        [1] = { 255, 255, 255 },
-        [2] = { 255, 0, 0 },
-        [3] = { 0, 255, 0 },
-        [4] = { 0, 0, 255 },
-        [5] = { 255, 255, 255 },
-        [6] = { 28, 94, 83 },
-    }
+    local origLineWidth = love.graphics.getLineWidth()
 
     for ii, vertices in ipairs(StarView.SLOT_VERTEX_SCALARS) do
         local scaledVertices = transformScalerVertices(vertices, self.star_origin_x, self.star_origin_y, self.size)
-        local color = colors[ii]
+        local color = StarView.UNPLACED_SLOT_COLOR[self.starType]
         if self.hovered_slot == ii then
             -- slot is currently being hovered over.
-            color = { 255, 251, 0 }
+            color = { 1, 251 / 255, 0 }
         end
-        love.graphics.setColor(love.math.colorFromBytes(color[1], color[2], color[3]))
+        love.graphics.setColor(color[1], color[2], color[3])
         love.graphics.polygon("fill", scaledVertices)
+        love.graphics.setColor({ 0, 0, 0 })
+        love.graphics.setLineWidth(2)
+        love.graphics.polygon("line", scaledVertices)
     end
 
     -- reset color at the end
+    love.graphics.setLineWidth(origLineWidth)
     love.graphics.setColor(origR, origG, origB, origA)
 end
 
