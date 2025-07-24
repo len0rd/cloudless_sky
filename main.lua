@@ -2,22 +2,36 @@ if arg[2] == "debug" then
     require("lldebugger").start()
 end
 local cute = require("cloudless_sky.extern.cute")
+local StarView = require("cloudless_sky.view.star_view")
+local TileType = require("cloudless_sky.model.tile_type")
 
 function love.conf(t)
     t.version = "11.5"
 end
 
 function love.load(args)
-    Tile = require("cloudless_sky.tile")
     tick = require("cloudless_sky.extern.tick")
     -- run unit tests if --cute arg is passed in
     cute.go(args)
+    myStar = StarView(TileType.RED, 400, 100, 300)
 end
 
+function love.update(dt)
+    local mouseX, mouseY = love.mouse.getPosition()
+    tick.update(dt)
+    myStar:update(mouseX, mouseY)
+end
 
 function love.draw()
     love.graphics.print("howdy")
+
+    require("cloudless_sky.view.star_view")
+    myStar:draw()
 end
+
+-- events
+
+function love.keypressed(key) end
 
 -- error handling
 local love_errorhandler = love.errorhandler
