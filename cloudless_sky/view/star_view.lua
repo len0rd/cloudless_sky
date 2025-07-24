@@ -72,8 +72,8 @@ StarView.SLOT_VERTEX_SCALARS = {
 }
 -- stylua: ignore end
 
---- @param x integer Left-most X coord of the stars rectangular bounding box
---- @param y integer Top-most Y coord of the stars rectangular bounding box
+--- @param x integer Left-most X world coord of the stars rectangular bounding box
+--- @param y integer Top-most Y world coord of the stars rectangular bounding box
 --- @param size integer Overall width and height of stars rectangular bounding box. Always square
 function StarView:new(starType, x, y, size)
     self.star_origin_x = x
@@ -86,6 +86,19 @@ function StarView:new(starType, x, y, size)
     for ii, vertices in ipairs(StarView.SLOT_VERTEX_SCALARS) do
         self.polys[ii] = transformScalerVertices(vertices, self.star_origin_x, self.star_origin_y, self.size)
     end
+end
+
+--- @return table boundingBox. Bounding box of the star in world coords. Formatted x1,y1, x2,y2
+---     Where x1,y1 is the top left of the star and x2,y2 is the bottom right
+function StarView:boundingBox()
+    return { self.star_origin_x, self.star_origin_y, self.star_origin_x + self.size, self.star_origin_y + self.size }
+end
+
+--- @return integer, integer centerCoords. The center of this star in world coords
+function StarView:center()
+    local centerX = self.star_origin_x + (self.size / 2)
+    local centerY = self.star_origin_y + (self.size / 2)
+    return centerX, centerY
 end
 
 --- Given an x,y coordinate, return what star slot index the coordinate is in

@@ -4,8 +4,9 @@ end
 -- third-party requirements
 local Camera = require("cloudless_sky.extern.hump.camera")
 -- local
-local StarView = require("cloudless_sky.view.star_view")
+-- local StarView = require("cloudless_sky.view.star_view")
 local TileType = require("cloudless_sky.model.tile_type")
+local PlayerMatView = require("cloudless_sky.view.player_mat_view")
 
 local cameraX, cameraY = 400, 100
 
@@ -31,13 +32,14 @@ function love.load(args)
     camera = Camera(cameraX, cameraY)
     love.graphics.setBackgroundColor(0.4, 0.88, 1.0)
 
-    myStar = StarView(TileType.RED, 400, 100, 300)
+    -- myStar = StarView(TileType.RED, 400, 100, 300)
+    myMat = PlayerMatView(200, 200, 900)
 end
 
 function love.update(dt)
     local mouseX, mouseY = camera:worldCoords(love.mouse.getPosition())
     tick.update(dt)
-    myStar:update(mouseX, mouseY)
+    myMat:update(mouseX, mouseY)
     -- move camera if necessary
     if camera.x ~= cameraX or camera.y ~= cameraY then
         local dx, dy = cameraX - camera.x, cameraY - camera.y
@@ -50,7 +52,7 @@ function love.draw()
     do
         love.graphics.print("howdy")
 
-        myStar:draw()
+        myMat:draw()
     end
     camera:detach()
 end
@@ -62,9 +64,9 @@ function love.keypressed(key) end
 function love.mousepressed(x, y, button, istouch)
     if button == 1 then
         local clickX, clickY = camera:worldCoords(x, y)
-        local clickedStarSlotIndex = myStar:coordSlotIndex(clickX, clickY)
-        if clickedStarSlotIndex ~= 0 then
-            cameraX, cameraY = myStar:centerOfSlot(clickedStarSlotIndex)
+        local clickedStarIndex, clickedSlotIndex = myMat:coordStarSlotIndex(clickX, clickY)
+        if clickedStarIndex ~= 0 and clickedSlotIndex ~= 0 then
+            cameraX, cameraY = myMat:centerOfSlot(clickedStarIndex, clickedSlotIndex)
         end
     end
 end

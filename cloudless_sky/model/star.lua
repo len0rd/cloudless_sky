@@ -60,24 +60,24 @@ Star.GLAZED_PAVILION_PURPLE_SIDE_MULTI_STATIC_COLORS = {
 --- PlayerMat star indicies:
 ---
 ---        *     *
----       *6*   *1*
+---       *1*   *2*
 ---        *     *
 ---      *    *    *
----     *5*  *7*  *2*
+---     *6*  *7*  *3*
 ---      *    *    *
 ---        *     *
----       *4*   *3*
+---       *5*   *4*
 ---        *     *
 --- @return table slotCosts. The default slot costs for a star at the given starIndex
 ---     Empty if index is invalid
 function Star.getDefaultSlotCostForBoardPosition(starIndex)
     local starIndexToType = {
-        [1] = StarType.RED,
-        [2] = StarType.BLUE,
-        [3] = StarType.YELLOW,
-        [4] = StarType.GREEN,
-        [5] = StarType.PURPLE,
-        [6] = StarType.ORANGE,
+        [1] = StarType.ORANGE,
+        [2] = StarType.RED,
+        [3] = StarType.BLUE,
+        [4] = StarType.YELLOW,
+        [5] = StarType.GREEN,
+        [6] = StarType.PURPLE,
         [7] = StarType.PURPLE,
     }
     local starType = starIndexToType[starIndex]
