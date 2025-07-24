@@ -17,15 +17,15 @@ local function isLeft(ax, ay, bx, by, px, py)
     return ((bx - ax) * (py - ay) - (by - ay) * (px - ax)) >= 0
 end
 
--- Returns true if (px, py) is inside the convex quadrilateral
+--- @param vertices table A table of alternating between the 4 x,y points that make up the quadrilateral
+---     Should start with the minx,miny point (preference to minY), then rotate clockwise to the other points
+--- @return boolean pointInQuad true if (px, py) is inside the convex quadrilateral
 local function isPointInConvexQuad(vertices, px, py)
     return isLeft(vertices[1], vertices[2], vertices[3], vertices[4], px, py)
         and isLeft(vertices[3], vertices[4], vertices[5], vertices[6], px, py)
         and isLeft(vertices[5], vertices[6], vertices[7], vertices[8], px, py)
         and isLeft(vertices[7], vertices[8], vertices[1], vertices[2], px, py)
 end
-
-
 
 -- stylua: ignore start
 -- defines where the vertex for each slot in the star is placed as a scaler that can be

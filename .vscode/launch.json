@@ -10,7 +10,8 @@
             },
             "args": [
                 ".",
-                "debug"
+                "debug",
+                "--cute"
             ],
             "scriptRoots": [
                 ".",

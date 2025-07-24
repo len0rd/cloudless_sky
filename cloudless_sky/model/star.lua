@@ -4,6 +4,7 @@
 local Object = require("cloudless_sky.extern.classic")
 local Star = Object:extend()
 local StarType = require("cloudless_sky.model.star_type")
+local TileType = require("cloudless_sky.model.tile_type")
 
 --- Throughout the Star code, arrays for tile slots in the star
 --- start with the top of the star (when looking at a board face up),

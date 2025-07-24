@@ -1,7 +1,7 @@
 if arg[2] == "debug" then
     require("lldebugger").start()
 end
-local cute = require("cloudless_sky.extern.cute")
+
 local StarView = require("cloudless_sky.view.star_view")
 local TileType = require("cloudless_sky.model.tile_type")
 
@@ -11,8 +11,12 @@ end
 
 function love.load(args)
     tick = require("cloudless_sky.extern.tick")
+
     -- run unit tests if --cute arg is passed in
+    local cute = require("cloudless_sky.extern.cute")
     cute.go(args)
+    -- end unit testing
+
     myStar = StarView(TileType.RED, 400, 100, 300)
 end
 
@@ -25,7 +29,6 @@ end
 function love.draw()
     love.graphics.print("howdy")
 
-    require("cloudless_sky.view.star_view")
     myStar:draw()
 end
 
