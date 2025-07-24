@@ -3,12 +3,14 @@ if arg[2] == "debug" then
 end
 -- third-party requirements
 local Camera = require("cloudless_sky.extern.hump.camera")
+local Gamestate = require("cloudless_sky.extern.hump.gamestate")
+local luis = require("luis.init")("luis/widgets")
+luis.flux = require("luis.3rdparty.flux")
 -- local
--- local StarView = require("cloudless_sky.view.star_view")
-local TileType = require("cloudless_sky.model.tile_type")
-local PlayerMatView = require("cloudless_sky.view.player_mat_view")
+local game = require("cloudless_sky.states.game")
 
-local cameraX, cameraY = 400, 100
+-- global X,Y of where we want the camera centered
+CameraXDesired, CameraYDesired = 400, 100
 
 ---------------
 -- setup window
@@ -29,32 +31,56 @@ function love.load(args)
     cute.go(args)
     -- end unit testing
 
-    camera = Camera(cameraX, cameraY)
-    love.graphics.setBackgroundColor(0.4, 0.88, 1.0)
+    love.graphics.setBackgroundColor(0.4, 0.88, 1.0, 0.5)
 
-    -- myStar = StarView(TileType.RED, 400, 100, 300)
-    myMat = PlayerMatView(200, 200, 900)
+    -- GLOBAL CAMERA
+    camera = Camera(CameraXDesired, CameraYDesired)
+    camera.smoother = Camera.smooth.damped(5)
+
+    -- luis
+    -- run flux at 60hz
+    local fluxUpdateTimer = tick.recur(function()
+        luis.flux.update(1 / 60)
+    end, 1 / 60)
+
+    -- local container = luis.newFlexContainer(20, 20, 10, 10)
+    luis.setGridSize(20)
+    -- container:addChild(button1)
+
+    luis.newLayer("main")
+    luis.enableLayer("main")
+    luis.setCurrentLayer("main")
+    local button1 = luis.createElement(luis.currentLayer, "Button", "Button 1", 4, 2, function()
+        print("Button 1 clicked!")
+    end, function()
+        print("Button 1 released!")
+    end, 1, 1)
+    button1:setDecorator("GlassmorphismDecorator", {})
+
+    -- GAMESTATE
+    Gamestate.registerEvents()
+    Gamestate.switch(game)
 end
 
 function love.update(dt)
-    local mouseX, mouseY = camera:worldCoords(love.mouse.getPosition())
+    -- local mouseX, mouseY = camera:worldCoords(love.mouse.getPosition())
     tick.update(dt)
-    myMat:update(mouseX, mouseY)
-    -- move camera if necessary
-    if camera.x ~= cameraX or camera.y ~= cameraY then
-        local dx, dy = cameraX - camera.x, cameraY - camera.y
-        camera:move(dx / 2, dy / 2)
-    end
+    -- camera motion
+    camera:lockPosition(CameraXDesired, CameraYDesired)
+    -- ui updates
+    luis.update(dt)
 end
 
 function love.draw()
     camera:attach()
     do
         love.graphics.print("howdy")
-
-        myMat:draw()
     end
     camera:detach()
+    -- todo: luis doesnt play nice with the camera.
+    -- it will work well for HUD and temproary elements
+    -- though which is probablllly all its needed for
+    luis.draw()
 end
 
 -- events
@@ -62,13 +88,11 @@ end
 function love.keypressed(key) end
 
 function love.mousepressed(x, y, button, istouch)
-    if button == 1 then
-        local clickX, clickY = camera:worldCoords(x, y)
-        local clickedStarIndex, clickedSlotIndex = myMat:coordStarSlotIndex(clickX, clickY)
-        if clickedStarIndex ~= 0 and clickedSlotIndex ~= 0 then
-            cameraX, cameraY = myMat:centerOfSlot(clickedStarIndex, clickedSlotIndex)
-        end
-    end
+    luis.mousepressed(x, y, button, istouch)
+end
+
+function love.mousereleased(x, y, button, istouch)
+    luis.mousereleased(x, y, button, istouch)
 end
 
 -- error handling

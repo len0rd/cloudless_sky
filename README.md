@@ -20,7 +20,16 @@ Then the user you run with needs to have a matching UID/GID
 ## dependencies
 
 - Camera: [hump.camera](https://github.com/HDictus/hump)
+- UI elements: [Luis](https://github.com/SiENcE/luis)
+- Tick for timed callbacks [Tick](https://github.com/rxi/tick)
 
+
+## shaders
+
+- cloudy background shader? 
+    - https://www.shadertoy.com/view/3dVXDc
+- base warp background
+    - https://www.shadertoy.com/view/tdG3Rd
 
 ## docs
 
