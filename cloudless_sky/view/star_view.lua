@@ -103,6 +103,32 @@ function StarView:coordSlotIndex(x, y)
     return 0
 end
 
+--- Get the x,y world coordinate of the center of the given slot
+function StarView:centerOfSlot(slotIndex)
+    if slotIndex < 1 or slotIndex > #self.polys then
+        return false, false
+    end
+    local poly = self.polys[slotIndex]
+    local minX, minY = poly[1], poly[2]
+    local maxX, maxY = poly[1], poly[2]
+    for i = 3, #poly, 2 do
+        local x, y = poly[i], poly[i + 1]
+        if x < minX then
+            minX = x
+        end
+        if y < minY then
+            minY = y
+        end
+        if x > maxX then
+            maxX = x
+        end
+        if y > maxY then
+            maxY = y
+        end
+    end
+    return (minX + maxX) / 2, (minY + maxY) / 2
+end
+
 --- @return boolean inBounds. True if x,y are within the overall bounding box of this star, otherwise false
 function StarView:coordInBoundingBox(x, y)
     if
