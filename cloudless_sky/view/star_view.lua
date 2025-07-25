@@ -2,6 +2,10 @@
 local Object = require("cloudless_sky.extern.classic")
 local StarView = Object:extend()
 local StarType = require("cloudless_sky.model.star_type")
+local ViewUtil = require("cloudless_sky.view.view_util")
+
+-- increase the size of a slot by this much when its selected/hovered on
+local HOVER_SELECT_SCALE = 0.2
 
 local transformScalerVertices = function(vertices, x, y, size)
     local scaledVertices = {}
@@ -39,13 +43,8 @@ StarView.UNPLACED_SLOT_COLOR = {
     [StarType.MONO] = { 245, 243, 228 },
     [StarType.MULTI_STATIC] = { 245, 243, 228 },
 }
+StarView.UNPLACED_SLOT_COLOR = ViewUtil.normalizeColorTable(StarView.UNPLACED_SLOT_COLOR)
 
--- transform into normallized values
-for ii, rgb in pairs(StarView.UNPLACED_SLOT_COLOR) do
-    for jj, value in ipairs(StarView.UNPLACED_SLOT_COLOR[ii]) do
-        StarView.UNPLACED_SLOT_COLOR[ii][jj] = value / 255
-    end
-end
 
 -- stylua: ignore start
 -- defines where the vertex for each slot in the star is placed as a scaler that can be
@@ -89,6 +88,19 @@ StarView.SLOT_VERTEX_SCALARS = {
         1/2, 1/2,
         1/6, 1/2
     }
+}
+
+
+-- defines the offset to apply to slots that are hovered or selected
+-- offset needs to differ per-slot to look nice. {X, Y}
+StarView.HOVER_SELECT_OFFSETS = {
+    [1] = {-0.5 * HOVER_SELECT_SCALE, -0.4 * HOVER_SELECT_SCALE},
+    [2] = {-0.6 * HOVER_SELECT_SCALE, -0.4 * HOVER_SELECT_SCALE},
+    [3] = {-0.6 * HOVER_SELECT_SCALE, -0.6 * HOVER_SELECT_SCALE},
+    [4] = {-0.5 * HOVER_SELECT_SCALE, -0.6 * HOVER_SELECT_SCALE},
+    [5] = {-0.4 * HOVER_SELECT_SCALE, -0.6 * HOVER_SELECT_SCALE},
+    [6] = {-0.4 * HOVER_SELECT_SCALE, -0.4 * HOVER_SELECT_SCALE},
+
 }
 -- stylua: ignore end
 
@@ -163,6 +175,10 @@ function StarView:centerOfSlot(slotIndex)
     return (minX + maxX) / 2, (minY + maxY) / 2
 end
 
+function StarView:isHovered()
+    return self.hovered_slot ~= 0
+end
+
 --- @return boolean inBounds. True if x,y are within the overall bounding box of this star, otherwise false
 function StarView:coordInBoundingBox(x, y)
     if
@@ -183,22 +199,35 @@ function StarView:update(mouseX, mouseY)
     self.hovered_slot = self:coordSlotIndex(mouseX, mouseY)
 end
 
+local drawPoly = function(vertices, color)
+    love.graphics.setColor(color[1], color[2], color[3])
+    love.graphics.polygon("fill", vertices)
+    love.graphics.setColor({ 0, 0, 0 })
+    love.graphics.setLineWidth(2)
+    love.graphics.polygon("line", vertices)
+end
+
 function StarView:draw()
     local origR, origG, origB, origA = love.graphics.getColor()
     local origLineWidth = love.graphics.getLineWidth()
 
     for ii, vertices in ipairs(StarView.SLOT_VERTEX_SCALARS) do
-        local scaledVertices = transformScalerVertices(vertices, self.star_origin_x, self.star_origin_y, self.size)
-        local color = StarView.UNPLACED_SLOT_COLOR[self.starType]
-        if self.hovered_slot == ii then
-            -- slot is currently being hovered over.
-            color = { 1, 251 / 255, 0 }
+        if ii ~= self.hovered_slot then
+            local scaledVertices = transformScalerVertices(vertices, self.star_origin_x, self.star_origin_y, self.size)
+            local color = StarView.UNPLACED_SLOT_COLOR[self.starType]
+            drawPoly(scaledVertices, color)
         end
-        love.graphics.setColor(color[1], color[2], color[3])
-        love.graphics.polygon("fill", scaledVertices)
-        love.graphics.setColor({ 0, 0, 0 })
-        love.graphics.setLineWidth(2)
-        love.graphics.polygon("line", scaledVertices)
+    end
+    if self.hovered_slot ~= 0 then
+        -- slot is currently being hovered over. draw last for layering
+        local color = { 1, 251 / 255, 0 }
+        local scaledVertices = transformScalerVertices(
+            StarView.SLOT_VERTEX_SCALARS[self.hovered_slot],
+            self.star_origin_x + (self.size * StarView.HOVER_SELECT_OFFSETS[self.hovered_slot][1]),
+            self.star_origin_y + (self.size * StarView.HOVER_SELECT_OFFSETS[self.hovered_slot][2]),
+            self.size * (1.0 + HOVER_SELECT_SCALE)
+        )
+        drawPoly(scaledVertices, color)
     end
 
     -- reset color at the end

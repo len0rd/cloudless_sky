@@ -113,8 +113,16 @@ function PlayerMatView:update(mouseX, mouseY)
 end
 
 function PlayerMatView:draw()
-    for _, star in ipairs(self.stars) do
-        star:draw()
+    local hoveredStarIndex = 0 -- draw star currently hovered on by mouse last for correct layering
+    for ii, star in ipairs(self.stars) do
+        if not star:isHovered() then
+            star:draw()
+        else
+            hoveredStarIndex = ii
+        end
+    end
+    if hoveredStarIndex ~= 0 then
+        self.stars[hoveredStarIndex]:draw()
     end
 
     local origR, origG, origB, origA = love.graphics.getColor()
