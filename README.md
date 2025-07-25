@@ -22,7 +22,7 @@ Then the user you run with needs to have a matching UID/GID
 - Camera: [hump.camera](https://github.com/HDictus/hump)
 - UI elements: [Luis](https://github.com/SiENcE/luis)
 - Tick for timed callbacks [Tick](https://github.com/rxi/tick)
-
+- Json for serial/deserialization of game state [json](https://github.com/rxi/json.lua)
 
 ## shaders
 
