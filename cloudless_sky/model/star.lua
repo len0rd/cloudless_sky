@@ -143,6 +143,20 @@ function Star:numOccupied()
     return numOccupied
 end
 
+--- @return boolean occupied. True if the given slot is valid and occupied. Otherwise false
+function Star:isOccupied(slotIdx)
+    return self.occupiedSlots[slotIdx] ~= nil and self.occupiedSlots[slotIdx]
+end
+
+--- Get the TileType that is in the given slot index. Only valid if the slotIndex is valid and occupied (can be checked with isOccupied)
+--- @return TileType occupyingTile or empty string if the slot is not occupied or slotIndex is out of bounds
+function Star:tileAtSlot(slotIdx)
+    if self:isOccupied(slotIdx) then
+        return self.slotColorOrder[slotIdx]
+    end
+    return ""
+end
+
 function Star:isFull()
     return self:numOccupied() == self:numSlots()
 end
@@ -310,10 +324,8 @@ function Star:removeTile(slotIndex)
     if self:isEmpty() and self.starTypeOnConstruction == StarType.MONO then
         self.starType = StarType.MONO
     end
-    if self.starType == StarType.MULTI then
-        -- revert the colorOrder assignment just to be overly cautious
-        self.starColorOrder[slotIndex] = ""
-    end
+    -- revert star color assignment just to be overly cautious
+    self.starColorOrder[slotIndex] = ""
 end
 
 --- Place a tile on this star in the specified slot

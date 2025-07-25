@@ -89,13 +89,13 @@ end
 --- @return table events. Table of events that occurred when the tile was placed.
 ---         First element is the points the tile scored within its star.
 ---         If either index is invalid, an empty table is returned
-function PlayerMat:placeTile(starIndex, slotIndex)
+function PlayerMat:placeTile(tileType, starIndex, slotIndex)
     local star = self.stars[starIndex]
     if star == nil then
         -- invalid starIndex
         return {}
     end
-    local score = star:placeTile(slotIndex)
+    local score = star:placeTile(tileType, slotIndex)
     if score < 0 then
         -- invalid slotIndex
         return {}

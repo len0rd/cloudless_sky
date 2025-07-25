@@ -18,16 +18,8 @@ function PlayerMatView:new(x, y, size, starTypes)
     self.star_size = (self.size - STAR_PADDING) / 3
     stypes = starTypes
     if stypes == nil then
-        -- use types on base game mat
-        stypes = {
-            StarType.ORANGE,
-            StarType.RED,
-            StarType.BLUE,
-            StarType.YELLOW,
-            StarType.GREEN,
-            StarType.PURPLE,
-            StarType.MULTI,
-        }
+        local PlayerMat = require("cloudless_sky.model.player_mat")
+        stypes = PlayerMat.BASE_GAME_DEFAULT_MAT
     end
 
     local threeQuarterStarSize = 3 * self.star_size / 4
@@ -112,17 +104,18 @@ function PlayerMatView:update(mouseX, mouseY)
     end
 end
 
-function PlayerMatView:draw()
+--- @param playerMat PlayerMat PlayerMat model class instance that corresponds to this mat
+function PlayerMatView:draw(playerMat)
     local hoveredStarIndex = 0 -- draw star currently hovered on by mouse last for correct layering
     for ii, star in ipairs(self.stars) do
         if not star:isHovered() then
-            star:draw()
+            star:draw(playerMat.stars[ii])
         else
             hoveredStarIndex = ii
         end
     end
     if hoveredStarIndex ~= 0 then
-        self.stars[hoveredStarIndex]:draw()
+        self.stars[hoveredStarIndex]:draw(playerMat.stars[hoveredStarIndex])
     end
 
     local origR, origG, origB, origA = love.graphics.getColor()

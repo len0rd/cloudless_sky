@@ -3,6 +3,7 @@ local Object = require("cloudless_sky.extern.classic")
 local StarView = Object:extend()
 local StarType = require("cloudless_sky.model.star_type")
 local ViewUtil = require("cloudless_sky.view.view_util")
+local TileView = require("cloudless_sky.view.tile_view")
 
 -- increase the size of a slot by this much when its selected/hovered on
 local HOVER_SELECT_SCALE = 0.2
@@ -207,7 +208,8 @@ local drawPoly = function(vertices, color)
     love.graphics.polygon("line", vertices)
 end
 
-function StarView:draw()
+--- @param star Star. Star model class instance that corresponds to this view
+function StarView:draw(star)
     local origR, origG, origB, origA = love.graphics.getColor()
     local origLineWidth = love.graphics.getLineWidth()
 
@@ -215,12 +217,18 @@ function StarView:draw()
         if ii ~= self.hovered_slot then
             local scaledVertices = transformScalerVertices(vertices, self.star_origin_x, self.star_origin_y, self.size)
             local color = StarView.UNPLACED_SLOT_COLOR[self.starType]
+            if star:isOccupied(ii) then
+                color = TileView.TILE_COLOR[star:tileAtSlot(ii)]
+            end
             drawPoly(scaledVertices, color)
         end
     end
     if self.hovered_slot ~= 0 then
         -- slot is currently being hovered over. draw last for layering
-        local color = { 1, 251 / 255, 0 }
+        local color = StarView.UNPLACED_SLOT_COLOR[self.starType]
+        if star:isOccupied(self.hovered_slot) then
+            color = TileView.TILE_COLOR[star:tileAtSlot(self.hovered_slot)]
+        end
         local scaledVertices = transformScalerVertices(
             StarView.SLOT_VERTEX_SCALARS[self.hovered_slot],
             self.star_origin_x + (self.size * StarView.HOVER_SELECT_OFFSETS[self.hovered_slot][1]),
