@@ -22,14 +22,14 @@ function game:enter(gameSettings, gameState)
     -- myMat = PlayerMatView(200, 200, 900)
 end
 
-function game:update()
+function game:update(dt)
     local mouseX, mouseY = camera:worldCoords(love.mouse.getPosition())
     -- move camera if necessary
     -- if camera.x ~= CameraXDesired or camera.y ~= CameraYDesired then
     --     local dx, dy = CameraXDesired - camera.x, CameraYDesired - camera.y
     --     camera:move(dx / 2, dy / 2)
     -- end
-    myMat:update(mouseX, mouseY)
+    myMat:update(dt, mouseX, mouseY)
 end
 
 function game:draw()

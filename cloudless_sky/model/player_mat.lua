@@ -61,7 +61,7 @@ end
 function PlayerMat:serialize()
     local serialized = {}
     for ii, star in ipairs(self.stars) do
-        serialized[ii] = star:serialize()
+        serialized[tostring(ii)] = star:serialize()
     end
     return serialized
 end
@@ -91,12 +91,13 @@ end
 ---         If either index is invalid, an empty table is returned
 function PlayerMat:placeTile(tileType, starIndex, slotIndex)
     local star = self.stars[starIndex]
+    print("place a " .. tileType .. " tile at " .. starIndex .. ", " .. slotIndex)
     if star == nil then
         -- invalid starIndex
         return {}
     end
     local score = star:placeTile(tileType, slotIndex)
-    if score < 0 then
+    if score < 1 then
         -- invalid slotIndex
         return {}
     end

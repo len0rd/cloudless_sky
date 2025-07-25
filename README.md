@@ -23,6 +23,7 @@ Then the user you run with needs to have a matching UID/GID
 - UI elements: [Luis](https://github.com/SiENcE/luis)
 - Tick for timed callbacks [Tick](https://github.com/rxi/tick)
 - Json for serial/deserialization of game state [json](https://github.com/rxi/json.lua)
+- Text animation [slog](https://github.com/sysl-dev/SYSL-Text)
 
 ## shaders
 
