@@ -50,12 +50,6 @@ function love.load(args)
     luis.newLayer("main")
     luis.enableLayer("main")
     luis.setCurrentLayer("main")
-    local button1 = luis.createElement(luis.currentLayer, "Button", "Button 1", 4, 2, function()
-        print("Button 1 clicked!")
-    end, function()
-        print("Button 1 released!")
-    end, 1, 1)
-    button1:setDecorator("GlassmorphismDecorator", {})
 
     -- GAMESTATE
     Gamestate.registerEvents()
@@ -77,9 +71,8 @@ function love.draw()
         love.graphics.print("howdy")
     end
     camera:detach()
-    -- todo: luis doesnt play nice with the camera.
-    -- it will work well for HUD and temproary elements
-    -- though which is probablllly all its needed for
+    -- todo: luis handlers below need to be passed world coords, and this should be run in the camera
+    --  except it would also be nice to use screen coords for hud elements... hmmm. can 2 simultaneous instances of luis exist??
     luis.draw()
 end
 

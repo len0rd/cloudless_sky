@@ -109,8 +109,28 @@ function Star:new(starType, slotCostOrder, slotColorOrder)
     end
 end
 
+--- Return a table that can be used to serialize all the state information of this Star instance
+function Star:serialize()
+    local serialized = {}
+    serialized.type = self.starType
+    if self.slotCostOrder ~= DEFAULT_SLOT_COST_FOR_STAR[self.starType] then
+        serialized.cost = self.slotCostOrder
+    end
+    if self:isNonBasicType() then
+        serialized.color = self.slotColorOrder
+    end
+    serialized.occupied = self.occupiedSlots
+    return serialized
+end
+
 function Star:numSlots()
     return #self.slotCostOrder
+end
+
+--- If the starType is not also a TileType (ie: RED), then its "non-standard" and probably
+--- requires some degree of special handling
+function Star:isNonBasicType()
+    return TileType[self.starType] == nil
 end
 
 function Star:numOccupied()

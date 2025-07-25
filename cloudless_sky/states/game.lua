@@ -1,13 +1,25 @@
 -- Game state (game is being actively played)
 local PlayerMatView = require("cloudless_sky.view.player_mat_view")
+local PlayerMatController = require("cloudless_sky.control.player_mat_controller")
+local PlayerMat = require("cloudless_sky.model.player_mat")
+local luis = require("luis.init")("luis/widgets")
+local json = require("cloudless_sky.extern.json")
 
 local game = {}
 
-function game:init() end
+function game:init()
+    local button1 = luis.createElement(luis.currentLayer, "Button", "Save", 4, 2, function()
+        print("save pressed")
+    end, function()
+        game:onSave()
+    end, 1, 1)
+    button1:setDecorator("GlassmorphismDecorator", {})
+end
 
 -- runs every time the state is entered
 function game:enter(gameSettings, gameState)
-    myMat = PlayerMatView(200, 200, 900)
+    myMat = PlayerMatController(PlayerMat.BASE_GAME_DEFAULT_MAT, 200, 200, 900)
+    -- myMat = PlayerMatView(200, 200, 900)
 end
 
 function game:update()
@@ -30,14 +42,22 @@ end
 
 -- events
 
-function game:mousepressed(x, y, button, istouch)
-    if button == 1 then
-        local clickX, clickY = camera:worldCoords(x, y)
-        local clickedStarIndex, clickedSlotIndex = myMat:coordStarSlotIndex(clickX, clickY)
-        if clickedStarIndex ~= 0 and clickedSlotIndex ~= 0 then
-            CameraXDesired, CameraYDesired = myMat:centerOfSlot(clickedStarIndex, clickedSlotIndex)
-        end
+function game:onSave()
+    local serialized = myMat:serialize()
+    local encoded = json.encode(serialized)
+    local file = io.open("savegame.json", "w")
+    if file then
+        file:write(encoded)
+        file:close()
+        print("Game saved to savegame.json")
+    else
+        print("Failed to save game!")
     end
+end
+
+function game:mousepressed(x, y, button, istouch)
+    local clickX, clickY = camera:worldCoords(x, y)
+    myMat:mousePressed(clickX, clickY, button, istouch)
 end
 
 function game:keyreleased(key, code)

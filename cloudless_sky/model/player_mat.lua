@@ -15,6 +15,17 @@ local PlayerMat = Object:extend()
 local StarType = require("cloudless_sky.model.star_type")
 local Star = require("cloudless_sky.model.star")
 
+--- The stars of the first/default map used in the base game
+PlayerMat.BASE_GAME_DEFAULT_MAT = {
+    StarType.ORANGE,
+    StarType.RED,
+    StarType.BLUE,
+    StarType.YELLOW,
+    StarType.GREEN,
+    StarType.PURPLE,
+    StarType.MULTI,
+}
+
 --- @return StarType default. The StarType that's located at the given starIndex on the base-game's play mat
 ---     nil on bad index
 function PlayerMat.defaultStarForIndex(starIndex)
@@ -45,6 +56,14 @@ function PlayerMat:new(starTypes, starSlotCosts, starSlotColors)
 
         self.stars[ii] = Star(sType, slotCost, slotColor)
     end
+end
+
+function PlayerMat:serialize()
+    local serialized = {}
+    for ii, star in ipairs(self.stars) do
+        serialized[ii] = star:serialize()
+    end
+    return serialized
 end
 
 --- @return table events. Table of events that could occur if a tile was placed in the specified position
