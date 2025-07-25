@@ -57,30 +57,11 @@ Star.GLAZED_PAVILION_PURPLE_SIDE_MULTI_STATIC_COLORS = {
 
 --- Returns the default slot cost array for the STAR index on a PlayerMat
 --- See PlayerMat for how this index works
---- PlayerMat star indicies:
----
----        *     *
----       *1*   *2*
----        *     *
----      *    *    *
----     *6*  *7*  *3*
----      *    *    *
----        *     *
----       *5*   *4*
----        *     *
 --- @return table slotCosts. The default slot costs for a star at the given starIndex
 ---     Empty if index is invalid
 function Star.getDefaultSlotCostForBoardPosition(starIndex)
-    local starIndexToType = {
-        [1] = StarType.ORANGE,
-        [2] = StarType.RED,
-        [3] = StarType.BLUE,
-        [4] = StarType.YELLOW,
-        [5] = StarType.GREEN,
-        [6] = StarType.PURPLE,
-        [7] = StarType.PURPLE,
-    }
-    local starType = starIndexToType[starIndex]
+    local PlayerMat = require("cloudless_sky.model.player_mat")
+    local starType = PlayerMat.defaultStarForIndex(starIndex)
     if starType then
         return DEFAULT_SLOT_COST_FOR_STAR[starType]
     else
