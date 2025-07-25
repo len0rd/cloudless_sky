@@ -73,7 +73,7 @@ end
 
 --- Take \p count random tiles from the bag, or until its empty
 function TileBag:takeRandomTiles(count)
-    tiles = {}
+    local tiles = {}
     for ii = 1, count do
         local tile = self:takeRandomTile()
         if tile == nil then
@@ -125,6 +125,11 @@ function TileBag:setCountForTileType(tileType, count)
 
     -- shouldnt get here
     TileType.emitBadTileTypeError(type)
+end
+
+--- Return a table that can be used to serialize all the state information of this TileBag instance
+function TileBag:serialize()
+    return self.tileCounts
 end
 
 return TileBag
