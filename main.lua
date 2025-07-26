@@ -43,9 +43,7 @@ function love.load(args)
         luis.flux.update(1 / 60)
     end, 1 / 60)
 
-    -- local container = luis.newFlexContainer(20, 20, 10, 10)
     luis.setGridSize(20)
-    -- container:addChild(button1)
 
     luis.newLayer("main")
     luis.enableLayer("main")
@@ -68,7 +66,6 @@ end
 function love.draw()
     camera:attach()
     do
-        love.graphics.print("howdy")
     end
     camera:detach()
     -- todo: luis handlers below need to be passed world coords, and this should be run in the camera

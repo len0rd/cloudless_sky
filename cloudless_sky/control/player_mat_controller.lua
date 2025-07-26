@@ -47,8 +47,10 @@ function PlayerMatController:mousePressed(worldX, worldY, button, istouch)
                 local scoreText = ScoreText(score[1], starSlotX, starSlotY)
                 table.insert(self.scoreTexts, scoreText)
             end
+            return true
         end
     end
+    return false
 end
 
 function PlayerMatController:update(dt, mouseX, mouseY)

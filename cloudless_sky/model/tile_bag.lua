@@ -132,4 +132,8 @@ function TileBag:serialize()
     return self.tileCounts
 end
 
+function TileBag:deserialize(data)
+    self.tileCounts = data
+end
+
 return TileBag

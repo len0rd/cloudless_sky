@@ -1,9 +1,8 @@
 -- Game state (game is being actively played)
-local PlayerMatView = require("cloudless_sky.view.player_mat_view")
 local PlayerMatController = require("cloudless_sky.control.player_mat_controller")
-local PlayerMat = require("cloudless_sky.model.player_mat")
 local luis = require("luis.init")("luis/widgets")
 local json = require("cloudless_sky.extern.json")
+local GameRules = require("cloudless_sky.model.game_rules")
 
 local game = {}
 
@@ -13,17 +12,16 @@ function game:init()
     end, function()
         game:onSave()
     end, 1, 1)
-    button1:setDecorator("GlassmorphismDecorator", {})
+    -- button1:setDecorator("GlassmorphismDecorator", {})
 end
 
 -- runs every time the state is entered
 function game:enter(gameSettings, gameState)
-    myMat = PlayerMatController(200, 200, 900)
-    -- myMat = PlayerMatView(200, 200, 900)
+    myMat = PlayerMatController(200, 200, 600)
 end
 
 function game:update(dt)
-    local mouseX, mouseY = camera:worldCoords(love.mouse.getPosition())
+    local mouseX, mouseY = camera:mousePosition()
     -- move camera if necessary
     -- if camera.x ~= CameraXDesired or camera.y ~= CameraYDesired then
     --     local dx, dy = CameraXDesired - camera.x, CameraYDesired - camera.y
@@ -43,7 +41,12 @@ end
 -- events
 
 function game:onSave()
-    local serialized = myMat:serialize()
+    local serialized = {
+        rules = GameRules.currentRules(),
+        players = {
+            myMat:serialize(),
+        },
+    }
     local encoded = json.encode(serialized)
     local file = io.open("savegame.json", "w")
     if file then
