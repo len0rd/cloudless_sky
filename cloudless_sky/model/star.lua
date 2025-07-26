@@ -1,11 +1,5 @@
 -- represents a single star on a player board
 --
--- Throughout the
-local Object = require("cloudless_sky.extern.classic")
-local Star = Object:extend()
-local StarType = require("cloudless_sky.model.star_type")
-local TileType = require("cloudless_sky.model.tile_type")
-
 --- Throughout the Star code, arrays for tile slots in the star
 --- start with the top of the star (when looking at a board face up),
 --- then proceed clockwise around the star.
@@ -22,16 +16,10 @@ local TileType = require("cloudless_sky.model.tile_type")
 ---    -----/ 4 \----
 ---         \  /
 ---          \/
-local DEFAULT_SLOT_COST_FOR_STAR = {
-    [StarType.RED] = { 5, 6, 1, 2, 3, 4 },
-    [StarType.ORANGE] = { 6, 1, 2, 3, 4, 5 },
-    [StarType.YELLOW] = { 3, 4, 5, 6, 1, 2 },
-    [StarType.GREEN] = { 2, 3, 4, 5, 6, 1 },
-    [StarType.BLUE] = { 4, 5, 6, 1, 2, 3 },
-    [StarType.PURPLE] = { 1, 2, 3, 4, 5, 6 },
-    [StarType.MULTI] = { 1, 2, 3, 4, 5, 6 },
-    -- mono and multistatic slot placement depends on the mat/star position
-}
+local Object = require("cloudless_sky.extern.classic")
+local Star = Object:extend()
+local StarType = require("cloudless_sky.model.star_type")
+local TileType = require("cloudless_sky.model.tile_type")
 
 -- default Slot Color Order for the central multi_static star on the blue side
 -- of the Glazed Pavilion mat
@@ -55,42 +43,29 @@ Star.GLAZED_PAVILION_PURPLE_SIDE_MULTI_STATIC_COLORS = {
     TileType.PURPLE,
 }
 
---- Returns the default slot cost array for the STAR index on a PlayerMat
---- See PlayerMat for how this index works
---- @return table slotCosts. The default slot costs for a star at the given starIndex
----     Empty if index is invalid
-function Star.getDefaultSlotCostForBoardPosition(starIndex)
-    local PlayerMat = require("cloudless_sky.model.player_mat")
-    local starType = PlayerMat.defaultStarForIndex(starIndex)
-    if starType then
-        return DEFAULT_SLOT_COST_FOR_STAR[starType]
-    else
-        return {}
-    end
-end
-
---- @param starType StarType this stars type
---- @param slotCostOrder table A table of 6 integers representing the order of slot costs
---- @param slotColorOrder table For StarType.MULTI_STATIC, this must define the required color of each slot
-function Star:new(starType, slotCostOrder, slotColorOrder)
-    self.starType = starType
-    self.starTypeOnConstruction = starType
-    if StarType[starType] == nil then
-        StarType.emitBadStarTypeError(starType)
+--- @param starConf table Table to configure this star with the following fields:
+---     {
+---         type: @ref StarType. what type of star this is
+---         cost: table of tile costs for each slots
+---         color: [OPTIONAL], for MULTI_STATIC type this needs to define the required tile color for each slot
+---     }
+function Star:new(starConf)
+    self.starType = starConf.type
+    self.starTypeOnConstruction = starConf.type
+    if StarType[starConf.type] == nil then
+        StarType.emitBadStarTypeError(starConf.type)
     end
 
-    if slotCostOrder ~= nil then
-        self.slotCostOrder = slotCostOrder
-    else
-        self.slotCostOrder = DEFAULT_SLOT_COST_FOR_STAR[starType]
-        if self.slotCostOrder == nil then
-            error("StarType '" .. tostring(starType) .. "' does not have a default slotCostOrder. You must specify one")
-        end
+    self.slotCostOrder = starConf.cost
+    if self.slotCostOrder == nil then
+        error(
+            "StarType '" .. tostring(starConf.type) .. "' does not have a default slotCostOrder. You must specify one"
+        )
     end
     -- for StarType.MULTI_STATIC
-    self.slotColorOrder = slotColorOrder
-    if self.starType == StarType.MULTI_STATIC and slotColorOrder == nil then
-        error("StarType '" .. tostring(self.starType) .. "' must be provided a slotColorOrder")
+    self.slotColorOrder = starConf.color
+    if self.starType == StarType.MULTI_STATIC and starConf.color == nil then
+        error("StarType '" .. tostring(self.starType) .. "' must be provided starConf.color")
     end
     -- hijack slotColorOrder to keep track of placed tile colors for StarType.MULTI
     -- (need to enforce having a color only once)
@@ -109,18 +84,23 @@ function Star:new(starType, slotCostOrder, slotColorOrder)
     end
 end
 
---- Return a table that can be used to serialize all the state information of this Star instance
+--- Return a table that can be used to serialize state information about this star that is NOT already
+--- contained in the current GameRules
 function Star:serialize()
     local serialized = {}
-    serialized.type = self.starType
-    if self.slotCostOrder ~= DEFAULT_SLOT_COST_FOR_STAR[self.starType] then
-        serialized.cost = self.slotCostOrder
-    end
     if self:isNonBasicType() then
         serialized.color = self.slotColorOrder
     end
     serialized.occupied = self.occupiedSlots
     return serialized
+end
+
+--- Deserialize state information not contained in the GameRules/passed in the constructor
+function Star:deserialize(data)
+    if data.color ~= nil then
+        self.slotColorOrder = data.color
+    end
+    self.occupiedSlots = data.occupied
 end
 
 function Star:numSlots()

@@ -5,14 +5,20 @@ local PlayerMat = require("cloudless_sky.model.player_mat")
 local PlayerMatView = require("cloudless_sky.view.player_mat_view")
 local TileType = require("cloudless_sky.model.tile_type")
 local ScoreText = require("cloudless_sky.view.score_text")
+local GameRules = require("cloudless_sky.model.game_rules")
 
 --- @param starTypes table List of StarTypes this mat is composed of. In PlayerMat index order
 --- @param x integer The leftmost X coordinate of the mat in world coords
 --- @param y integer The topmost Y coordintate of the mat in world coords
 --- @param size integer The overall size of the Mat in pixels
-function PlayerMatController:new(starTypes, x, y, size)
-    self.model = PlayerMat(starTypes)
-    self.view = PlayerMatView(x, y, size, starTypes)
+function PlayerMatController:new(x, y, size)
+    self.model = PlayerMat(GameRules.currentRules().playerMat.stars)
+    local sTypes = {}
+    for _, star in ipairs(GameRules.currentRules().playerMat.stars) do
+        table.insert(sTypes, star.type)
+    end
+    print("Star Types:", table.concat(sTypes, ", "))
+    self.view = PlayerMatView(x, y, size, sTypes)
     self.scoreTexts = {}
 end
 

@@ -18,7 +18,7 @@ end
 
 -- runs every time the state is entered
 function game:enter(gameSettings, gameState)
-    myMat = PlayerMatController(PlayerMat.BASE_GAME_DEFAULT_MAT, 200, 200, 900)
+    myMat = PlayerMatController(200, 200, 900)
     -- myMat = PlayerMatView(200, 200, 900)
 end
 

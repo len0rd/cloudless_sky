@@ -26,35 +26,13 @@ PlayerMat.BASE_GAME_DEFAULT_MAT = {
     StarType.MULTI,
 }
 
---- @return StarType default. The StarType that's located at the given starIndex on the base-game's play mat
----     nil on bad index
-function PlayerMat.defaultStarForIndex(starIndex)
-    local starIndexToType = {
-        [1] = StarType.ORANGE,
-        [2] = StarType.RED,
-        [3] = StarType.BLUE,
-        [4] = StarType.YELLOW,
-        [5] = StarType.GREEN,
-        [6] = StarType.PURPLE,
-        [7] = StarType.MULTI,
-    }
-    return starIndexToType[starIndex]
-end
-
-function PlayerMat:new(starTypes, starSlotCosts, starSlotColors)
+--- @param starConfigs table. List of starConfigs of the format described in
+---     @ref Star:new. Indicies of the table should correspond to the Mat index
+---     of the star
+function PlayerMat:new(starConfigs)
     self.stars = {}
-    for ii, sType in ipairs(starTypes) do
-        local slotCost = nil
-        if starSlotCosts ~= nil and starSlotCosts[ii] ~= nil then
-            slotCost = starSlotCosts[ii]
-        end
-
-        local slotColor = nil
-        if starSlotColors ~= nil and starSlotColors[ii] ~= nil then
-            slotColor = starSlotColors[ii]
-        end
-
-        self.stars[ii] = Star(sType, slotCost, slotColor)
+    for ii, sConf in ipairs(starConfigs) do
+        self.stars[ii] = Star(sConf)
     end
 end
 
@@ -64,6 +42,15 @@ function PlayerMat:serialize()
         serialized[tostring(ii)] = star:serialize()
     end
     return serialized
+end
+
+function PlayerMat:deserialize(data)
+    for ii, starData in pairs(data) do
+        local starIdx = tonumber(ii)
+        if starIdx ~= nil and self.stars[starIdx] ~= nil then
+            self.stars[starIdx]:deserialize(starData)
+        end
+    end
 end
 
 --- @return table events. Table of events that could occur if a tile was placed in the specified position
