@@ -1,5 +1,5 @@
 -- Game state (game is being actively played)
-local PlayerMatController = require("cloudless_sky.control.player_mat_controller")
+local PlayerController = require("cloudless_sky.control.player_controller")
 local luis = require("luis.init")("luis/widgets")
 local json = require("cloudless_sky.extern.json")
 local GameRules = require("cloudless_sky.model.game_rules")
@@ -17,7 +17,7 @@ end
 
 -- runs every time the state is entered
 function game:enter(gameSettings, gameState)
-    myMat = PlayerMatController(200, 200, 600)
+    myMat = PlayerController("lenord", 200, 200, 600)
 end
 
 function game:update(dt)
@@ -31,11 +31,7 @@ function game:update(dt)
 end
 
 function game:draw()
-    camera:attach()
-    do
-        myMat:draw()
-    end
-    camera:detach()
+    myMat:draw()
 end
 
 -- events

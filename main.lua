@@ -9,6 +9,9 @@ luis.flux = require("luis.3rdparty.flux")
 -- local
 local game = require("cloudless_sky.states.game")
 
+-- TODO: better storage/access method?
+fonts = {}
+
 -- global X,Y of where we want the camera centered
 CameraXDesired, CameraYDesired = 400, 100
 
@@ -32,6 +35,12 @@ function love.load(args)
     -- end unit testing
 
     love.graphics.setBackgroundColor(0.4, 0.88, 1.0, 0.5)
+
+    -- fonts
+    fonts.pixelatedElegance = {
+        ["12"] = love.graphics.newFont("assets/fonts/PixelatedEleganceRegular.ttf", 12),
+        ["16"] = love.graphics.newFont("assets/fonts/PixelatedEleganceRegular.ttf", 16),
+    }
 
     -- GLOBAL CAMERA
     camera = Camera(CameraXDesired, CameraYDesired)
