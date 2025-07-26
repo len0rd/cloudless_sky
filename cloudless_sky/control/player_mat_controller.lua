@@ -7,12 +7,12 @@ local TileType = require("cloudless_sky.model.tile_type")
 local ScoreText = require("cloudless_sky.view.score_text")
 local GameRules = require("cloudless_sky.model.game_rules")
 
---- @param starTypes table List of StarTypes this mat is composed of. In PlayerMat index order
+--- @param playerMat PlayerMat Mat model this controller should use
 --- @param x integer The leftmost X coordinate of the mat in world coords
 --- @param y integer The topmost Y coordintate of the mat in world coords
 --- @param size integer The overall size of the Mat in pixels
-function PlayerMatController:new(x, y, size)
-    self.model = PlayerMat(GameRules.currentRules().playerMat.stars)
+function PlayerMatController:new(playerMat, x, y, size)
+    self.model = playerMat
     local sTypes = {}
     for _, star in ipairs(GameRules.currentRules().playerMat.stars) do
         table.insert(sTypes, star.type)
@@ -22,33 +22,31 @@ function PlayerMatController:new(x, y, size)
     self.scoreTexts = {}
 end
 
-function PlayerMatController:serialize()
-    return self.model:serialize()
-end
-
+--- Place a tile (update visuals and model), then return the score the tile got.
+--- @return table scoreTable The score as stated by PlayerMat:placeTile
 function PlayerMatController:placeTile(starIndex, slotIndex)
-    local placeResult = self.model:placeTile(starIndex, slotIndex)
+    local score = { 0 }
+    if starIndex ~= 0 and slotIndex ~= 0 then
+        local starSlotX, starSlotY = self.view:centerOfSlot(starIndex, slotIndex)
+        CameraXDesired, CameraYDesired = starSlotX, starSlotY
+        -- throwaway
+        local leStar = self.model.stars[starIndex]
+        local tileType = leStar.starType
+        if leStar:isNonBasicType() then
+            tileType = TileType.ORDERED[slotIndex]
+        end
+        score = self.model:placeTile(tileType, starIndex, slotIndex)
+        if score[1] ~= nil and score[1] > 0 then
+            local scoreText = ScoreText(score[1], starSlotX, starSlotY)
+            table.insert(self.scoreTexts, scoreText)
+        end
+    end
+    return score
 end
 
 function PlayerMatController:mousePressed(worldX, worldY, button, istouch)
     if button == 1 then
         local clickedStarIndex, clickedSlotIndex = self.view:coordStarSlotIndex(worldX, worldY)
-        if clickedStarIndex ~= 0 and clickedSlotIndex ~= 0 then
-            local starSlotX, starSlotY = self.view:centerOfSlot(clickedStarIndex, clickedSlotIndex)
-            CameraXDesired, CameraYDesired = starSlotX, starSlotY
-            -- throwaway
-            local leStar = self.model.stars[clickedStarIndex]
-            local tileType = leStar.starType
-            if leStar:isNonBasicType() then
-                tileType = TileType.ORDERED[clickedSlotIndex]
-            end
-            local score = self.model:placeTile(tileType, clickedStarIndex, clickedSlotIndex)
-            if score[1] ~= nil and score[1] > 0 then
-                local scoreText = ScoreText(score[1], starSlotX, starSlotY)
-                table.insert(self.scoreTexts, scoreText)
-            end
-            return true
-        end
     end
     return false
 end
