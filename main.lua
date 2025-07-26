@@ -37,9 +37,9 @@ function love.load(args)
     love.graphics.setBackgroundColor(0.4, 0.88, 1.0, 0.5)
 
     -- fonts
-    fonts.pixelatedElegance = {
-        ["12"] = love.graphics.newFont("assets/fonts/PixelatedEleganceRegular.ttf", 12),
-        ["16"] = love.graphics.newFont("assets/fonts/PixelatedEleganceRegular.ttf", 16),
+    fonts.ithaca = {
+        ["12"] = love.graphics.newFont("assets/fonts/Ithaca.ttf", 18),
+        ["16"] = love.graphics.newFont("assets/fonts/Ithaca.ttf", 24),
     }
 
     -- GLOBAL CAMERA

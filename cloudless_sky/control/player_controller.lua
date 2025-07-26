@@ -21,6 +21,10 @@ function PlayerController:serialize()
 end
 
 function PlayerController:mousePressed(worldX, worldY, button, istouch)
+    if self.playerHUD:mousePressed() then
+        -- mouse handled
+        return
+    end
     local clickedStarIndex, clickedSlotIndex = self.matControl.view:coordStarSlotIndex(worldX, worldY)
     if clickedStarIndex ~= 0 and clickedSlotIndex ~= 0 then
         local score = self.matControl:placeTile(clickedStarIndex, clickedSlotIndex)
@@ -33,7 +37,7 @@ end
 
 function PlayerController:update(dt, mouseX, mouseY)
     self.matControl:update(dt, mouseX, mouseY)
-    self.playerHUD:update(self.model.score, 1, TileType.PURPLE)
+    self.playerHUD:update(dt, self.model.score, 1, TileType.PURPLE)
 end
 
 function PlayerController:draw()
