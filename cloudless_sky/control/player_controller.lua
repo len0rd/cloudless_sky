@@ -12,6 +12,8 @@ function PlayerController:new(name, x, y, size)
     self.model = Player(GameRules.currentRules().playerMat.stars, GameRules.currentRules().startScore, name)
     self.matControl = PlayerMatController(self.model.mat, x, y, size)
     self.playerHUD = PlayerHUD()
+    self.cameraZoom = 1.0
+    self:resize(love.graphics.getPixelDimensions())
 
     self.playerHUD:show()
 end
@@ -40,47 +42,7 @@ function PlayerController:moveCamera()
     -- center x,y of the player mat in world coords
     local matCenterX, matCenterY = self.matControl:center()
 
-    -- TODO: auto zoom/adjust window so the player mat is nicely sized/centered
-    local hudMarginTop, hudMarginLeft, hudMarginBottom, hudMarginRight = self.playerHUD:marginsNeeded()
-
-    local matWidth, matHeight = self.matControl:size()
-    local screenWidth, screenHeight = love.graphics.getPixelDimensions()
-    local maxMatWidth = screenWidth - hudMarginLeft - (screenWidth - hudMarginRight)
-    local maxMatHeight = screenHeight - hudMarginTop - (screenHeight - hudMarginBottom)
-
-    local widthZoomFactor = maxMatWidth / matWidth
-    local heightZoomFactor = maxMatHeight / matHeight
-
-    print(
-        "max: ["
-            .. maxMatWidth
-            .. ", "
-            .. maxMatHeight
-            .. "]. Actual: ["
-            .. matWidth
-            .. ", "
-            .. matHeight
-            .. "]. Factors: ["
-            .. widthZoomFactor
-            .. ", "
-            .. heightZoomFactor
-            .. "]"
-    )
-
-    local zoomFactor = math.min(widthZoomFactor, heightZoomFactor)
-    camera:zoomTo(zoomFactor)
-    -- local matMinX, matMinY = self.matControl:topLeft()
-    -- local matMaxX, matMaxY = self.matControl:bottomRight()
-    -- local screenRect = {
-    --     matMinX - hudMarginLeft,
-    --     matMaxX + hudMarginRight,
-    --     matMinY - hudMarginTop,
-    --     matMaxY + hudMarginBottom,
-    -- }
-    -- local minCameraX, minCameraY = camera:cameraCoords(matMinX - hudMarginLeft, matMinY - hudMarginTop)
-    -- local maxCameraX, maxCameraY = camera:cameraCoords(matMaxX + hudMarginRight, matMaxY + hudMarginBottom)
-    -- print("move camera window! [" .. table.concat(screenRect, ", ") .. "]")
-    -- camera:lockWindow(matCenterX, matCenterY, minCameraX, maxCameraX, minCameraY, maxCameraY)
+    camera:zoomTo(self.cameraZoom)
     camera:lockPosition(matCenterX, matCenterY)
 end
 
@@ -101,6 +63,17 @@ end
 
 function PlayerController:resize(w, h)
     self.playerHUD:resize(w, h)
+
+    -- Solve correct zoom level based on player mat size vs screen size
+    local hudMarginTop, hudMarginLeft, hudMarginBottom, hudMarginRight = self.playerHUD:marginsNeeded()
+
+    local matWidth, matHeight = self.matControl:size()
+    local maxMatWidth = w - hudMarginLeft - (w - hudMarginRight)
+    local maxMatHeight = h - hudMarginTop - (h - hudMarginBottom)
+    local widthZoomFactor = maxMatWidth / matWidth
+    local heightZoomFactor = maxMatHeight / matHeight
+
+    self.cameraZoom = math.min(widthZoomFactor, heightZoomFactor)
 end
 
 return PlayerController
