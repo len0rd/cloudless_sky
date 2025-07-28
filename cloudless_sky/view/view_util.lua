@@ -19,4 +19,12 @@ ViewUtil.euclidianDistance = function(x1, y1, x2, y2)
     return math.sqrt(dx * dx + dy * dy)
 end
 
+ViewUtil.shiftVerticies = function(vertices, xShift, yShift)
+    for ii = 1, #vertices, 2 do
+        vertices[ii] = vertices[ii] + xShift
+        vertices[ii + 1] = vertices[ii + 1] + yShift
+    end
+    return vertices
+end
+
 return ViewUtil
