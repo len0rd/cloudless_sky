@@ -17,21 +17,17 @@ end
 
 -- runs every time the state is entered
 function game:enter(gameSettings, gameState)
-    myMat = PlayerController("lenord", 200, 200, 600)
+    playerControl = PlayerController("lenord", 200, 200, 600)
 end
 
 function game:update(dt)
     local mouseX, mouseY = camera:mousePosition()
-    -- move camera if necessary
-    -- if camera.x ~= CameraXDesired or camera.y ~= CameraYDesired then
-    --     local dx, dy = CameraXDesired - camera.x, CameraYDesired - camera.y
-    --     camera:move(dx / 2, dy / 2)
-    -- end
-    myMat:update(dt, mouseX, mouseY)
+
+    playerControl:update(dt, mouseX, mouseY)
 end
 
 function game:draw()
-    myMat:draw()
+    playerControl:draw()
 end
 
 -- events
@@ -40,7 +36,7 @@ function game:onSave()
     local serialized = {
         rules = GameRules.currentRules(),
         players = {
-            myMat:serialize(),
+            playerControl:serialize(),
         },
     }
     local encoded = json.encode(serialized)
@@ -56,13 +52,17 @@ end
 
 function game:mousepressed(x, y, button, istouch)
     local clickX, clickY = camera:worldCoords(x, y)
-    myMat:mousePressed(clickX, clickY, button, istouch)
+    playerControl:mousePressed(clickX, clickY, button, istouch)
 end
 
 function game:keyreleased(key, code)
     if key == "escape" then
         love.event.quit(0)
     end
+end
+
+function game:resize(w, h)
+    playerControl:resize(w, h)
 end
 
 return game

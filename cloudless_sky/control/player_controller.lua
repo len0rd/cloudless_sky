@@ -35,7 +35,31 @@ function PlayerController:mousePressed(worldX, worldY, button, istouch)
     end
 end
 
+--- Move the global Camera to center on this player
+function PlayerController:moveCamera()
+    -- center x,y of the player mat in world coords
+    local matCenterX, matCenterY = self.matControl:center()
+
+    -- TODO: auto zoom/adjust window so the player mat is nicely sized/centered
+    -- local hudMarginTop, hudMarginLeft, hudMarginBottom, hudMarginRight = self.playerHUD:marginsNeeded()
+    -- local matMinX, matMinY = self.matControl:topLeft()
+    -- local matMaxX, matMaxY = self.matControl:bottomRight()
+    -- local screenRect = {
+    --     matMinX - hudMarginLeft,
+    --     matMaxX + hudMarginRight,
+    --     matMinY - hudMarginTop,
+    --     matMaxY + hudMarginBottom,
+    -- }
+    -- local minCameraX, minCameraY = camera:cameraCoords(matMinX - hudMarginLeft, matMinY - hudMarginTop)
+    -- local maxCameraX, maxCameraY = camera:cameraCoords(matMaxX + hudMarginRight, matMaxY + hudMarginBottom)
+    -- print("move camera window! [" .. table.concat(screenRect, ", ") .. "]")
+
+    -- camera:lockWindow(matCenterX, matCenterY, minCameraX, maxCameraX, minCameraY, maxCameraY)
+    camera:lockPosition(matCenterX, matCenterY)
+end
+
 function PlayerController:update(dt, mouseX, mouseY)
+    self:moveCamera()
     self.matControl:update(dt, mouseX, mouseY)
     self.playerHUD:update(dt, self.model.score, 1, TileType.PURPLE)
 end
@@ -47,6 +71,10 @@ function PlayerController:draw()
     end
     camera:detach()
     self.playerHUD:draw()
+end
+
+function PlayerController:resize(w, h)
+    self.playerHUD:resize(w, h)
 end
 
 return PlayerController

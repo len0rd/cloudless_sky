@@ -12,8 +12,8 @@ local STAR_PADDING = 2
 --- @param size integer Square size of the mat. Width/Height will be equal
 --- @param starTypes table List of each star's type in mat-index order
 function PlayerMatView:new(x, y, size, starTypes)
-    self.mat_origin_x = x
-    self.mat_origin_y = y
+    self.matOriginX = x
+    self.matOriginY = y
     self.size = size
     self.star_size = (self.size - STAR_PADDING) / 3
     stypes = starTypes
@@ -44,7 +44,7 @@ function PlayerMatView:new(x, y, size, starTypes)
 
     -- transform all origins to be in world coords
     for ii, sOrigin in ipairs(starOrigins) do
-        starOrigins[ii] = { sOrigin[1] + self.mat_origin_x, sOrigin[2] + self.mat_origin_y }
+        starOrigins[ii] = { sOrigin[1] + self.matOriginX, sOrigin[2] + self.matOriginY }
     end
 
     -- this table has indicies that correspond to the PlayerMat star index setup
@@ -58,10 +58,10 @@ end
 ---     Assume coords are in world frame
 function PlayerMatView:coordInBoundingBox(x, y)
     if
-        x < self.mat_origin_x
-        or x > (self.mat_origin_x + self.size)
-        or y < self.mat_origin_y
-        or y > (self.mat_origin_y + self.size)
+        x < self.matOriginX
+        or x > (self.matOriginX + self.size)
+        or y < self.matOriginY
+        or y > (self.matOriginY + self.size)
     then
         return false
     end
@@ -82,6 +82,21 @@ function PlayerMatView:coordStarSlotIndex(worldX, worldY)
         end
     end
     return 0, 0
+end
+
+--- @return integer, integer centerCoords. The center of this mat in world coords
+function PlayerMatView:center()
+    local centerX = self.matOriginX + (self.size / 2)
+    local centerY = self.matOriginY + (self.size / 2)
+    return centerX, centerY
+end
+
+function PlayerMatView:topLeft()
+    return self.matOriginX, self.matOriginY
+end
+
+function PlayerMatView:bottomRight()
+    return self.matOriginX + self.size, self.matOriginY + self.size
 end
 
 function PlayerMatView:centerOfSlot(starIndex, slotIndex)
@@ -118,10 +133,11 @@ function PlayerMatView:draw(playerMat)
         self.stars[hoveredStarIndex]:draw(playerMat.stars[hoveredStarIndex])
     end
 
-    local origR, origG, origB, origA = love.graphics.getColor()
-    love.graphics.setColor(love.math.colorFromBytes(255, 0, 197))
-    love.graphics.rectangle("line", self.mat_origin_x, self.mat_origin_y, self.size, self.size)
-    love.graphics.setColor(origR, origG, origB, origA)
+    -- bounding box
+    -- local origR, origG, origB, origA = love.graphics.getColor()
+    -- love.graphics.setColor(love.math.colorFromBytes(255, 0, 197))
+    -- love.graphics.rectangle("line", self.matOriginX, self.matOriginY, self.size, self.size)
+    -- love.graphics.setColor(origR, origG, origB, origA)
 end
 
 return PlayerMatView

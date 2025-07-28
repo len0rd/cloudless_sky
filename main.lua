@@ -67,16 +67,12 @@ function love.update(dt)
     -- local mouseX, mouseY = camera:worldCoords(love.mouse.getPosition())
     tick.update(dt)
     -- camera motion
-    camera:lockPosition(CameraXDesired, CameraYDesired)
+    -- camera:lockPosition(CameraXDesired, CameraYDesired)
     -- ui updates
     luis.update(dt)
 end
 
 function love.draw()
-    camera:attach()
-    do
-    end
-    camera:detach()
     -- todo: luis handlers below need to be passed world coords, and this should be run in the camera
     --  except it would also be nice to use screen coords for hud elements... hmmm. can 2 simultaneous instances of luis exist??
     luis.draw()
@@ -92,6 +88,10 @@ end
 
 function love.mousereleased(x, y, button, istouch)
     luis.mousereleased(x, y, button, istouch)
+end
+
+function love.resize(w, h)
+    Gamestate.current():resize(w, h)
 end
 
 -- error handling

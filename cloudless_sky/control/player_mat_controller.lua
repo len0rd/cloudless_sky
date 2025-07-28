@@ -22,13 +22,24 @@ function PlayerMatController:new(playerMat, x, y, size)
     self.scoreTexts = {}
 end
 
+function PlayerMatController:center()
+    return self.view:center()
+end
+
+function PlayerMatController:topLeft()
+    return self.view:topLeft()
+end
+
+function PlayerMatController:bottomRight()
+    return self.view:bottomRight()
+end
+
 --- Place a tile (update visuals and model), then return the score the tile got.
 --- @return table scoreTable The score as stated by PlayerMat:placeTile
 function PlayerMatController:placeTile(starIndex, slotIndex)
     local score = { 0 }
     if starIndex ~= 0 and slotIndex ~= 0 then
         local starSlotX, starSlotY = self.view:centerOfSlot(starIndex, slotIndex)
-        CameraXDesired, CameraYDesired = starSlotX, starSlotY
         -- throwaway
         local leStar = self.model.stars[starIndex]
         local tileType = leStar.starType

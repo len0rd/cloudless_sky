@@ -3,6 +3,7 @@ local Object = require("cloudless_sky.extern.classic")
 local PlayerHandView = Object:extend()
 local TileView = require("cloudless_sky.view.tile_view")
 local TileType = require("cloudless_sky.model.tile_type")
+local ViewUtil = require("cloudless_sky.view.view_util")
 
 local flux = require("luis.3rdparty.flux")
 
@@ -53,9 +54,9 @@ function PlayerHandView:show()
         self.revealTweenGroup = flux.group()
         for ii, animCtx in ipairs(self.tilesToShow) do
             -- adjust opacity quickly
-            self.revealTweenGroup:to(self.tilesToShow[ii], 0.5, { alpha = 1.0 })
+            self.revealTweenGroup:to(self.tilesToShow[ii], 0.25, { alpha = 1.0 })
             -- and move out slowly-ish
-            self.revealTweenGroup:to(self.tilesToShow[ii], 1, { x = animCtx.destinationX })
+            self.revealTweenGroup:to(self.tilesToShow[ii], 0.5, { x = animCtx.destinationX })
         end
     end
 
@@ -81,6 +82,24 @@ function PlayerHandView:hide()
     end
 end
 
+function PlayerHandView:resize(originX, originY, maxX, maxY, animStartX)
+    local animationComplete = math.floor(self.tilesToShow[1].x) == math.floor(self.tilesToShow[1].destinationX)
+        and self.tilesToShow[1].destinationX ~= 0
+    self.originX = originX
+    self.originY = originY
+    self.maxX = maxX
+    self.maxY = maxY
+    self.animStartX = animStartX
+    self:_resetTilesToShow()
+    if animationComplete then
+        print("resize on anim complete")
+        for ii, animCtx in ipairs(self.tilesToShow) do
+            self.tilesToShow[ii].x = animCtx.destinationX
+            self.tilesToShow[ii].alpha = 1.0
+        end
+    end
+end
+
 function PlayerHandView:update(dt)
     if self.drawHand then
         if self.revealTweenGroup ~= nil then
@@ -100,7 +119,13 @@ function PlayerHandView:draw()
             love.graphics.setColor(color[1], color[2], color[3], animCtx.alpha)
             local flooredX = math.floor(animCtx.x)
             local flooredY = math.floor(animCtx.y) - (20 / 2)
-            love.graphics.circle("fill", flooredX, flooredY, 20, 100)
+
+            local tileVertices = TileView.tilePolyVerticies(50, -math.pi / 8)
+            tileVertices = ViewUtil.shiftVerticies(tileVertices, flooredX, flooredY)
+            love.graphics.polygon("fill", tileVertices)
+            love.graphics.setColor({ 0, 0, 0 })
+            love.graphics.setLineWidth(2)
+            love.graphics.polygon("line", tileVertices)
         end
 
         love.graphics.setColor(origR, origG, origB, origA)

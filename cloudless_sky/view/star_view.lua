@@ -110,28 +110,28 @@ StarView.HOVER_SELECT_OFFSETS = {
 --- @param size integer Overall width and height of stars rectangular bounding box. Always square
 function StarView:new(starType, x, y, size)
     self.starType = starType
-    self.star_origin_x = x
-    self.star_origin_y = y
+    self.starOriginX = x
+    self.starOriginY = y
     self.size = size
     -- define the vertices of the 6 polygons that compose the star
     self.polys = {}
     -- set to the slot index that a pointer is hovering over on update
     self.hovered_slot = 0
     for ii, vertices in ipairs(StarView.SLOT_VERTEX_SCALARS) do
-        self.polys[ii] = transformScalerVertices(vertices, self.star_origin_x, self.star_origin_y, self.size)
+        self.polys[ii] = transformScalerVertices(vertices, self.starOriginX, self.starOriginY, self.size)
     end
 end
 
 --- @return table boundingBox. Bounding box of the star in world coords. Formatted x1,y1, x2,y2
 ---     Where x1,y1 is the top left of the star and x2,y2 is the bottom right
 function StarView:boundingBox()
-    return { self.star_origin_x, self.star_origin_y, self.star_origin_x + self.size, self.star_origin_y + self.size }
+    return { self.starOriginX, self.starOriginY, self.starOriginX + self.size, self.starOriginY + self.size }
 end
 
 --- @return integer, integer centerCoords. The center of this star in world coords
 function StarView:center()
-    local centerX = self.star_origin_x + (self.size / 2)
-    local centerY = self.star_origin_y + (self.size / 2)
+    local centerX = self.starOriginX + (self.size / 2)
+    local centerY = self.starOriginY + (self.size / 2)
     return centerX, centerY
 end
 
@@ -183,10 +183,10 @@ end
 --- @return boolean inBounds. True if x,y are within the overall bounding box of this star, otherwise false
 function StarView:coordInBoundingBox(x, y)
     if
-        x < self.star_origin_x
-        or x > (self.star_origin_x + self.size)
-        or y < self.star_origin_y
-        or y > (self.star_origin_y + self.size)
+        x < self.starOriginX
+        or x > (self.starOriginX + self.size)
+        or y < self.starOriginY
+        or y > (self.starOriginY + self.size)
     then
         return false
     end
@@ -215,7 +215,7 @@ function StarView:draw(star)
 
     for ii, vertices in ipairs(StarView.SLOT_VERTEX_SCALARS) do
         if ii ~= self.hovered_slot then
-            local scaledVertices = transformScalerVertices(vertices, self.star_origin_x, self.star_origin_y, self.size)
+            local scaledVertices = transformScalerVertices(vertices, self.starOriginX, self.starOriginY, self.size)
             local color = StarView.UNPLACED_SLOT_COLOR[self.starType]
             if star:isOccupied(ii) then
                 color = TileView.TILE_COLOR[star:tileAtSlot(ii)]
@@ -231,8 +231,8 @@ function StarView:draw(star)
         end
         local scaledVertices = transformScalerVertices(
             StarView.SLOT_VERTEX_SCALARS[self.hovered_slot],
-            self.star_origin_x + (self.size * StarView.HOVER_SELECT_OFFSETS[self.hovered_slot][1]),
-            self.star_origin_y + (self.size * StarView.HOVER_SELECT_OFFSETS[self.hovered_slot][2]),
+            self.starOriginX + (self.size * StarView.HOVER_SELECT_OFFSETS[self.hovered_slot][1]),
+            self.starOriginY + (self.size * StarView.HOVER_SELECT_OFFSETS[self.hovered_slot][2]),
             self.size * (1.0 + HOVER_SELECT_SCALE)
         )
         drawPoly(scaledVertices, color)

@@ -3,6 +3,7 @@ local Object = require("cloudless_sky.extern.classic")
 local PlayerHUD = Object:extend()
 local TileType = require("cloudless_sky.model.tile_type")
 local ViewUtil = require("cloudless_sky.view.view_util")
+local TileView = require("cloudless_sky.view.tile_view")
 
 local PlayerHandView = require("cloudless_sky.view.player_hand_view")
 
@@ -13,12 +14,18 @@ function PlayerHUD:new()
     self.playerScore = 0
     self.currentRound = 1
     self.wildColor = TileType.PURPLE
-    self._openHandBtnBaseRadius = love.graphics.getPixelHeight() / 10
+    self._openHandBtnBaseRadius = 0
+    self.topBarHeight = 0
 
-    local handOriginY = love.graphics.getPixelHeight() - self._openHandBtnBaseRadius
-    local handEndX = love.graphics.getPixelWidth() - self._openHandBtnBaseRadius - 10
-    local handAnimStartX = love.graphics.getPixelWidth() - (self._openHandBtnBaseRadius / 2)
-    self.handView = PlayerHandView(0, handOriginY, handEndX, love.graphics.getPixelHeight(), handAnimStartX)
+    self.handView = PlayerHandView(0, 0, 0, 0, 0)
+
+    self:resize(love.graphics.getPixelDimensions())
+end
+
+--- @return integer,integer,integer,integer HUDMargins. Top, Left, Bottom, and Right area in screen coordinates that this HUD will occupy in the game window.
+function PlayerHUD:marginsNeeded()
+    local screenHeight = love.graphics.getHeight()
+    return self.topBarHeight, 0, screenHeight - self._openHandBtnBaseRadius, 0
 end
 
 function PlayerHUD:show()
@@ -35,7 +42,6 @@ function PlayerHUD:update(dt, playerScore, currentRound, wildColor)
     self.playerScore = playerScore
     self.currentRound = currentRound
     self.wildColor = wildColor
-    self._openHandBtnBaseRadius = love.graphics.getPixelHeight() / 10
     self.handView:update(dt)
 end
 
@@ -62,18 +68,18 @@ end
 
 --- Draw the HUD. SHOULD BE DONE OUTSIDE OF CAMERA CONTEXT
 function PlayerHUD:draw()
+    self.handView:draw()
+
     if self.shouldDraw then
         local origR, origG, origB, origA = love.graphics.getColor()
-
         local screenWidth, screenHeight = love.graphics.getPixelDimensions()
-        local topBarHeight = math.max(10, screenHeight * 0.05)
 
         -- score box
         love.graphics.setColor(love.math.colorFromBytes(138, 138, 240))
         local scoreBoxOriginX = screenWidth - 100
-        love.graphics.rectangle("fill", scoreBoxOriginX, 0, 100, topBarHeight, 10, 10)
+        love.graphics.rectangle("fill", scoreBoxOriginX, 0, 100, self.topBarHeight, 10, 10)
         local fontHeight = fonts.ithaca["16"]:getHeight()
-        local yOffset = (topBarHeight - fontHeight) / 2
+        local yOffset = (self.topBarHeight - fontHeight) / 2
         love.graphics.setColor(0.1, 0.1, 0.1)
         love.graphics.print("Score: " .. self.playerScore, fonts.ithaca["16"], scoreBoxOriginX + 2, yOffset)
 
@@ -93,8 +99,19 @@ function PlayerHUD:draw()
 
         love.graphics.setColor(origR, origG, origB, origA)
     end
+end
 
-    self.handView:draw()
+-- update all HUD element dimensions that are based on screen size
+function PlayerHUD:resize(w, h)
+    self._openHandBtnBaseRadius = math.max(h / 10, 20)
+    self.topBarHeight = math.max(10, h * 0.05)
+    self.handView:resize(
+        0,
+        h - self._openHandBtnBaseRadius,
+        w - self._openHandBtnBaseRadius - 10,
+        h,
+        w - (self._openHandBtnBaseRadius / 2)
+    )
 end
 
 return PlayerHUD
