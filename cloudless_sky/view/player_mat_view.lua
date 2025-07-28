@@ -54,6 +54,12 @@ function PlayerMatView:new(x, y, size, starTypes)
     end
 end
 
+function PlayerMatView:actualSize()
+    local actualHeight = self.stars[4]:boundingBox()[4] - self.stars[1]:boundingBox()[2] + STAR_PADDING * 2
+    local actualWidth = self.size + STAR_PADDING * 2
+    return actualWidth, actualHeight
+end
+
 --- @return boolean inBounds. True if x,y are within the overall bounding box of this mat, otherwise false
 ---     Assume coords are in world frame
 function PlayerMatView:coordInBoundingBox(x, y)
@@ -92,11 +98,11 @@ function PlayerMatView:center()
 end
 
 function PlayerMatView:topLeft()
-    return self.matOriginX, self.matOriginY
+    return self.matOriginX, self.matOriginY + (self.size - self:actualSize() / 2)
 end
 
 function PlayerMatView:bottomRight()
-    return self.matOriginX + self.size, self.matOriginY + self.size
+    return self.matOriginX + self.size, self.matOriginY + self.size - (self.size - self:actualSize() / 2)
 end
 
 function PlayerMatView:centerOfSlot(starIndex, slotIndex)

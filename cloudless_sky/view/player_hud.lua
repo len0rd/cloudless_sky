@@ -24,8 +24,8 @@ end
 
 --- @return integer,integer,integer,integer HUDMargins. Top, Left, Bottom, and Right area in screen coordinates that this HUD will occupy in the game window.
 function PlayerHUD:marginsNeeded()
-    local screenHeight = love.graphics.getHeight()
-    return self.topBarHeight, 0, screenHeight - self._openHandBtnBaseRadius, 0
+    local screenWidth, screenHeight = love.graphics.getPixelDimensions()
+    return self.topBarHeight, 0, screenHeight - self._openHandBtnBaseRadius, screenWidth
 end
 
 function PlayerHUD:show()

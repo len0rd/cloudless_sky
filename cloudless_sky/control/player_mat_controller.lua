@@ -34,6 +34,11 @@ function PlayerMatController:bottomRight()
     return self.view:bottomRight()
 end
 
+--- @return integer, integer actualSize. The actual width,height of the player mat (minimal padding around stars)
+function PlayerMatController:size()
+    return self.view:actualSize()
+end
+
 --- Place a tile (update visuals and model), then return the score the tile got.
 --- @return table scoreTable The score as stated by PlayerMat:placeTile
 function PlayerMatController:placeTile(starIndex, slotIndex)

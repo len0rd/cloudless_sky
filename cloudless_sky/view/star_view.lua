@@ -244,6 +244,7 @@ function StarView:draw(star)
 end
 
 --- Draw a star as one big polygon instead of multiple individual
+--- TODO: OLD DELETE ME?
 function drawOverallStar(x, y, size)
     local half = size / 2
     local oneQuarter = size / 4
