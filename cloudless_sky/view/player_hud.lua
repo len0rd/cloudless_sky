@@ -67,8 +67,8 @@ function PlayerHUD:mousePressed()
 end
 
 --- Draw the HUD. SHOULD BE DONE OUTSIDE OF CAMERA CONTEXT
-function PlayerHUD:draw()
-    self.handView:draw()
+function PlayerHUD:draw(playerHand)
+    self.handView:draw(playerHand)
 
     if self.shouldDraw then
         local origR, origG, origB, origA = love.graphics.getColor()

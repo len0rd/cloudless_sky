@@ -41,6 +41,9 @@ function love.load(args)
         ["12"] = love.graphics.newFont("assets/fonts/Ithaca.ttf", 18),
         ["16"] = love.graphics.newFont("assets/fonts/Ithaca.ttf", 24),
     }
+    for size, _ in pairs(fonts.ithaca) do
+        fonts.ithaca[size]:setFilter("linear", "nearest")
+    end
 
     -- GLOBAL CAMERA
     camera = Camera(CameraXDesired, CameraYDesired)

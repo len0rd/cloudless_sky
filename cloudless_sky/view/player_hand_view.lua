@@ -7,6 +7,8 @@ local ViewUtil = require("cloudless_sky.view.view_util")
 
 local flux = require("luis.3rdparty.flux")
 
+local TILE_SIZE_PX = 50
+
 -- easeInOutCubic
 
 ---  <- originX,Y
@@ -39,9 +41,11 @@ function PlayerHandView:_resetTilesToShow()
         self.tilesToShow[ii] = {
             type = name,
             x = self.animStartX,
-            y = centerY,
+            y = centerY - TILE_SIZE_PX / 10,
             alpha = 0.0,
             destinationX = destXOffset + (tileSeparation * (ii - 1)),
+            labelX = self.animStartX,
+            labelAlpha = 0.0,
         }
     end
 end
@@ -54,9 +58,11 @@ function PlayerHandView:show()
         self.revealTweenGroup = flux.group()
         for ii, animCtx in ipairs(self.tilesToShow) do
             -- adjust opacity quickly
-            self.revealTweenGroup:to(self.tilesToShow[ii], 0.25, { alpha = 1.0 })
-            -- and move out slowly-ish
-            self.revealTweenGroup:to(self.tilesToShow[ii], 0.5, { x = animCtx.destinationX })
+            self.revealTweenGroup:to(self.tilesToShow[ii], 0.1, { alpha = 1.0 })
+            -- move tile out then show how many the player has
+            self.revealTweenGroup
+                :to(self.tilesToShow[ii], 0.25, { x = animCtx.destinationX, labelX = animCtx.destinationX })
+                :after(self.tilesToShow[ii], 0.1, { labelX = animCtx.destinationX + TILE_SIZE_PX, labelAlpha = 1.0 })
         end
     end
 
@@ -67,16 +73,17 @@ function PlayerHandView:hide()
     if self.drawHand then
         self.revealTweenGroup = nil
         self.hideTweenGroup = flux.group()
-        local HIDE_TIME_S = 0.5
-        for ii, _ in ipairs(self.tilesToShow) do
+        local HIDE_TIME_S = 0.25
+        for ii, animCtx in ipairs(self.tilesToShow) do
+            local tween = self.hideTweenGroup
+                :to(self.tilesToShow[ii], 0.1, { labelAlpha = 0.0 })
+                :after(self.tilesToShow[ii], HIDE_TIME_S, { alpha = 0.0, x = self.animStartX })
             if ii == #self.tilesToShow then
-                self.hideTweenGroup
-                    :to(self.tilesToShow[ii], HIDE_TIME_S, { alpha = 0.0, x = self.animStartX })
-                    :oncomplete(function()
-                        self.drawHand = false
-                    end)
-            else
-                self.hideTweenGroup:to(self.tilesToShow[ii], HIDE_TIME_S, { alpha = 0.0, x = self.animStartX })
+                tween:oncomplete(function()
+                    self.drawHand = false
+                end)
+                -- else
+                --     self.hideTweenGroup:to(self.tilesToShow[ii], HIDE_TIME_S, { alpha = 0.0, x = self.animStartX })
             end
         end
     end
@@ -96,6 +103,8 @@ function PlayerHandView:resize(originX, originY, maxX, maxY, animStartX)
         for ii, animCtx in ipairs(self.tilesToShow) do
             self.tilesToShow[ii].x = animCtx.destinationX
             self.tilesToShow[ii].alpha = 1.0
+            self.tilesToShow[ii].labelX = animCtx.destinationX + TILE_SIZE_PX
+            self.tilesToShow[ii].labelAlpha = 1.0
         end
     end
 end
@@ -110,20 +119,25 @@ function PlayerHandView:update(dt)
     end
 end
 
-function PlayerHandView:draw()
+--- @param playerHand TileBag state of player hand to be drawn
+function PlayerHandView:draw(playerHand)
     if self.drawHand then
         local origR, origG, origB, origA = love.graphics.getColor()
 
-        for _, animCtx in ipairs(self.tilesToShow) do
+        for ii, animCtx in ipairs(self.tilesToShow) do
             local color = TileView.TILE_COLOR[animCtx.type]
-            love.graphics.setColor(color[1], color[2], color[3], animCtx.alpha)
+            local numInHand = playerHand:num(animCtx.type)
             local flooredX = math.floor(animCtx.x)
-            local flooredY = math.floor(animCtx.y) - (20 / 2)
+            local flooredY = math.floor(animCtx.y)
 
-            local tileVertices = TileView.tilePolyVerticies(50, -math.pi / 8)
+            love.graphics.setColor(1, 1, 1, animCtx.labelAlpha)
+            love.graphics.print(tostring(numInHand), fonts.ithaca["16"], animCtx.labelX, flooredY)
+
+            love.graphics.setColor(color[1], color[2], color[3], animCtx.alpha)
+            local tileVertices = TileView.tilePolyVerticies(TILE_SIZE_PX, -math.pi / 8)
             tileVertices = ViewUtil.shiftVerticies(tileVertices, flooredX, flooredY)
             love.graphics.polygon("fill", tileVertices)
-            love.graphics.setColor({ 0, 0, 0 })
+            love.graphics.setColor({ 0, 0, 0, animCtx.alpha })
             love.graphics.setLineWidth(2)
             love.graphics.polygon("line", tileVertices)
         end

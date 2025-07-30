@@ -6,12 +6,13 @@ local ScoreText = Object:extend()
 function ScoreText:new(text, worldX, worldY, opts)
     self.textbox = Text.new("center", {
         color = { 1, 1, 1, 1 },
+        font = fonts.ithaca["16"],
     })
     local pointText = "Points!"
     if text == "1" or text == 1 then
         pointText = "Point!"
     end
-    self.textbox:send("[scale=2][dropshadow=3][bounce]" .. text .. " " .. pointText .. "[/bounce][/dropshadow][/scale]")
+    self.textbox:send("[dropshadow=3][bounce]" .. text .. " " .. pointText .. "[/bounce][/dropshadow]")
     self.worldX = worldX
     self.worldY = worldY
 end

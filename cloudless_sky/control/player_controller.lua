@@ -58,7 +58,7 @@ function PlayerController:draw()
         self.matControl:draw()
     end
     camera:detach()
-    self.playerHUD:draw()
+    self.playerHUD:draw(self.model.hand)
 end
 
 function PlayerController:resize(w, h)
