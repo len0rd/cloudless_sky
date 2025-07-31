@@ -4,8 +4,6 @@ end
 -- third-party requirements
 local Camera = require("cloudless_sky.extern.hump.camera")
 local Gamestate = require("cloudless_sky.extern.hump.gamestate")
-local luis = require("luis.init")("luis/widgets")
-luis.flux = require("luis.3rdparty.flux")
 -- local
 local game = require("cloudless_sky.states.game")
 
@@ -55,7 +53,7 @@ function love.load(args)
         end
     end
 
-    love.graphics.setBackgroundColor(0.4, 0.88, 1.0, 0.5)
+    love.graphics.setBackgroundColor(0.2, 0.2, 0.2)
 
     -- fonts
     fonts.ithaca = {
@@ -70,18 +68,6 @@ function love.load(args)
     camera = Camera(CameraXDesired, CameraYDesired)
     camera.smoother = Camera.smooth.damped(5)
 
-    -- luis
-    -- run flux at 60hz
-    local fluxUpdateTimer = tick.recur(function()
-        luis.flux.update(1 / 60)
-    end, 1 / 60)
-
-    luis.setGridSize(20)
-
-    luis.newLayer("main")
-    luis.enableLayer("main")
-    luis.setCurrentLayer("main")
-
     -- GAMESTATE
     Gamestate.registerEvents()
     Gamestate.switch(game)
@@ -93,26 +79,17 @@ function love.update(dt)
     -- camera motion
     -- camera:lockPosition(CameraXDesired, CameraYDesired)
     -- ui updates
-    luis.update(dt)
 end
 
-function love.draw()
-    -- todo: luis handlers below need to be passed world coords, and this should be run in the camera
-    --  except it would also be nice to use screen coords for hud elements... hmmm. can 2 simultaneous instances of luis exist??
-    luis.draw()
-end
+function love.draw() end
 
 -- events
 
 function love.keypressed(key) end
 
-function love.mousepressed(x, y, button, istouch)
-    luis.mousepressed(x, y, button, istouch)
-end
+function love.mousepressed(x, y, button, istouch) end
 
-function love.mousereleased(x, y, button, istouch)
-    luis.mousereleased(x, y, button, istouch)
-end
+function love.mousereleased(x, y, button, istouch) end
 
 function love.resize(w, h)
     Gamestate.current():resize(w, h)

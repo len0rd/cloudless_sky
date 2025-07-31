@@ -3,9 +3,7 @@
 local Object = require("cloudless_sky.extern.classic")
 local PlacePromptView = Object:extend()
 
-local luis = require("luis.init")("luis/widgets")
-local flux = require("luis.3rdparty.flux")
-luis.flux = flux
+local flux = require("cloudless_sky.extern.flux")
 
 local PROMPT_WIDTH = 100
 local PROMPT_HEIGHT = 100
@@ -19,15 +17,10 @@ function PlacePromptView:new(tileWorldX, tileWorldY)
     self.tileWorldX = tileWorldX
     self.tileWorldY = tileWorldY
     self.scale = 0.1
-    self.transitionTween = flux.to(self, 0.5, { scale = MAX_SCALE }):after(self, 0.25, { scale = 1.0 })
-    -- luis.newLayer("placePrompt")
-    -- local uiContainer = luis.newFlexContainer(PROMPT_WIDTH, PROMPT_HEIGHT, )
+    self.transitionTween = flux.to(self, 0.25, { scale = MAX_SCALE }):after(self, 0.25, { scale = 1.0 })
 end
 
-function PlacePromptView:close()
-    -- luis.disableLayer("placePrompt")
-    -- luis.removeLayer("placePrompt")
-end
+function PlacePromptView:close() end
 
 function PlacePromptView:mousePressed(worldX, worldY, button, istouch) end
 
@@ -40,9 +33,6 @@ function PlacePromptView:draw()
     do
         local winHeight = love.graphics.getPixelHeight()
         local _, promptWindowY = camera:cameraCoords(self.tileWorldX, self.tileWorldY)
-        -- if self.scale >= 1.0 and not luis.isLayerEnabled("placePrompt") then
-        --     luis.enableLayer("placePrompt")
-        -- end
 
         -- TODO: need to know the HUD margin for this decision
         if promptWindowY + PROMPT_HEIGHT > winHeight - 100 then

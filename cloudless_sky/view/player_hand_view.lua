@@ -5,7 +5,7 @@ local TileView = require("cloudless_sky.view.tile_view")
 local TileType = require("cloudless_sky.model.tile_type")
 local ViewUtil = require("cloudless_sky.view.view_util")
 
-local flux = require("luis.3rdparty.flux")
+local flux = require("cloudless_sky.extern.flux")
 
 local TILE_SIZE_PX = 50
 
