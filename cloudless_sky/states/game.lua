@@ -18,6 +18,9 @@ end
 -- runs every time the state is entered
 function game:enter(gameSettings, gameState)
     playerControl = PlayerController("lenord", 200, 200, 600)
+    if saveGame ~= nil then
+        playerControl:deserialize(saveGame["players"][1])
+    end
 end
 
 function game:update(dt)

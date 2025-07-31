@@ -29,5 +29,22 @@
                 "."
             ]
         },
+        {
+            "name": "Debug with savefile",
+            "type": "lua-local",
+            "request": "launch",
+            "program": {
+                "command": "love"
+            },
+            "args": [
+                ".",
+                "debug",
+                "savegame.json"
+            ],
+            "scriptRoots": [
+                ".",
+                "src"
+            ]
+        }
     ]
 }

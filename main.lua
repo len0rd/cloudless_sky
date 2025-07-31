@@ -12,6 +12,8 @@ local game = require("cloudless_sky.states.game")
 -- TODO: better storage/access method?
 fonts = {}
 
+saveGame = nil
+
 -- global X,Y of where we want the camera centered
 CameraXDesired, CameraYDesired = 400, 100
 
@@ -33,6 +35,23 @@ function love.load(args)
     local cute = require("cloudless_sky.extern.cute")
     cute.go(args)
     -- end unit testing
+    for _, v in ipairs(args) do
+        if string.find(v, "%.json") then
+            local json = require("cloudless_sky.extern.json")
+            local file = io.open(v, "r")
+            if file then
+                local contents = file:read("*a")
+                file:close()
+                saveGame = json.decode(contents)
+                if err then
+                    print("Error decoding JSON:", err)
+                end
+            else
+                print("Could not open JSON file:", v)
+            end
+            break
+        end
+    end
 
     love.graphics.setBackgroundColor(0.4, 0.88, 1.0, 0.5)
 
