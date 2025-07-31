@@ -40,6 +40,13 @@ function PlayerMatController:size()
     return self.view:actualSize()
 end
 
+function PlayerMatController:getStar(starIdx)
+    if starIdx < 1 or starIdx > #self.model.stars then
+        return nil
+    end
+    return self.model.stars[starIdx]
+end
+
 --- Place a tile (update visuals and model), then return the score the tile got.
 --- @return table scoreTable The score as stated by PlayerMat:placeTile
 function PlayerMatController:placeTile(starIndex, slotIndex)

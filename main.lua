@@ -35,6 +35,8 @@ function love.load(args)
     local cute = require("cloudless_sky.extern.cute")
     cute.go(args)
     -- end unit testing
+
+    -- load save game if passed as an arg
     for _, v in ipairs(args) do
         if string.find(v, "%.json") then
             local json = require("cloudless_sky.extern.json")

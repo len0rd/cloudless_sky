@@ -1,11 +1,16 @@
 --- Heads-up display for the player
 local Object = require("cloudless_sky.extern.classic")
-local PlayerHUD = Object:extend()
+local luis = require("luis.init")("luis/widgets")
+local flux = require("luis.3rdparty.flux")
+local Gamestate = require("cloudless_sky.extern.hump.gamestate")
+luis.flux = flux
+
 local TileType = require("cloudless_sky.model.tile_type")
 local ViewUtil = require("cloudless_sky.view.view_util")
 local TileView = require("cloudless_sky.view.tile_view")
-
 local PlayerHandView = require("cloudless_sky.view.player_hand_view")
+
+local PlayerHUD = Object:extend()
 
 function PlayerHUD:new()
     self.shouldDraw = false
@@ -20,6 +25,15 @@ function PlayerHUD:new()
     self.handView = PlayerHandView(0, 0, 0, 0, 0)
 
     self:resize(love.graphics.getPixelDimensions())
+
+    luis.newLayer("hud")
+
+    local saveButton = luis.createElement("hud", "Button", "Save", 4, 2, nil, function()
+        local state = Gamestate.current()
+        if state and type(state.onSave) == "function" then
+            state:onSave()
+        end
+    end, 1, 1)
 end
 
 --- @return integer,integer,integer,integer HUDMargins. Top, Left, Bottom, and Right area in screen coordinates that this HUD will occupy in the game window.
@@ -30,10 +44,12 @@ end
 
 function PlayerHUD:show()
     self.shouldDraw = true
+    luis.enableLayer("hud")
 end
 
 function PlayerHUD:hide()
     self.shouldDraw = false
+    luis.disableLayer("hud")
 end
 
 -- TODO: on screen resize, upgrade the limits in PlayerHandView
@@ -43,6 +59,7 @@ function PlayerHUD:update(dt, playerScore, currentRound, wildColor)
     self.currentRound = currentRound
     self.wildColor = wildColor
     self.handView:update(dt)
+    luis.update(dt)
 end
 
 function PlayerHUD:_openHandHoveredRadius()

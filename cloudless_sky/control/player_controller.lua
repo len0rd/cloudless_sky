@@ -7,7 +7,7 @@ local GameRules = require("cloudless_sky.model.game_rules")
 local PlayerMatController = require("cloudless_sky.control.player_mat_controller")
 local TileType = require("cloudless_sky.model.tile_type")
 local PlayerHUD = require("cloudless_sky.view.player_hud")
-local PlacePrompt = require("cloudless_sky.view.place_prompt")
+local PlaceTilePromptController = require("cloudless_sky.control.place_tile_prompt_controller")
 
 function PlayerController:new(name, x, y, size)
     self.model = Player(GameRules.currentRules().playerMat.stars, GameRules.currentRules().startScore, name)
@@ -39,7 +39,13 @@ function PlayerController:mousePressed(worldX, worldY, button, istouch)
     if clickedStarIndex ~= 0 and clickedSlotIndex ~= 0 then
         self.currentPlacePrompt = nil
         local starCenterX, starCenterY = self.matControl.view:centerOfSlot(clickedStarIndex, clickedSlotIndex)
-        self.currentPlacePrompt = PlacePrompt(starCenterX, starCenterY, clickedStarIndex, clickedSlotIndex)
+        self.currentPlacePrompt = PlaceTilePromptController(
+            self.matControl:getStar(clickedStarIndex),
+            starCenterX,
+            starCenterY,
+            clickedStarIndex,
+            clickedSlotIndex
+        )
         -- local score = self.matControl:placeTile(clickedStarIndex, clickedSlotIndex)
         -- if score[1] ~= nil and score[1] > 0 then
         --     -- FIX the whole tile selection stuff
@@ -47,6 +53,9 @@ function PlayerController:mousePressed(worldX, worldY, button, istouch)
         -- end
     else
         -- clicked outside of the a star/slot area. remove any place prompts
+        if self.currentPlacePrompt ~= nil then
+            self.currentPlacePrompt:close()
+        end
         self.currentPlacePrompt = nil
     end
 end

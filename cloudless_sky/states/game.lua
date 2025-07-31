@@ -1,19 +1,11 @@
 -- Game state (game is being actively played)
 local PlayerController = require("cloudless_sky.control.player_controller")
-local luis = require("luis.init")("luis/widgets")
 local json = require("cloudless_sky.extern.json")
 local GameRules = require("cloudless_sky.model.game_rules")
 
 local game = {}
 
-function game:init()
-    local button1 = luis.createElement(luis.currentLayer, "Button", "Save", 4, 2, function()
-        print("save pressed")
-    end, function()
-        game:onSave()
-    end, 1, 1)
-    -- button1:setDecorator("GlassmorphismDecorator", {})
-end
+function game:init() end
 
 -- runs every time the state is entered
 function game:enter(gameSettings, gameState)
