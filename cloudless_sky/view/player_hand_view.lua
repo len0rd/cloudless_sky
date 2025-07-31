@@ -52,7 +52,6 @@ end
 
 function PlayerHandView:show()
     if not self.drawHand then
-        print("showing player hand time!")
         -- hand not currently shown, kick off the reveal tweening
         self:_resetTilesToShow()
         self.revealTweenGroup = flux.group()
@@ -124,7 +123,7 @@ function PlayerHandView:draw(playerHand)
     if self.drawHand then
         local origR, origG, origB, origA = love.graphics.getColor()
 
-        for ii, animCtx in ipairs(self.tilesToShow) do
+        for _, animCtx in ipairs(self.tilesToShow) do
             local color = TileView.TILE_COLOR[animCtx.type]
             local numInHand = playerHand:num(animCtx.type)
             local flooredX = math.floor(animCtx.x)

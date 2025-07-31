@@ -16,7 +16,7 @@ function PlayerMatView:new(x, y, size, starTypes)
     self.matOriginY = y
     self.size = size
     self.star_size = (self.size - STAR_PADDING) / 3
-    stypes = starTypes
+    local stypes = starTypes
     if stypes == nil then
         local PlayerMat = require("cloudless_sky.model.player_mat")
         stypes = PlayerMat.BASE_GAME_DEFAULT_MAT
@@ -112,6 +112,7 @@ function PlayerMatView:centerOfSlot(starIndex, slotIndex)
     return self.stars[starIndex]:centerOfSlot(slotIndex)
 end
 
+--- @return  integer, integer centerCoords. The center of the star at starIndex in world coords
 function PlayerMatView:centerOfStar(starIndex)
     if starIndex < 1 or starIndex > #self.stars then
         return false, false
@@ -119,9 +120,13 @@ function PlayerMatView:centerOfStar(starIndex)
     return self.stars[starIndex]:center()
 end
 
-function PlayerMatView:update(mouseX, mouseY)
-    for _, star in ipairs(self.stars) do
-        star:update(mouseX, mouseY)
+function PlayerMatView:update(focusStarIdx, focusSlotIdx)
+    for ii, star in ipairs(self.stars) do
+        if ii == focusStarIdx then
+            star:update(focusSlotIdx)
+        else
+            star:update(0)
+        end
     end
 end
 

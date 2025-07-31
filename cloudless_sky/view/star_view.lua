@@ -195,9 +195,9 @@ end
 
 function StarView:isOnStar(x, y) end
 
-function StarView:update(mouseX, mouseY)
+function StarView:update(focusSlotIdx)
     -- reset hovered state
-    self.hovered_slot = self:coordSlotIndex(mouseX, mouseY)
+    self.hovered_slot = focusSlotIdx
 end
 
 local drawPoly = function(vertices, color)

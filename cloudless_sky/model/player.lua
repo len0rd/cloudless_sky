@@ -19,6 +19,10 @@ function Player:new(starConfigs, startScore, name)
     self.actionHistory = {}
 end
 
+function Player:starType(starIndex)
+    return self.mat:starType(starIndex)
+end
+
 function Player:serialize()
     return {
         mat = self.mat:serialize(),
@@ -30,7 +34,9 @@ function Player:serialize()
 end
 
 function Player:deserialize(data)
-    self.playerName = data.name
+    if data["name"] ~= nil then
+        self.playerName = data["name"]
+    end
     self.score = data.score
     self.mat:deserialize(data.mat)
     self.hand:deserialize(data.hand)

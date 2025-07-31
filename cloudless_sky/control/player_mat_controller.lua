@@ -22,6 +22,7 @@ function PlayerMatController:new(playerMat, x, y, size)
     self.scoreTexts = {}
 end
 
+---@return integer, integer matCenter. Center of the player mat in world coords
 function PlayerMatController:center()
     return self.view:center()
 end
@@ -61,14 +62,16 @@ function PlayerMatController:placeTile(starIndex, slotIndex)
 end
 
 function PlayerMatController:mousePressed(worldX, worldY, button, istouch)
-    if button == 1 then
-        local clickedStarIndex, clickedSlotIndex = self.view:coordStarSlotIndex(worldX, worldY)
-    end
-    return false
+    -- if button == 1 then
+    --     local clickedStarIndex, clickedSlotIndex = self.view:coordStarSlotIndex(worldX, worldY)
+    -- end
+    -- return false
 end
 
-function PlayerMatController:update(dt, mouseX, mouseY)
-    self.view:update(mouseX, mouseY)
+--- @param focusStarIdx integer. Index of the star to focus on. Set to 0 to not focus on any
+--- @param focusSlotIdx integer. index of the slot within the given star to focus on
+function PlayerMatController:update(dt, focusStarIdx, focusSlotIdx)
+    self.view:update(focusStarIdx, focusSlotIdx)
     for ii = #self.scoreTexts, 1, -1 do
         if self.scoreTexts[ii]:update(dt) then
             -- score text animation finished

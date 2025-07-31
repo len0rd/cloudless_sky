@@ -36,6 +36,14 @@ function PlayerMat:new(starConfigs)
     end
 end
 
+--- @return StarType type The StarType at the given index or nil if invalid index
+function PlayerMat:starType(starIndex)
+    if starIndex < 1 or starIndex > #self.stars then
+        return nil
+    end
+    return self.stars[starIndex].starType
+end
+
 function PlayerMat:serialize()
     local serialized = {}
     for ii, star in ipairs(self.stars) do

@@ -7,6 +7,7 @@ local GameRules = require("cloudless_sky.model.game_rules")
 local PlayerMatController = require("cloudless_sky.control.player_mat_controller")
 local TileType = require("cloudless_sky.model.tile_type")
 local PlayerHUD = require("cloudless_sky.view.player_hud")
+local PlacePrompt = require("cloudless_sky.view.place_prompt")
 
 function PlayerController:new(name, x, y, size)
     self.model = Player(GameRules.currentRules().playerMat.stars, GameRules.currentRules().startScore, name)
@@ -15,11 +16,18 @@ function PlayerController:new(name, x, y, size)
     self.cameraZoom = 1.0
     self:resize(love.graphics.getPixelDimensions())
 
+    -- appears when the user clicks a rectangle: prompt to place a tile
+    self.currentPlacePrompt = nil
+
     self.playerHUD:show()
 end
 
 function PlayerController:serialize()
     return self.model:serialize()
+end
+
+function PlayerController:deserialize(data)
+    self.model:deserialize(data)
 end
 
 function PlayerController:mousePressed(worldX, worldY, button, istouch)
@@ -29,11 +37,17 @@ function PlayerController:mousePressed(worldX, worldY, button, istouch)
     end
     local clickedStarIndex, clickedSlotIndex = self.matControl.view:coordStarSlotIndex(worldX, worldY)
     if clickedStarIndex ~= 0 and clickedSlotIndex ~= 0 then
-        local score = self.matControl:placeTile(clickedStarIndex, clickedSlotIndex)
-        if score[1] ~= nil and score[1] > 0 then
-            -- FIX the whole tile selection stuff
-            self.model:addScoreEvent(TileType.RED, clickedStarIndex, clickedSlotIndex, score)
-        end
+        self.currentPlacePrompt = nil
+        local starCenterX, starCenterY = self.matControl.view:centerOfSlot(clickedStarIndex, clickedSlotIndex)
+        self.currentPlacePrompt = PlacePrompt(starCenterX, starCenterY, clickedStarIndex, clickedSlotIndex)
+        -- local score = self.matControl:placeTile(clickedStarIndex, clickedSlotIndex)
+        -- if score[1] ~= nil and score[1] > 0 then
+        --     -- FIX the whole tile selection stuff
+        --     self.model:addScoreEvent(TileType.RED, clickedStarIndex, clickedSlotIndex, score)
+        -- end
+    else
+        -- clicked outside of the a star/slot area. remove any place prompts
+        self.currentPlacePrompt = nil
     end
 end
 
@@ -46,16 +60,29 @@ function PlayerController:moveCamera()
     camera:lockPosition(matCenterX, matCenterY)
 end
 
-function PlayerController:update(dt, mouseX, mouseY)
+function PlayerController:update(dt, mouseWorldX, mouseWorldY)
     self:moveCamera()
-    self.matControl:update(dt, mouseX, mouseY)
+    local focusStarIdx, focusSlotIdx
+    if self.currentPlacePrompt ~= nil then
+        focusStarIdx = self.currentPlacePrompt.starIdx
+        focusSlotIdx = self.currentPlacePrompt.slotIdx
+    else
+        focusStarIdx, focusSlotIdx = self.matControl.view:coordStarSlotIndex(mouseWorldX, mouseWorldY)
+    end
+    self.matControl:update(dt, focusStarIdx, focusSlotIdx)
     self.playerHUD:update(dt, self.model.score, 1, TileType.PURPLE)
+    if self.currentPlacePrompt ~= nil then
+        self.currentPlacePrompt:update(dt)
+    end
 end
 
 function PlayerController:draw()
     camera:attach()
     do
         self.matControl:draw()
+        if self.currentPlacePrompt ~= nil then
+            self.currentPlacePrompt:draw()
+        end
     end
     camera:detach()
     self.playerHUD:draw(self.model.hand)
