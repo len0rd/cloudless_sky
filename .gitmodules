@@ -1,3 +1,0 @@
-[submodule "cloudless_sky/extern/luis"]
-	path = luis
-	url = https://github.com/SiENCE/LUIS.git
