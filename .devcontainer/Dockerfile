@@ -20,12 +20,30 @@ RUN apt update \
     # ensure certs are up to date
     && update-ca-certificates
 
+#############################
+FROM base AS cmake_downloader
+#############################
+
+# Set the cmake version to use
+# Possible options are listed here: https://github.com/Kitware/CMake/tags
+ARG CMAKE_VERSION=3.26.4
+RUN mkdir -p /opt/cmake \
+    && wget ${WGET_ARGS} "https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-x86_64.sh" \
+        -O /cmake.sh \
+    && sh /cmake.sh --skip-license --prefix=/opt/cmake \
+    && rm /cmake.sh
+
+################
+FROM base AS dev
+################
+
 # love and opengl
 RUN add-apt-repository -y ppa:bartbes/love-stable \
     && apt update \
     && DEBIAN_FRONTEND=noninteractive apt install -yq \
         love \
         mesa-utils \
+        libluajit-5.1-dev \
         # lua package manager
         luarocks \
     && rm -rf /var/lib/apt/list
@@ -51,6 +69,9 @@ RUN apt update \
         git \
         ssh \
     && rm -rf /var/lib/apt/list
+
+COPY --from=cmake_downloader /opt/cmake /opt/cmake
+ENV PATH=$PATH:/opt/cmake/bin
 
 ENV USERNAME=dev
 ARG USER_UID=1000
