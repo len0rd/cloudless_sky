@@ -298,10 +298,63 @@ local _shallowMatches = function (testTable, refTable)
   return true
 end
 
+local _isnt = function(testVal, refVal)
+  if type(testVal) == "table" or type(refVal) == "table" then
+    error("Can't compare tables with .is, try .shallowMatches",3)
+  end
+  if testVal == refVal then error(
+    tostring(testVal) .. " == " .. tostring(refVal), 3) end
+  return true
+end
+
+local _shallowMatchesUnordered = function (testTable, refTable)
+  if #testTable ~= #refTable then
+    local t1 = "t1: "
+    local t2 = "t2: "
+    for _, o in ipairs(testTable) do
+      t1 = t1 .. tostring(o) .. " "
+    end
+    for _, o in ipairs(refTable) do
+      t2 = t2 .. tostring(o) .. " "
+    end
+    error("Tables are different sizes: " .. t1 .. " | " .. t2, 3)
+  end
+
+  -- Create a copy of refTable to track which elements have been matched
+  local refCopy = {}
+  for i, v in ipairs(refTable) do
+    refCopy[i] = v
+  end
+
+  -- For each element in testTable, find and remove matching element from refCopy
+  for _, testItem in ipairs(testTable) do
+    local found = false
+    for i, refItem in ipairs(refCopy) do
+      if testItem == refItem then
+        table.remove(refCopy, i)
+        found = true
+        break
+      end
+    end
+    if not found then
+      error("Element " .. tostring(testItem) .. " from test table not found in reference table", 3)
+    end
+  end
+
+  -- If all elements were matched, refCopy should be empty
+  if #refCopy > 0 then
+    error("Reference table contains elements not found in test table", 3)
+  end
+
+  return true
+end
+
 check = function (testVal)
   return {
     is = function (refVal) _is(testVal, refVal) end,
-    shallowMatches = function (refTable) _shallowMatches(testVal, refTable) end
+    shallowMatches = function (refTable) _shallowMatches(testVal, refTable) end,
+    isnt = function(refVal) _isnt(testVal, refVal) end,
+    shallowMatchesUnordered = function(refTable) _shallowMatchesUnordered(testVal, refTable) end
   }
 end
 
