@@ -43,7 +43,7 @@ local getDefaultSlotCostForBoardPosition = function(starIndex)
 end
 
 notion("New star is empty", function()
-    local star = Star({ type = StarType.RED, cost = DEFAULT_SLOT_COST_FOR_STAR(StarType.RED) })
+    local star = Star({ type = StarType.RED, cost = DEFAULT_SLOT_COST_FOR_STAR[StarType.RED] })
 
     check(star:numOccupied()).is(0)
     check(star:isFull()).is(false)
@@ -52,7 +52,7 @@ end)
 
 notion("hasSlotCost colored star has std costs", function()
     for _, tileType in ipairs(TileType.ORDERED) do
-        local star = Star({ type = tileType, cost = DEFAULT_SLOT_COST_FOR_STAR(tileType) })
+        local star = Star({ type = tileType, cost = DEFAULT_SLOT_COST_FOR_STAR[tileType] })
         for ii = 1, 6 do
             check(star:hasSlotCost(ii)).is(true)
             check(star:isSlotOfCostCovered(ii)).is(false)
@@ -61,7 +61,7 @@ notion("hasSlotCost colored star has std costs", function()
 end)
 
 notion("isTileTypeAllowedInSlot", function()
-    local star = Star({ type = StarType.RED, cost = DEFAULT_SLOT_COST_FOR_STAR(StarType.RED) })
+    local star = Star({ type = StarType.RED, cost = DEFAULT_SLOT_COST_FOR_STAR[StarType.RED] })
     check(star:isTileTypeAllowedInSlot(TileType.ORANGE, 1)).is(false)
     check(star:isTileTypeAllowedInSlot(TileType.RED, 1)).is(true)
 

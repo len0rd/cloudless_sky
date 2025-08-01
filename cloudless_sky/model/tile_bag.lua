@@ -27,6 +27,7 @@ function TileBag:num(tileType)
 
     -- bad type if here
     TileType.emitBadTileTypeError(type)
+    return 0
 end
 
 --- Get the total number of all tiles in this bag

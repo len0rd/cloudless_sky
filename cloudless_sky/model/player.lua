@@ -9,6 +9,8 @@ local PlayMat = require("cloudless_sky.model.player_mat")
 local TileBag = require("cloudless_sky.model.tile_bag")
 local ScoreEvent = require("cloudless_sky.model.score_event")
 local PlayerEvent = require("cloudless_sky.model.player_event")
+local PlacementPossibility = require("cloudless_sky.model.placement_possibility")
+local TileType = require("cloudless_sky.model.tile_type")
 
 function Player:new(starConfigs, startScore, name)
     self.mat = PlayMat(starConfigs)
@@ -31,6 +33,56 @@ function Player:serialize()
         name = self.playerName,
         events = self.actionHistory,
     }
+end
+
+function Player:generatePlacementPossibilities(starIdx, slotIdx, wildTileType)
+    local star = self.mat:getStar(starIdx)
+    if star == nil then
+        return {}
+    end
+
+    local wildQty = self.hand:num(wildTileType)
+    local slotCost = star:slotIndexToCost(slotIdx)
+
+    local possibilities = {}
+
+    local possibilitiesForTileType = function(tileType)
+        local possibles = {}
+        if star:isTileTypeAllowedInSlot(tileType, slotIdx) then
+            local numTiles = self.hand:num(tileType)
+
+            if tileType == wildTileType and numTiles >= slotCost then
+                -- can play the current wild tile as itself if you really want to...
+                table.insert(possibles, PlacementPossibility(tileType, slotCost))
+            elseif numTiles > 0 then
+                -- must always have at least one tile of the color in order to place
+                for wildCount = 0, math.min(wildQty, slotCost - 1) do
+                    if slotCost - wildCount - numTiles <= 0 then
+                        -- this placement combination has enough to place in this slot
+                        table.insert(
+                            possibles,
+                            PlacementPossibility(tileType, slotCost - wildCount, wildTileType, wildCount)
+                        )
+                    end
+                end
+            end
+        end
+        return possibles
+    end
+
+    --- non-basic star types can typically have more than one color on them,
+    --- so rotate through all possible tile types to see which work
+    if star:isNonBasicType() then
+        for _, tileType in ipairs(TileType.ORDERED) do
+            local possibles = possibilitiesForTileType(tileType)
+            for _, possibility in ipairs(possibles) do
+                table.insert(possibilities, possibility)
+            end
+        end
+    else
+        possibilities = possibilitiesForTileType(star.starType)
+    end
+    return possibilities
 end
 
 function Player:deserialize(data)
