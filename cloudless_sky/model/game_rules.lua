@@ -63,6 +63,8 @@ GameRules.DEFAULTS.BASE_GAME_RULES = {
         tilesPerDisplay = 4,
         -- Player can take at most this many wild tiles per turn
         maxWildPerTurn = 1,
+        -- number must be divisible by 6
+        totalTiles = 132,
     },
     playerMat = {
         maxTileRoundCarryover = 4,
