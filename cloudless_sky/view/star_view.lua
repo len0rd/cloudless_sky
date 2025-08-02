@@ -193,8 +193,6 @@ function StarView:coordInBoundingBox(x, y)
     return true
 end
 
-function StarView:isOnStar(x, y) end
-
 function StarView:update(focusSlotIdx)
     -- reset hovered state
     self.hovered_slot = focusSlotIdx

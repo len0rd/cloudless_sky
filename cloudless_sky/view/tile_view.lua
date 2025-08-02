@@ -38,5 +38,27 @@ function TileView.tilePolyVerticies(size, rot)
     end
     return vertices
 end
+--- A draw tile method that can be integrated into SUIT layout management/widgets
+function TileView.suitDrawTile(ignored, opt, x, y, w, h)
+    local PAD = opt["pad"] or 2
+    local ROT = opt["rot"] or (-math.pi / 6)
+    local TILE_SIZE = opt["size"] or h - (2 * PAD)
+
+    local tileVertices = TileView.tilePolyVerticies(TILE_SIZE, ROT)
+    local _, _, tileW, tileH = ViewUtil.boundingBoxOfVertices(tileVertices)
+
+    ViewUtil.shiftVerticies(tileVertices, x + ((w - tileW) / 2) - tileW / 2, y + ((h - tileH) / 2) + (tileH / 2))
+    local color = TileView.TILE_COLOR[opt.tileType]
+    love.graphics.setColor(color[1], color[2], color[3])
+    love.graphics.polygon("fill", tileVertices)
+    love.graphics.setColor({ 0, 0, 0 })
+    love.graphics.setLineWidth(1)
+    love.graphics.polygon("line", tileVertices)
+
+    if opt["boundingBox"] then
+        love.graphics.setColor({ 0, 0.5, 0 })
+        love.graphics.rectangle("line", x, y, w, h)
+    end
+end
 
 return TileView

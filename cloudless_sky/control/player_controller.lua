@@ -37,15 +37,22 @@ function PlayerController:mousePressed(worldX, worldY, button, istouch)
     end
     local clickedStarIndex, clickedSlotIndex = self.matControl.view:coordStarSlotIndex(worldX, worldY)
     if clickedStarIndex ~= 0 and clickedSlotIndex ~= 0 then
-        self.currentPlacePrompt = nil
-        local starCenterX, starCenterY = self.matControl.view:centerOfSlot(clickedStarIndex, clickedSlotIndex)
-        self.currentPlacePrompt = PlaceTilePromptController(
-            self.matControl:getStar(clickedStarIndex),
-            starCenterX,
-            starCenterY,
-            clickedStarIndex,
-            clickedSlotIndex
-        )
+        -- only create a new prompt if its for a slot we're not already displaying a prompt for
+        if
+            self.currentPlacePrompt == nil
+            or self.currentPlacePrompt.starIdx ~= clickedStarIndex
+            or self.currentPlacePrompt.slotIdx ~= clickedSlotIndex
+        then
+            self.currentPlacePrompt = nil
+            local starCenterX, starCenterY = self.matControl.view:centerOfSlot(clickedStarIndex, clickedSlotIndex)
+            self.currentPlacePrompt = PlaceTilePromptController(
+                self.matControl:getStar(clickedStarIndex),
+                starCenterX,
+                starCenterY,
+                clickedStarIndex,
+                clickedSlotIndex
+            )
+        end
         -- local score = self.matControl:placeTile(clickedStarIndex, clickedSlotIndex)
         -- if score[1] ~= nil and score[1] > 0 then
         --     -- FIX the whole tile selection stuff
