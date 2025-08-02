@@ -29,13 +29,13 @@ function TileView.tilePolyVerticies(size, rot)
         size,           0,
         size - size/3,  height
     }
+    -- stylua: ignore end
 
     for ii = 1, #vertices, 2 do
-        local x,y = vertices[ii], vertices[ii+1]
+        local x, y = vertices[ii], vertices[ii + 1]
         vertices[ii] = x * math.cos(rot) - y * math.sin(rot)
-        vertices[ii+1] = y * math.cos(rot) + x * math.sin(rot)
+        vertices[ii + 1] = y * math.cos(rot) + x * math.sin(rot)
     end
-    -- stylua: ignore end
     return vertices
 end
 

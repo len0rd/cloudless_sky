@@ -36,6 +36,13 @@ function PlayerMat:new(starConfigs)
     end
 end
 
+function PlayerMat:getStar(starIdx)
+    if starIdx < 1 or starIdx > #self.stars then
+        return nil
+    end
+    return self.stars[starIdx]
+end
+
 --- @return StarType type The StarType at the given index or nil if invalid index
 function PlayerMat:starType(starIndex)
     if starIndex < 1 or starIndex > #self.stars then

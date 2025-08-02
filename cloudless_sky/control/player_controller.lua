@@ -110,6 +110,13 @@ function PlayerController:resize(w, h)
     local heightZoomFactor = maxMatHeight / matHeight
 
     self.cameraZoom = math.min(widthZoomFactor, heightZoomFactor)
+    self:moveCamera()
+
+    if self.currentPlacePrompt ~= nil then
+        local tileWorldX, tileWorldY =
+            self.matControl.view:centerOfSlot(self.currentPlacePrompt.starIdx, self.currentPlacePrompt.slotIdx)
+        self.currentPlacePrompt:resize(w, h, tileWorldX, tileWorldY)
+    end
 end
 
 return PlayerController
