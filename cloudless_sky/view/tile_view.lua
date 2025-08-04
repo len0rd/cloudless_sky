@@ -12,7 +12,7 @@ TileView.TILE_COLOR = {
     [TileType.BLUE] = { 74, 161, 242 },
     [TileType.PURPLE] = { 153, 90, 181 },
 }
-TileView.TILE_COLOR = ViewUtil.normalizeColorTable(TileView.TILE_COLOR)
+TileView.TILE_COLOR = ViewUtil.normalizeColorTables(TileView.TILE_COLOR)
 
 --- @param mirror boolean OPTIONAL. if true, mirror the vertices before rotation
 --- @return table tileVerticies. The 4 x,y vertices for a tile-shaped polygon constrained to the given size and rotated by rot radians

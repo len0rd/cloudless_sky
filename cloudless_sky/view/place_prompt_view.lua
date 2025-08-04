@@ -69,8 +69,6 @@ local rightArrowDraw = function(text, opt, x, y, w, h)
     love.graphics.rectangle("line", x, y, w, h)
 end
 
-local drawTile
-
 local placementCostDraw = function(text, opt, x, y, w, h)
     local numTiles = 1
 
@@ -108,28 +106,41 @@ function PlacePromptView:new(tileWorldX, tileWorldY, tileCost)
     self.transitionTween = flux.to(self, 0.25, { scale = MAX_SCALE }):after(self, 0.25, { scale = 1.0 })
     self.ui = suit.new()
     self.ui.theme.color = {
-        normal = { bg = { 94, 94, 94 }, fg = { 0, 0, 0 } },
-        hovered = { bg = { 94, 94, 94 }, fg = { 0, 0, 0 } },
-        active = { bg = { 94, 94, 94 }, fg = { 0, 0, 0 } },
+        normal = { bg = ViewUtil.normalizeColor({ 94, 94, 94 }), fg = { 0, 0, 0 } },
+        hovered = { bg = ViewUtil.normalizeColor({ 94, 94, 94 }), fg = { 0, 0, 0 } },
+        active = { bg = ViewUtil.normalizeColor({ 94, 94, 94 }), fg = { 0, 0, 0 } },
     }
     self:resize(love.graphics.getWidth(), love.graphics.getHeight(), tileWorldX, tileWorldY)
+    self.placeButton = nil
+end
+
+function PlacePromptView:mousePressed(worldX, worldY, button, istouch)
+    if button == 1 then
+        -- check if click is within the prompt:
+        return ViewUtil.ptInRect(worldX, worldY, self.tileWorldX, self.tileWorldY, PROMPT_WIDTH, PROMPT_HEIGHT)
+    end
+
+    return false
 end
 
 function PlacePromptView:close() end
 
-function PlacePromptView:update(dt, tileColor, wildColor)
+--- @return PlacementPossibility? selected. If the player has just hit the "place" button, the currently selected placement.
+---     Otherwise nil
+function PlacePromptView:update(dt)
     flux.update(dt)
 
     local promptW = PROMPT_WIDTH * self.scale
+    local promptH = PROMPT_HEIGHT * self.scale
     local NUM_ROWS = 3
+    local cellHeight = promptH / NUM_ROWS
+
+    local mouseWorldX, mouseWorldY = camera:mousePosition()
+    self.ui:enterFrame(mouseWorldX, mouseWorldY)
 
     local LAYOUT_PAD = 0
     self.ui.layout:reset(self.tileWorldX, self.tileWorldY, LAYOUT_PAD, LAYOUT_PAD)
-    self.ui:Label(
-        "Cost: " .. self.tileCost,
-        { font = fonts.ithaca["16"] },
-        self.ui.layout:row(promptW, PROMPT_HEIGHT / NUM_ROWS)
-    )
+    self.ui:Label("Cost: " .. self.tileCost, { font = fonts.ithaca["16"] }, self.ui.layout:row(promptW, cellHeight))
     -- spacing
     -- self.ui.layout:row()
     local placementCost = PlacementPossibility(TileType.RED, 5, TileType.PURPLE, 1)
@@ -138,26 +149,30 @@ function PlacePromptView:update(dt, tileColor, wildColor)
 
     local cellWidth = (promptW - 2 * LAYOUT_PAD) / 3
 
-    self.ui:Button(nil, { draw = leftArrowDraw }, self.ui.layout:row(cellWidth / 2, PROMPT_HEIGHT / NUM_ROWS))
+    self.ui:Button(nil, { draw = leftArrowDraw }, self.ui.layout:row(cellWidth / 2, cellHeight))
     local tileCellWidth = cellWidth
     if placementCost.wildCount > 0 then
         tileCellWidth = tileCellWidth / 2
     end
-    self.ui:Label(nil, placementCost, self.ui.layout:col(tileCellWidth, PROMPT_HEIGHT / NUM_ROWS))
-    self.ui:Label(tostring(placementCost.tileCount), {}, self.ui.layout:col(tileCellWidth, PROMPT_HEIGHT / NUM_ROWS))
+    self.ui:Label(nil, placementCost, self.ui.layout:col(tileCellWidth, cellHeight))
+    self.ui:Label(tostring(placementCost.tileCount), {}, self.ui.layout:col(tileCellWidth, cellHeight))
     if placementCost.wildCount > 0 then
         self.ui:Label(
             nil,
             { draw = TileView.suitDrawTile, tileType = placementCost.wildType, boundingBox = true },
-            self.ui.layout:col(tileCellWidth, PROMPT_HEIGHT / NUM_ROWS)
+            self.ui.layout:col(tileCellWidth, cellHeight)
         )
-        self.ui:Label(
-            tostring(placementCost.tileCount),
-            {},
-            self.ui.layout:col(tileCellWidth, PROMPT_HEIGHT / NUM_ROWS)
-        )
+        self.ui:Label(tostring(placementCost.tileCount), {}, self.ui.layout:col(tileCellWidth, cellHeight))
     end
-    self.ui:Button(nil, { draw = rightArrowDraw }, self.ui.layout:col(cellWidth / 2, PROMPT_HEIGHT / NUM_ROWS))
+    self.ui:Button(nil, { draw = rightArrowDraw }, self.ui.layout:col(cellWidth / 2, cellHeight))
+
+    -- when row is called, SUIT goes straight down from the current column... well i want the next row to start at the
+    -- layouts X origin, so just need to do manually..
+    local _, y, w, h = self.ui.layout:row(promptW, cellHeight)
+    self.placeButton = self.ui:Button("Place", { font = fonts.ithaca["16"] }, self.tileWorldX, y, w, h)
+    if self.placeButton.hit then
+        print("Placement pressed!!")
+    end
 end
 
 function PlacePromptView:draw()

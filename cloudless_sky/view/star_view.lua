@@ -44,7 +44,7 @@ StarView.UNPLACED_SLOT_COLOR = {
     [StarType.MONO] = { 245, 243, 228 },
     [StarType.MULTI_STATIC] = { 245, 243, 228 },
 }
-StarView.UNPLACED_SLOT_COLOR = ViewUtil.normalizeColorTable(StarView.UNPLACED_SLOT_COLOR)
+StarView.UNPLACED_SLOT_COLOR = ViewUtil.normalizeColorTables(StarView.UNPLACED_SLOT_COLOR)
 
 
 -- stylua: ignore start

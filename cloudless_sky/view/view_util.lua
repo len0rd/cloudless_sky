@@ -3,15 +3,23 @@
 local ViewUtil = {}
 
 --- Given a table of RGB colors, return a table of those colors normallized from 0-1
-function ViewUtil.normalizeColorTable(colors)
+function ViewUtil.normalizeColorTables(colors)
     local normalized = {}
     for ii, color in pairs(colors) do
-        r, g, b = love.math.colorFromBytes(color[1], color[2], color[3])
+        local r, g, b = love.math.colorFromBytes(color[1], color[2], color[3])
         normalized[ii] = { r, g, b }
     end
     return normalized
 end
 
+function ViewUtil.normalizeColor(color)
+    local r, g, b = love.math.colorFromBytes(color[1], color[2], color[3])
+    return { r, g, b }
+end
+
+function ViewUtil.ptInRect(x, y, rectX, rectY, w, h)
+    return x >= rectX and x <= rectX + w and y >= rectY and y <= rectY + h
+end
 -- calculate direct distance between 2 points
 function ViewUtil.euclidianDistance(x1, y1, x2, y2)
     local dx = x2 - x1

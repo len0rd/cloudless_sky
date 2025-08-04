@@ -35,6 +35,10 @@ function PlayerController:mousePressed(worldX, worldY, button, istouch)
         -- mouse handled
         return
     end
+    if self.currentPlacePrompt ~= nil and self.currentPlacePrompt:mousePressed(worldX, worldY, button, istouch) then
+        -- mouse handled
+        return
+    end
     local clickedStarIndex, clickedSlotIndex = self.matControl.view:coordStarSlotIndex(worldX, worldY)
     if clickedStarIndex ~= 0 and clickedSlotIndex ~= 0 then
         -- only create a new prompt if its for a slot we're not already displaying a prompt for
@@ -78,18 +82,22 @@ end
 
 function PlayerController:update(dt, mouseWorldX, mouseWorldY)
     self:moveCamera()
-    local focusStarIdx, focusSlotIdx
+    local placementSelection = nil
+    local focusStarIdx = 0
+    local focusSlotIdx = 0
     if self.currentPlacePrompt ~= nil then
-        focusStarIdx = self.currentPlacePrompt.starIdx
-        focusSlotIdx = self.currentPlacePrompt.slotIdx
+        placementSelection = self.currentPlacePrompt:update(dt)
+        if placementSelection ~= nil then
+            print("CONTROLLER PLACEMENT!")
+        else
+            focusStarIdx = self.currentPlacePrompt.starIdx
+            focusSlotIdx = self.currentPlacePrompt.slotIdx
+        end
     else
         focusStarIdx, focusSlotIdx = self.matControl.view:coordStarSlotIndex(mouseWorldX, mouseWorldY)
     end
     self.matControl:update(dt, focusStarIdx, focusSlotIdx)
     self.playerHUD:update(dt, self.model.score, 1, TileType.PURPLE)
-    if self.currentPlacePrompt ~= nil then
-        self.currentPlacePrompt:update(dt)
-    end
 end
 
 function PlayerController:draw()

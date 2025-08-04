@@ -17,6 +17,10 @@ function PlaceTilePromptController:close()
     self.view:close()
 end
 
+function PlaceTilePromptController:mousePressed(worldX, worldY, button, istouch)
+    return self.view:mousePressed(worldX, worldY, button, istouch)
+end
+
 function PlaceTilePromptController:update(dt)
     self.view:update(dt, self.star.starType)
 end
