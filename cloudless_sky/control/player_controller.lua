@@ -49,19 +49,18 @@ function PlayerController:mousePressed(worldX, worldY, button, istouch)
         then
             self.currentPlacePrompt = nil
             local starCenterX, starCenterY = self.matControl.view:centerOfSlot(clickedStarIndex, clickedSlotIndex)
+
+            local placementOptions =
+                self.model:generatePlacementPossibilities(clickedStarIndex, clickedSlotIndex, TileType.PURPLE)
             self.currentPlacePrompt = PlaceTilePromptController(
                 self.matControl:getStar(clickedStarIndex),
                 starCenterX,
                 starCenterY,
                 clickedStarIndex,
-                clickedSlotIndex
+                clickedSlotIndex,
+                placementOptions
             )
         end
-        -- local score = self.matControl:placeTile(clickedStarIndex, clickedSlotIndex)
-        -- if score[1] ~= nil and score[1] > 0 then
-        --     -- FIX the whole tile selection stuff
-        --     self.model:addScoreEvent(TileType.RED, clickedStarIndex, clickedSlotIndex, score)
-        -- end
     else
         -- clicked outside of the a star/slot area. remove any place prompts
         if self.currentPlacePrompt ~= nil then
@@ -88,7 +87,11 @@ function PlayerController:update(dt, mouseWorldX, mouseWorldY)
     if self.currentPlacePrompt ~= nil then
         placementSelection = self.currentPlacePrompt:update(dt)
         if placementSelection ~= nil then
-            print("CONTROLLER PLACEMENT!")
+            self.model:performPlacement(
+                self.currentPlacePrompt.starIdx,
+                self.currentPlacePrompt.slotIdx,
+                placementSelection
+            )
         else
             focusStarIdx = self.currentPlacePrompt.starIdx
             focusSlotIdx = self.currentPlacePrompt.slotIdx

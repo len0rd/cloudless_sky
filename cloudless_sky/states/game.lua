@@ -52,6 +52,7 @@ end
 
 function game:keyreleased(key, code)
     if key == "escape" then
+        self:onSave()
         love.event.quit(0)
     end
 end

@@ -11,7 +11,16 @@ function PlacementPossibility:new(tileType, tileCount, wildType, wildCount)
     --- The current wildType
     self.wildType = wildType
     --- How many wilds would be needed to make this placement valid
-    self.wildCount = wildCount
+    self.wildCount = wildCount or 0
+end
+
+function PlacementPossibility:toTable()
+    return {
+        tileType = self.tileType,
+        tileCount = self.tileCount,
+        wildType = self.wildType,
+        wildCount = self.wildCount,
+    }
 end
 
 --- Override equality operator

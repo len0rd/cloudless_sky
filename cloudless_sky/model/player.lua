@@ -35,6 +35,17 @@ function Player:serialize()
     }
 end
 
+--- @param starIdx number Index of star to play selectedPlacement in
+--- @param slotIdx number index of slot to play selectedPlacement in
+--- @param selectedPlacement PlacementPossibility the placement to play
+function Player:performPlacement(starIdx, slotIdx, selectedPlacement)
+    -- TODO: sanity check that the placement is valid
+    local events = self.mat:placeTile(selectedPlacement.tileType, starIdx, slotIdx)
+    assert(#events > 0)
+    self:addScoreEvent(selectedPlacement, starIdx, slotIdx, events)
+    return events
+end
+
 function Player:generatePlacementPossibilities(starIdx, slotIdx, wildTileType)
     local star = self.mat:getStar(starIdx)
     if star == nil then
@@ -51,9 +62,11 @@ function Player:generatePlacementPossibilities(starIdx, slotIdx, wildTileType)
         if star:isTileTypeAllowedInSlot(tileType, slotIdx) then
             local numTiles = self.hand:num(tileType)
 
-            if tileType == wildTileType and numTiles >= slotCost then
-                -- can play the current wild tile as itself if you really want to...
-                table.insert(possibles, PlacementPossibility(tileType, slotCost))
+            if tileType == wildTileType then
+                if numTiles >= slotCost then
+                    -- can play the current wild tile as itself if you really want to...
+                    table.insert(possibles, PlacementPossibility(tileType, slotCost))
+                end
             elseif numTiles > 0 then
                 -- must always have at least one tile of the color in order to place
                 for wildCount = 0, math.min(wildQty, slotCost - 1) do
@@ -107,10 +120,19 @@ function Player:getAllScoreEvents()
 end
 
 --- Add a score event/action to this players history
-function Player:addScoreEvent(tileType, starIndex, slotIndex, score)
-    table.insert(self.actionHistory, PlayerEvent.new("score", ScoreEvent.new(tileType, starIndex, slotIndex, score)))
+--- @param placementInfo PlacementPossibility information on the tile placement performed to trigger this score
+function Player:addScoreEvent(placementInfo, starIndex, slotIndex, score)
+    table.insert(
+        self.actionHistory,
+        PlayerEvent.new("score", ScoreEvent.new(placementInfo:toTable(), starIndex, slotIndex, score))
+    )
     -- add this new score to our total!
     self.score = self.score + score[1]
+    -- subtract tile costs from hand
+    self.hand:removeTiles(placementInfo.tileType, placementInfo.tileCount)
+    if placementInfo.wildCount > 0 then
+        self.hand:removeTiles(placementInfo.wildType, placementInfo.wildCount)
+    end
 end
 
 return Player

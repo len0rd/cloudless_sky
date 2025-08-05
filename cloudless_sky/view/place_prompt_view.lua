@@ -21,6 +21,9 @@ local MAX_SCALE = 1.5
 local MAX_ARROW_SIZE = PROMPT_HEIGHT / 10
 local PAD = 2
 
+-- for debug
+local WIDGET_BOUNDING_BOXES = false
+
 --- triangle vertices
 ---      1
 ---  3 <|
@@ -41,8 +44,10 @@ local leftArrowDraw = function(text, opt, x, y, w, h)
     love.graphics.setColor(love.math.colorFromBytes(30, 30, 30))
     love.graphics.polygon("fill", vertices)
 
-    love.graphics.setColor({ 0.5, 0, 0 })
-    love.graphics.rectangle("line", x, y, w, h)
+    if WIDGET_BOUNDING_BOXES then
+        love.graphics.setColor({ 0.5, 0, 0 })
+        love.graphics.rectangle("line", x, y, w, h)
+    end
 end
 
 --- triangle vertices
@@ -65,42 +70,21 @@ local rightArrowDraw = function(text, opt, x, y, w, h)
     love.graphics.setColor(love.math.colorFromBytes(30, 30, 30))
     love.graphics.polygon("fill", vertices)
 
-    love.graphics.setColor({ 0.5, 0, 0 })
-    love.graphics.rectangle("line", x, y, w, h)
-end
-
-local placementCostDraw = function(text, opt, x, y, w, h)
-    local numTiles = 1
-
-    local tileSize = h - (2 * PAD)
-
-    if opt["wildCount"] ~= nil and opt["wildCount"] > 0 then
-        -- need to draw base tile + wild
-    else
-        -- draw just a tile
-        local tileVertices = TileView.tilePolyVerticies(tileSize, -math.pi / 6)
-        ViewUtil.shiftVerticies(tileVertices, x + (w / 2) - tileSize - PAD, y + h / 2)
-        local color = TileView.TILE_COLOR[opt.tileType]
-        love.graphics.setColor(color[1], color[2], color[3])
-        love.graphics.polygon("fill", tileVertices)
-        love.graphics.setColor({ 0, 0, 0 })
-        love.graphics.setLineWidth(2)
-        love.graphics.polygon("line", tileVertices)
-
-        love.graphics.print(tostring(opt.tileCount), fonts.ithaca["16"], x + (w / 2) + PAD, y + PAD)
+    if WIDGET_BOUNDING_BOXES then
+        love.graphics.setColor({ 0.5, 0, 0 })
+        love.graphics.rectangle("line", x, y, w, h)
     end
-
-    love.graphics.setColor({ 0, 0.5, 0 })
-    love.graphics.rectangle("line", x, y, w, h)
 end
 
 --- @param tileWorldX integer World X coordinate of the center of the tile the prompt is in relation to
 ---@param tileWorldY integer World Y coordinate of the center of the tile the prompt is in relation tofs
 ---@
-function PlacePromptView:new(tileWorldX, tileWorldY, tileCost)
+function PlacePromptView:new(tileWorldX, tileWorldY, tileCost, placementOptions)
     self.tileWorldX = tileWorldX
     self.tileWorldY = tileWorldY
     self.tileCost = tileCost
+    self.placementOptions = placementOptions
+    self.placementOptIdx = 1
 
     self.scale = 0.1
     self.transitionTween = flux.to(self, 0.25, { scale = MAX_SCALE }):after(self, 0.25, { scale = 1.0 })
@@ -111,9 +95,9 @@ function PlacePromptView:new(tileWorldX, tileWorldY, tileCost)
         active = { bg = ViewUtil.normalizeColor({ 94, 94, 94 }), fg = { 0, 0, 0 } },
     }
     self:resize(love.graphics.getWidth(), love.graphics.getHeight(), tileWorldX, tileWorldY)
-    self.placeButton = nil
 end
 
+--- @return boolean eventHandled. True if click is in prompt bounds and will be handled, else false
 function PlacePromptView:mousePressed(worldX, worldY, button, istouch)
     if button == 1 then
         -- check if click is within the prompt:
@@ -139,40 +123,71 @@ function PlacePromptView:update(dt)
     self.ui:enterFrame(mouseWorldX, mouseWorldY)
 
     local LAYOUT_PAD = 0
+
     self.ui.layout:reset(self.tileWorldX, self.tileWorldY, LAYOUT_PAD, LAYOUT_PAD)
     self.ui:Label("Cost: " .. self.tileCost, { font = fonts.ithaca["16"] }, self.ui.layout:row(promptW, cellHeight))
-    -- spacing
-    -- self.ui.layout:row()
-    local placementCost = PlacementPossibility(TileType.RED, 5, TileType.PURPLE, 1)
-    placementCost["draw"] = TileView.suitDrawTile
-    placementCost["boundingBox"] = true
 
+    -- cost option row --
+    local currentPromptCtx = self.placementOptions[self.placementOptIdx]
+    currentPromptCtx["draw"] = TileView.suitDrawTile
+    currentPromptCtx["boundingBox"] = WIDGET_BOUNDING_BOXES
+
+    local displayOptionSelectBtns = #self.placementOptions > 1
+    local displayWildTile = self.placementOptions[self.placementOptIdx].wildCount > 0
+
+    -- L/R arrow buttons take up 1/6 each. Tile display takes up the other 2/3
+    -- decide how much X-space each element gets based on the placement options
     local cellWidth = (promptW - 2 * LAYOUT_PAD) / 3
-
-    self.ui:Button(nil, { draw = leftArrowDraw }, self.ui.layout:row(cellWidth / 2, cellHeight))
+    if not displayOptionSelectBtns then
+        cellWidth = (promptW - 2 * LAYOUT_PAD) / 2
+    end
     local tileCellWidth = cellWidth
-    if placementCost.wildCount > 0 then
+    if displayWildTile then
         tileCellWidth = tileCellWidth / 2
     end
-    self.ui:Label(nil, placementCost, self.ui.layout:col(tileCellWidth, cellHeight))
-    self.ui:Label(tostring(placementCost.tileCount), {}, self.ui.layout:col(tileCellWidth, cellHeight))
-    if placementCost.wildCount > 0 then
+
+    self.ui.layout:newRow()
+    if displayOptionSelectBtns then
+        local lArr =
+            self.ui:Button("placeOptLArr", { draw = leftArrowDraw }, self.ui.layout:col(cellWidth / 2, cellHeight))
+        if lArr.hit then
+            print("larr has been hit!")
+            self.placementOptIdx = self.placementOptIdx - 1
+            if self.placementOptIdx <= 0 then
+                self.placementOptIdx = #self.placementOptions
+            end
+        end
+    end
+
+    self.ui:Label(nil, currentPromptCtx, self.ui.layout:col(tileCellWidth, cellHeight))
+    self.ui:Label(tostring(currentPromptCtx.tileCount), {}, self.ui.layout:col(tileCellWidth, cellHeight))
+    if displayWildTile then
         self.ui:Label(
             nil,
-            { draw = TileView.suitDrawTile, tileType = placementCost.wildType, boundingBox = true },
+            { draw = TileView.suitDrawTile, tileType = currentPromptCtx.wildType, boundingBox = WIDGET_BOUNDING_BOXES },
             self.ui.layout:col(tileCellWidth, cellHeight)
         )
-        self.ui:Label(tostring(placementCost.tileCount), {}, self.ui.layout:col(tileCellWidth, cellHeight))
+        self.ui:Label(tostring(currentPromptCtx.wildCount), {}, self.ui.layout:col(tileCellWidth, cellHeight))
     end
-    self.ui:Button(nil, { draw = rightArrowDraw }, self.ui.layout:col(cellWidth / 2, cellHeight))
 
-    -- when row is called, SUIT goes straight down from the current column... well i want the next row to start at the
-    -- layouts X origin, so just need to do manually..
-    local _, y, w, h = self.ui.layout:row(promptW, cellHeight)
-    self.placeButton = self.ui:Button("Place", { font = fonts.ithaca["16"] }, self.tileWorldX, y, w, h)
-    if self.placeButton.hit then
-        print("Placement pressed!!")
+    if displayOptionSelectBtns then
+        local rArr =
+            self.ui:Button("placeOptRArr", { draw = rightArrowDraw }, self.ui.layout:col(cellWidth / 2, cellHeight))
+        if rArr.hit then
+            print("rarr has been hit!")
+            self.placementOptIdx = self.placementOptIdx + 1
+            if self.placementOptIdx > #self.placementOptions then
+                self.placementOptIdx = 1
+            end
+        end
     end
+
+    self.ui.layout:newRow()
+    local placeButton = self.ui:Button("Place", { font = fonts.ithaca["16"] }, self.ui.layout:col(promptW, cellHeight))
+    if placeButton.hit then
+        return self.placementOptions[self.placementOptIdx]
+    end
+    return nil
 end
 
 function PlacePromptView:draw()

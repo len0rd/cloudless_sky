@@ -132,7 +132,11 @@ end
 --- @return TileType occupyingTile or empty string if the slot is not occupied or slotIndex is out of bounds
 function Star:tileAtSlot(slotIdx)
     if self:isOccupied(slotIdx) then
-        return self.slotColorOrder[slotIdx]
+        if self:isNonBasicType() then
+            return self.slotColorOrder[slotIdx]
+        else
+            return self.starType
+        end
     end
     return ""
 end

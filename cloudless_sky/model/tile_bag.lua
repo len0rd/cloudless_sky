@@ -93,6 +93,27 @@ function TileBag:takeTile(tileType)
     end
 end
 
+--- remove \p count tiles of type \p tileType from this bag
+function TileBag:removeTiles(tileType, count)
+    local countNum = tonumber(count)
+    if self.tileCounts[tileType] ~= nil then
+        if self.tileCounts[tileType] - countNum < 0 then
+            error(
+                "Tried to subtract more "
+                    .. tostring(tileType)
+                    .. " tiles from bag then exist ("
+                    .. tostring(self.tileCounts[tileType] .. " vs " .. tostring(countNum) .. ")")
+            )
+            self.tileCounts[tileType] = 0
+        else
+            self.tileCounts[tileType] = self.tileCounts[tileType] - countNum
+        end
+        return
+    end
+    -- shouldnt get here
+    TileType.emitBadTileTypeError(type)
+end
+
 --- Add \p count number of \p tileType tiles to this bag
 function TileBag:addTiles(tileType, count)
     if self.tileCounts[tileType] ~= nil then
