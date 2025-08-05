@@ -3,6 +3,7 @@ local PlaceTilePromptController = Object:extend()
 local PlacePromptView = require("cloudless_sky.view.place_prompt_view")
 local PlacePromptInsufficientView = require("cloudless_sky.view.place_prompt_insufficient_view")
 
+--- @param star Star model class of the Star thats being placed on
 function PlaceTilePromptController:new(star, slotCenterX, slotCenterY, starIdx, slotIdx, placementOptions)
     self.starIdx = starIdx
     self.slotIdx = slotIdx
@@ -14,7 +15,7 @@ function PlaceTilePromptController:new(star, slotCenterX, slotCenterY, starIdx, 
     if #placementOptions == 0 then
         self.view = PlacePromptInsufficientView()
     else
-        self.view = PlacePromptView(slotCenterX, slotCenterY, starCost, placementOptions)
+        self.view = PlacePromptView(slotCenterX, slotCenterY, starCost, placementOptions, self.star.starType)
     end
 end
 

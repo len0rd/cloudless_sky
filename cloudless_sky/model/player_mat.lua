@@ -51,6 +51,14 @@ function PlayerMat:starType(starIndex)
     return self.stars[starIndex].starType
 end
 
+--- @return boolean slotOccupied. True if the given slot in starIdx, otherwise false
+function PlayerMat:isOccupied(starIdx, slotIdx)
+    if starIdx < 1 or starIdx > #self.stars then
+        return false
+    end
+    return self.stars[starIdx]:isOccupied(slotIdx)
+end
+
 function PlayerMat:serialize()
     local serialized = {}
     for ii, star in ipairs(self.stars) do

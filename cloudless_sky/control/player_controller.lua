@@ -40,7 +40,11 @@ function PlayerController:mousePressed(worldX, worldY, button, istouch)
         return
     end
     local clickedStarIndex, clickedSlotIndex = self.matControl.view:coordStarSlotIndex(worldX, worldY)
-    if clickedStarIndex ~= 0 and clickedSlotIndex ~= 0 then
+    if
+        clickedStarIndex ~= 0
+        and clickedSlotIndex ~= 0
+        and not self.model:slotOccupied(clickedStarIndex, clickedSlotIndex)
+    then
         -- only create a new prompt if its for a slot we're not already displaying a prompt for
         if
             self.currentPlacePrompt == nil

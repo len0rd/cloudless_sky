@@ -107,6 +107,11 @@ function Player:deserialize(data)
     self.hand:deserialize(data.hand)
 end
 
+--- @return boolean occupied. True if the given slot has a tile in it, otherwise false
+function Player:slotOccupied(starIdx, slotIdx)
+    return self.mat:isOccupied(starIdx, slotIdx)
+end
+
 --- @return table events All score events performed by the player. Sorted by when they occurred
 ---     Oldest at index 1
 function Player:getAllScoreEvents()

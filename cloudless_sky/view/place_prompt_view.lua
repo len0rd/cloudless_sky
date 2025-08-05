@@ -7,6 +7,7 @@ local TileView = require("cloudless_sky.view.tile_view")
 
 local PlacementPossibility = require("cloudless_sky.model.placement_possibility")
 local TileType = require("cloudless_sky.model.tile_type")
+local StarView = require("cloudless_sky.view.star_view")
 
 local suit = require("cloudless_sky.extern.suit")
 local flux = require("cloudless_sky.extern.flux")
@@ -20,6 +21,7 @@ local MAX_SCALE = 1.5
 -- stuff for drawing arrows
 local MAX_ARROW_SIZE = PROMPT_HEIGHT / 10
 local PAD = 2
+local CORNER_RADIUS_SCALER = 1 / 10
 
 -- for debug
 local WIDGET_BOUNDING_BOXES = false
@@ -77,22 +79,30 @@ local rightArrowDraw = function(text, opt, x, y, w, h)
 end
 
 --- @param tileWorldX integer World X coordinate of the center of the tile the prompt is in relation to
----@param tileWorldY integer World Y coordinate of the center of the tile the prompt is in relation tofs
----@
-function PlacePromptView:new(tileWorldX, tileWorldY, tileCost, placementOptions)
+--- @param tileWorldY integer World Y coordinate of the center of the tile the prompt is in relation tofs
+--- @param tileCost integer Total number of tiles required to place here.
+--- @param placementOptions PlacementPossibility[] List of PlacementPossibility objects for this slot
+--- @param starType StarType what star is being played on
+function PlacePromptView:new(tileWorldX, tileWorldY, tileCost, placementOptions, starType)
     self.tileWorldX = tileWorldX
     self.tileWorldY = tileWorldY
     self.tileCost = tileCost
     self.placementOptions = placementOptions
     self.placementOptIdx = 1
 
+    self.placeBtnScale = 1.0
+
     self.scale = 0.1
-    self.transitionTween = flux.to(self, 0.25, { scale = MAX_SCALE }):after(self, 0.25, { scale = 1.0 })
+    self.transitionTween = flux.group()
+    self.transitionTween:to(self, 0.25, { scale = MAX_SCALE }):after(self, 0.25, { scale = 1.0 })
+
+    self.placeHoverTween = nil
+
     self.ui = suit.new()
     self.ui.theme.color = {
-        normal = { bg = ViewUtil.normalizeColor({ 94, 94, 94 }), fg = { 0, 0, 0 } },
-        hovered = { bg = ViewUtil.normalizeColor({ 94, 94, 94 }), fg = { 0, 0, 0 } },
-        active = { bg = ViewUtil.normalizeColor({ 94, 94, 94 }), fg = { 0, 0, 0 } },
+        normal = { bg = StarView.UNPLACED_SLOT_COLOR[starType], fg = { 0, 0, 0 } },
+        hovered = { bg = TileView.TILE_COLOR[self.placementOptions[self.placementOptIdx].tileType], fg = { 0, 0, 0 } },
+        active = { bg = TileView.TILE_COLOR[self.placementOptions[self.placementOptIdx].tileType], fg = { 0, 0, 0 } },
     }
     self:resize(love.graphics.getWidth(), love.graphics.getHeight(), tileWorldX, tileWorldY)
 end
@@ -107,12 +117,18 @@ function PlacePromptView:mousePressed(worldX, worldY, button, istouch)
     return false
 end
 
+function PlacePromptView:_btnHoverTween(tween)
+    tween:to(self, 0.5, { placeBtnScale = 1.1 }):after(self, 0.5, { placeBtnScale = 1.0 }):oncomplete(function()
+        self:_btnHoverTween(tween)
+    end)
+end
+
 function PlacePromptView:close() end
 
 --- @return PlacementPossibility? selected. If the player has just hit the "place" button, the currently selected placement.
 ---     Otherwise nil
 function PlacePromptView:update(dt)
-    flux.update(dt)
+    self.transitionTween:update(dt)
 
     local promptW = PROMPT_WIDTH * self.scale
     local promptH = PROMPT_HEIGHT * self.scale
@@ -122,7 +138,7 @@ function PlacePromptView:update(dt)
     local mouseWorldX, mouseWorldY = camera:mousePosition()
     self.ui:enterFrame(mouseWorldX, mouseWorldY)
 
-    local LAYOUT_PAD = 0
+    local LAYOUT_PAD = 1
 
     self.ui.layout:reset(self.tileWorldX, self.tileWorldY, LAYOUT_PAD, LAYOUT_PAD)
     self.ui:Label("Cost: " .. self.tileCost, { font = fonts.ithaca["16"] }, self.ui.layout:row(promptW, cellHeight))
@@ -151,7 +167,6 @@ function PlacePromptView:update(dt)
         local lArr =
             self.ui:Button("placeOptLArr", { draw = leftArrowDraw }, self.ui.layout:col(cellWidth / 2, cellHeight))
         if lArr.hit then
-            print("larr has been hit!")
             self.placementOptIdx = self.placementOptIdx - 1
             if self.placementOptIdx <= 0 then
                 self.placementOptIdx = #self.placementOptions
@@ -174,7 +189,6 @@ function PlacePromptView:update(dt)
         local rArr =
             self.ui:Button("placeOptRArr", { draw = rightArrowDraw }, self.ui.layout:col(cellWidth / 2, cellHeight))
         if rArr.hit then
-            print("rarr has been hit!")
             self.placementOptIdx = self.placementOptIdx + 1
             if self.placementOptIdx > #self.placementOptions then
                 self.placementOptIdx = 1
@@ -183,7 +197,37 @@ function PlacePromptView:update(dt)
     end
 
     self.ui.layout:newRow()
-    local placeButton = self.ui:Button("Place", { font = fonts.ithaca["16"] }, self.ui.layout:col(promptW, cellHeight))
+
+    local placeW = (promptW - 2 * LAYOUT_PAD) * self.placeBtnScale
+    local placeH = (cellHeight - NUM_ROWS * LAYOUT_PAD) * self.placeBtnScale
+    local placeX, placeY, placeW, placeH = self.ui.layout:col(placeW, placeH)
+    placeX = placeX - math.max((placeW - promptW) / 2, 0)
+
+    -- also update the color
+    self.ui.theme.color.active.bg = TileView.TILE_COLOR[self.placementOptions[self.placementOptIdx].tileType]
+    self.ui.theme.color.hovered.bg = TileView.TILE_COLOR[self.placementOptions[self.placementOptIdx].tileType]
+
+    local placeButton = self.ui:Button("Place", {
+        font = fonts.ithaca["16"],
+        cornerRadius = promptW * CORNER_RADIUS_SCALER - 3,
+        outline = 2,
+        scale = self.placeBtnScale,
+    }, placeX, placeY, placeW, placeH)
+    -- handle tweening animation
+    if placeButton.entered then
+        -- start new animation
+        print("enter place btn!")
+        self.placeHoverTween = nil
+        self.placeHoverTween = flux.group()
+        self:_btnHoverTween(self.placeHoverTween)
+    end
+    if placeButton.hovered then
+        self.placeHoverTween:update(dt)
+    elseif placeButton.left then
+        self.placeBtnScale = 1.0
+        self.placeHoverTween = nil
+    end
+
     if placeButton.hit then
         return self.placementOptions[self.placementOptIdx]
     end
@@ -195,13 +239,13 @@ function PlacePromptView:draw()
     do
         local width = PROMPT_WIDTH * self.scale
         local height = PROMPT_HEIGHT * self.scale
-        local rx = width / 10
-        local ry = height / 10
+        local cornerR = width * CORNER_RADIUS_SCALER
 
         love.graphics.setColor(1, 1, 1, 1)
-        love.graphics.rectangle("fill", self.tileWorldX, self.tileWorldY, width, height, rx, ry)
+        love.graphics.rectangle("fill", self.tileWorldX, self.tileWorldY, width, height, cornerR, cornerR)
         love.graphics.setColor({ 0, 0, 0 })
-        love.graphics.rectangle("line", self.tileWorldX, self.tileWorldY, width, height, rx, ry)
+        love.graphics.setLineWidth(2)
+        love.graphics.rectangle("line", self.tileWorldX, self.tileWorldY, width, height, cornerR, cornerR)
 
         self.ui:draw()
     end
