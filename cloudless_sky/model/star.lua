@@ -17,9 +17,11 @@
 ---         \  /
 ---          \/
 local Object = require("cloudless_sky.extern.classic")
-local Star = Object:extend()
 local StarType = require("cloudless_sky.model.star_type")
 local TileType = require("cloudless_sky.model.tile_type")
+
+---@class Star : Object
+local Star = Object:extend()
 
 -- default Slot Color Order for the central multi_static star on the blue side
 -- of the Glazed Pavilion mat

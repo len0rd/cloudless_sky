@@ -3,14 +3,19 @@
 --      - Tiles in hand/tiles saved between rounds
 --      - Their score
 --      - Turn stack (to support undo)
+---@class Object
 local Object = require("cloudless_sky.extern.classic")
-local Player = Object:extend()
 local PlayMat = require("cloudless_sky.model.player_mat")
 local TileBag = require("cloudless_sky.model.tile_bag")
 local ScoreEvent = require("cloudless_sky.model.score_event")
 local PlayerEvent = require("cloudless_sky.model.player_event")
 local PlacementPossibility = require("cloudless_sky.model.placement_possibility")
 local TileType = require("cloudless_sky.model.tile_type")
+
+---@class Player : Object
+---@field mat PlayerMat
+---@field hand TileBag
+local Player = Object:extend()
 
 function Player:new(starConfigs, startScore, name)
     self.mat = PlayMat(starConfigs)
@@ -35,9 +40,12 @@ function Player:serialize()
     }
 end
 
+--- Play a tile in a slot
 --- @param starIdx number Index of star to play selectedPlacement in
 --- @param slotIdx number index of slot to play selectedPlacement in
 --- @param selectedPlacement PlacementPossibility the placement to play
+--- @return table events. The list of events that occurred when the tile was played.
+---     First event is the score
 function Player:performPlacement(starIdx, slotIdx, selectedPlacement)
     -- TODO: sanity check that the placement is valid
     local events = self.mat:placeTile(selectedPlacement.tileType, starIdx, slotIdx)

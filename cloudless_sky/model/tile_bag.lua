@@ -2,6 +2,8 @@
 -- For instance the draw bag or the discard
 local TileType = require("cloudless_sky.model.tile_type")
 local Object = require("cloudless_sky.extern.classic")
+
+---@class TileBag : Object
 local TileBag = Object:extend()
 
 --- @param gameRng RandomGenerator random generator being used by the game

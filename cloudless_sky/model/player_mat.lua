@@ -11,9 +11,11 @@
 ---       *5*   *4*
 ---        *     *
 local Object = require("cloudless_sky.extern.classic")
-local PlayerMat = Object:extend()
 local StarType = require("cloudless_sky.model.star_type")
 local Star = require("cloudless_sky.model.star")
+
+---@class PlayerMat : Object
+local PlayerMat = Object:extend()
 
 --- The stars of the first/default map used in the base game
 PlayerMat.BASE_GAME_DEFAULT_MAT = {

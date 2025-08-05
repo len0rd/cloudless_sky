@@ -1,13 +1,16 @@
 -- Bring together view and model of a single player
-
+---@class Object
 local Object = require("cloudless_sky.extern.classic")
-local PlayerController = Object:extend()
 local Player = require("cloudless_sky.model.player")
 local GameRules = require("cloudless_sky.model.game_rules")
 local PlayerMatController = require("cloudless_sky.control.player_mat_controller")
 local TileType = require("cloudless_sky.model.tile_type")
 local PlayerHUD = require("cloudless_sky.view.player_hud")
 local PlaceTilePromptController = require("cloudless_sky.control.place_tile_prompt_controller")
+
+---@class PlayerController : Object
+---@field model Player
+local PlayerController = Object:extend()
 
 function PlayerController:new(name, x, y, size)
     self.model = Player(GameRules.currentRules().playerMat.stars, GameRules.currentRules().startScore, name)
@@ -91,7 +94,7 @@ function PlayerController:update(dt, mouseWorldX, mouseWorldY)
     if self.currentPlacePrompt ~= nil then
         placementSelection = self.currentPlacePrompt:update(dt)
         if placementSelection ~= nil then
-            self.model:performPlacement(
+            local scoreEvents = self.model:performPlacement(
                 self.currentPlacePrompt.starIdx,
                 self.currentPlacePrompt.slotIdx,
                 placementSelection
