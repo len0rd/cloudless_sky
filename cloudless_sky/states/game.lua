@@ -35,7 +35,7 @@ function game:onSave()
         },
     }
     local encoded = json.encode(serialized)
-    local file = io.open("savegame.json", "w")
+    local file = io.open("savegamelatest.json", "w")
     if file then
         file:write(encoded)
         file:close()

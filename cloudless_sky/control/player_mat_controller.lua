@@ -48,24 +48,16 @@ function PlayerMatController:getStar(starIdx)
 end
 
 --- Place a tile (update visuals and model), then return the score the tile got.
---- @return table scoreTable The score as stated by PlayerMat:placeTile
-function PlayerMatController:placeTile(starIndex, slotIndex)
-    local score = { 0 }
+--- @param score table. The ScoreEvent list returned by PlayerMat:placeTile
+function PlayerMatController:onTilePlaced(starIndex, slotIndex, score)
     if starIndex ~= 0 and slotIndex ~= 0 then
         local starSlotX, starSlotY = self.view:centerOfSlot(starIndex, slotIndex)
-        -- throwaway
-        local leStar = self.model.stars[starIndex]
-        local tileType = leStar.starType
-        if leStar:isNonBasicType() then
-            tileType = TileType.ORDERED[slotIndex]
-        end
-        score = self.model:placeTile(tileType, starIndex, slotIndex)
+
         if score[1] ~= nil and score[1] > 0 then
             local scoreText = ScoreText(score[1], starSlotX, starSlotY)
             table.insert(self.scoreTexts, scoreText)
         end
     end
-    return score
 end
 
 function PlayerMatController:mousePressed(worldX, worldY, button, istouch)

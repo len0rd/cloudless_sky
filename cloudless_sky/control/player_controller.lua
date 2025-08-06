@@ -88,6 +88,8 @@ function PlayerController:update(dt, mouseWorldX, mouseWorldY)
         focusStarIdx, focusSlotIdx = self.placePromptController:activePromptStarSlot()
         if placementSelection ~= nil then
             local scoreEvents = self.model:performPlacement(focusStarIdx, focusSlotIdx, placementSelection)
+            self.placePromptController:close()
+            self.matControl:onTilePlaced(focusStarIdx, focusSlotIdx, scoreEvents)
         end
     else
         focusStarIdx, focusSlotIdx = self.matControl.view:coordStarSlotIndex(mouseWorldX, mouseWorldY)
