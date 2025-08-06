@@ -16,9 +16,7 @@ function game:enter(gameSettings, gameState)
 end
 
 function game:update(dt)
-    local mouseX, mouseY = camera:mousePosition()
-
-    playerControl:update(dt, mouseX, mouseY)
+    playerControl:update(dt)
 end
 
 function game:draw()

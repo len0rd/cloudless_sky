@@ -79,7 +79,8 @@ function PlayerController:moveCamera()
     camera:lockPosition(matCenterX, matCenterY)
 end
 
-function PlayerController:update(dt, mouseWorldX, mouseWorldY)
+function PlayerController:update(dt)
+    local mouseWorldX, mouseWorldY = camera:mousePosition()
     self:moveCamera()
     local focusStarIdx = 0
     local focusSlotIdx = 0
