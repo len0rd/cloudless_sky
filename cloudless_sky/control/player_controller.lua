@@ -10,6 +10,7 @@ local PlaceTilePromptController = require("cloudless_sky.control.place_tile_prom
 
 ---@class PlayerController : Object
 ---@field model Player
+---@field placePromptController PlaceTilePromptController
 local PlayerController = Object:extend()
 
 function PlayerController:new(name, x, y, size)
@@ -17,10 +18,8 @@ function PlayerController:new(name, x, y, size)
     self.matControl = PlayerMatController(self.model.mat, x, y, size)
     self.playerHUD = PlayerHUD()
     self.cameraZoom = 1.0
+    self.placePromptController = PlaceTilePromptController()
     self:resize(love.graphics.getPixelDimensions())
-
-    -- appears when the user clicks a rectangle: prompt to place a tile
-    self.currentPlacePrompt = nil
 
     self.playerHUD:show()
 end
@@ -38,7 +37,7 @@ function PlayerController:mousePressed(worldX, worldY, button, istouch)
         -- mouse handled
         return
     end
-    if self.currentPlacePrompt ~= nil and self.currentPlacePrompt:mousePressed(worldX, worldY, button, istouch) then
+    if self.placePromptController:mousePressed(worldX, worldY, button, istouch) then
         -- mouse handled
         return
     end
@@ -49,17 +48,12 @@ function PlayerController:mousePressed(worldX, worldY, button, istouch)
         and not self.model:slotOccupied(clickedStarIndex, clickedSlotIndex)
     then
         -- only create a new prompt if its for a slot we're not already displaying a prompt for
-        if
-            self.currentPlacePrompt == nil
-            or self.currentPlacePrompt.starIdx ~= clickedStarIndex
-            or self.currentPlacePrompt.slotIdx ~= clickedSlotIndex
-        then
-            self.currentPlacePrompt = nil
+        if not self.placePromptController:promptExists(clickedStarIndex, clickedSlotIndex) then
             local starCenterX, starCenterY = self.matControl.view:centerOfSlot(clickedStarIndex, clickedSlotIndex)
 
             local placementOptions =
                 self.model:generatePlacementPossibilities(clickedStarIndex, clickedSlotIndex, TileType.PURPLE)
-            self.currentPlacePrompt = PlaceTilePromptController(
+            self.placePromptController:newPrompt(
                 self.matControl:getStar(clickedStarIndex),
                 starCenterX,
                 starCenterY,
@@ -70,10 +64,9 @@ function PlayerController:mousePressed(worldX, worldY, button, istouch)
         end
     else
         -- clicked outside of the a star/slot area. remove any place prompts
-        if self.currentPlacePrompt ~= nil then
-            self.currentPlacePrompt:close()
+        if self.placePromptController:promptActive() then
+            self.placePromptController:close()
         end
-        self.currentPlacePrompt = nil
     end
 end
 
@@ -88,20 +81,13 @@ end
 
 function PlayerController:update(dt, mouseWorldX, mouseWorldY)
     self:moveCamera()
-    local placementSelection = nil
     local focusStarIdx = 0
     local focusSlotIdx = 0
-    if self.currentPlacePrompt ~= nil then
-        placementSelection = self.currentPlacePrompt:update(dt)
+    if self.placePromptController:promptActive() then
+        local placementSelection = self.placePromptController:update(dt)
+        focusStarIdx, focusSlotIdx = self.placePromptController:activePromptStarSlot()
         if placementSelection ~= nil then
-            local scoreEvents = self.model:performPlacement(
-                self.currentPlacePrompt.starIdx,
-                self.currentPlacePrompt.slotIdx,
-                placementSelection
-            )
-        else
-            focusStarIdx = self.currentPlacePrompt.starIdx
-            focusSlotIdx = self.currentPlacePrompt.slotIdx
+            local scoreEvents = self.model:performPlacement(focusStarIdx, focusSlotIdx, placementSelection)
         end
     else
         focusStarIdx, focusSlotIdx = self.matControl.view:coordStarSlotIndex(mouseWorldX, mouseWorldY)
@@ -114,9 +100,7 @@ function PlayerController:draw()
     camera:attach()
     do
         self.matControl:draw()
-        if self.currentPlacePrompt ~= nil then
-            self.currentPlacePrompt:draw()
-        end
+        self.placePromptController:draw()
     end
     camera:detach()
     self.playerHUD:draw(self.model.hand)
@@ -137,11 +121,7 @@ function PlayerController:resize(w, h)
     self.cameraZoom = math.min(widthZoomFactor, heightZoomFactor)
     self:moveCamera()
 
-    if self.currentPlacePrompt ~= nil then
-        local tileWorldX, tileWorldY =
-            self.matControl.view:centerOfSlot(self.currentPlacePrompt.starIdx, self.currentPlacePrompt.slotIdx)
-        self.currentPlacePrompt:resize(w, h, tileWorldX, tileWorldY)
-    end
+    self.placePromptController:resize(w, h, self.matControl.view)
 end
 
 return PlayerController

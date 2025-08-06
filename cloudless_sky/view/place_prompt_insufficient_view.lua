@@ -12,6 +12,14 @@ function PlacePromptInsufficientView:mousePressed(worldX, worldY, button, istouc
     return false
 end
 
+function PlacePromptInsufficientView:closing()
+    return true
+end
+
+function PlacePromptInsufficientView:isClosed()
+    return true
+end
+
 function PlacePromptInsufficientView:update(dt) end
 
 function PlacePromptInsufficientView:draw() end

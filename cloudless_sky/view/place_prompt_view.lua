@@ -26,6 +26,12 @@ local CORNER_RADIUS_SCALER = 1 / 10
 -- for debug
 local WIDGET_BOUNDING_BOXES = false
 
+PlacePromptView.STATES = {
+    ACTIVE = "ACTIVE",
+    CLOSING = "CLOSING",
+    CLOSED = "CLOSED",
+}
+
 --- triangle vertices
 ---      1
 ---  3 <|
@@ -89,6 +95,7 @@ function PlacePromptView:new(tileWorldX, tileWorldY, tileCost, placementOptions,
     self.tileCost = tileCost
     self.placementOptions = placementOptions
     self.placementOptIdx = 1
+    self.state = self.STATES.ACTIVE
 
     self.placeBtnScale = 1.0
 
@@ -123,7 +130,18 @@ function PlacePromptView:_btnHoverTween(tween)
     end)
 end
 
-function PlacePromptView:close() end
+function PlacePromptView:close()
+    -- self.state = self.STATES.CLOSING
+    self.state = self.STATES.CLOSED
+end
+
+function PlacePromptView:closing()
+    return self.state == self.STATES.CLOSING or self.state == self.STATES.CLOSED
+end
+
+function PlacePromptView:isClosed()
+    return self.state == self.STATES.CLOSED
+end
 
 --- @return PlacementPossibility? selected. If the player has just hit the "place" button, the currently selected placement.
 ---     Otherwise nil
@@ -236,7 +254,7 @@ end
 
 function PlacePromptView:draw()
     love.graphics.push()
-    do
+    if self.state ~= self.STATES.CLOSED then
         local width = PROMPT_WIDTH * self.scale
         local height = PROMPT_HEIGHT * self.scale
         local cornerR = width * CORNER_RADIUS_SCALER
