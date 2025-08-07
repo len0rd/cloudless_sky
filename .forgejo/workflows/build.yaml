@@ -4,4 +4,18 @@ jobs:
     runs-on: docker
     steps:
       - uses: actions/checkout@v4
-      - run: ls -la
+      - name: Build devcontainer image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./.devcontainer/
+          file: .devcontainer/Dockerfile
+          tags: cloudless_sky:latest
+          push: false
+
+      - name: Run unit tests in container
+        run: |
+          docker run --rm \
+          -v "$PWD":/workspace \
+          -w /workspace \
+          devcontainer:latest \
+          love . --cute-headless
