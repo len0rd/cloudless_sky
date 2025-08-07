@@ -4,6 +4,11 @@ jobs:
     runs-on: docker
     steps:
       - uses: actions/checkout@v4
+      - name: Debug Docker access
+        run: |
+          whoami
+          groups
+          docker info
       - uses: docker/setup-buildx-action@v3
       - name: Build devcontainer image
         uses: docker/build-push-action@v5
