@@ -3,4 +3,5 @@ jobs:
   test:
     runs-on: docker
     steps:
-      - run: echo "hello there!"
+      - uses: actions/checkout@v4
+      - run: ls -la
