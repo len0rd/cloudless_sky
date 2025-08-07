@@ -13,13 +13,14 @@ Then the user you run with needs to have a matching UID/GID
 ## TODO
 
 - Win32/64 binaries via python makelove package + Wine
-- Game state stack per player for undo support. need to save games randomGen state on every action? and corresponding 'undo' function
 - MONO-STARS can turn into multi stars. you cant assume its a color-specific star after the first tile! need a second tile to know
 
 ## design rules
 
 - model classes should avoid accesing `GameRules.currentRules()` directly
 all that information should be passed to them by their controller class
+- model classes should present themselves as read-only. any functions that modify their state should be
+    reserved for Actions
 
 ## dependencies
 
@@ -43,3 +44,18 @@ all that information should be passed to them by their controller class
 Model classes exist to hold game state and provide convenience functions around running the game itself
 
 ![](docs/design.drawio.svg)
+
+
+### clouldless_sky/states
+
+The game logic boils down to a series of state machines for each round, phase and turn
+
+- **Round**: In a standard game there are 6 of these. Each round has its own wild tile, start player and two *phases*
+- **Phase**: A segment of a round. Each round has 2. The Tile selection phase (picking from the factory), and tile placement (hand -> mat)
+    Within a Phase, players take *turns* in the determined order to perform the actions specific to the current phase
+- **Turn**: A turn is a single event performed by a Player during a given phase. These player events can cause multiple actions to occur
+- **Action**: An action encapsulates some verb that occurs to the game state. Actions are handled one at a time, in the order they occur. One action can spawn more actions. For example the `PlaceTile` action can cause new `AddScore` and `CollectBonusTiles` Actions to be queued. Actions can also emit *Animations* which smooth transitions or add flavor to the visual state. Typically all animations emitted by an action must complete before the next action can be processed
+
+Each state machine in the game waits for user input, handles resulting actions and animations, and may push other state machines onto the game state stack
+
+![](docs/game_sm.drawio.svg)
