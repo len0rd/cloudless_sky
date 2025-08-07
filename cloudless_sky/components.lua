@@ -2,7 +2,7 @@
 
 local Concord = require("cloudless_sky.extern.concord")
 
-local MAX_PRIORITY = 100
+local MIN_PRIORITY = 100
 
 Concord.component("tileFocus", function(c, starIdx, slotIdx)
     assert(starIdx ~= nil and starIdx ~= 0, "valid starIdx is required")
@@ -17,18 +17,25 @@ Concord.component("worldPosition", function(c, worldX, worldY)
 end)
 
 Concord.component("cameraPosition", function(c, cameraX, cameraY)
-    c.worldX = cameraX or 0
-    c.worldY = cameraY or 0
+    c.cameraX = cameraX or 0
+    c.cameraY = cameraY or 0
 end)
 
---- Entities that have a draw function
+--- Entities that have a draw function. Smaller number = higher priority
 Concord.component("drawable", function(c, priority)
-    c.priority = priority or MAX_PRIORITY
+    c.priority = priority or MIN_PRIORITY
 end)
-
 
 --- Entities that have a mousePressed handler which returns true if the mouse event was
---- handled by it or false if not
+--- handled by it or false if not. Smaller number = higher priority
 Concord.component("mouseHandler", function(c, priority)
-    c.priority = priority or MAX_PRIORITY
+    c.priority = priority or MIN_PRIORITY
+end)
+
+--- Entity dimensions can be contained within a width/height
+Concord.component("boundingBox", function(c, w, h)
+    assert(w ~= nil and w > 0, "boundingBox component must have a width! got: " .. tostring(w))
+    assert(h ~= nil and h > 0, "boundingBox component must have a height! got: " .. tostring(h))
+    c.w = w
+    c.h = h
 end)
