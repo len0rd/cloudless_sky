@@ -72,7 +72,7 @@ end
 function PlayerMat:deserialize(data)
     for ii, starData in pairs(data) do
         local starIdx = tonumber(ii)
-        if starIdx ~= nil and self.stars[starIdx] ~= nil then
+        if starIdx and self.stars[starIdx] then
             self.stars[starIdx]:deserialize(starData)
         end
     end
@@ -84,7 +84,7 @@ end
 ---         If either index is invalid, an empty table is returned
 function PlayerMat:possibleEventsForPlacement(starIndex, slotIndex)
     local star = self.stars[starIndex]
-    if star == nil then
+    if not star then
         -- invalid starIndex
         return {}
     end
@@ -104,7 +104,7 @@ end
 function PlayerMat:placeTile(tileType, starIndex, slotIndex)
     local star = self.stars[starIndex]
     print("place a " .. tileType .. " tile at " .. starIndex .. ", " .. slotIndex)
-    if star == nil then
+    if not star then
         -- invalid starIndex
         return {}
     end
@@ -120,7 +120,7 @@ end
 
 function PlayerMat:removeTile(starIndex, slotIndex)
     local star = self.stars[starIndex]
-    if star ~= nil then
+    if star then
         star:removeTile(slotIndex)
     else
         print("removeTile: bad starIndex" .. starIndex)

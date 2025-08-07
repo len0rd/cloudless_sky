@@ -12,8 +12,8 @@
 ---      \  6 \/   2 /
 ---       -----------
 ---      /    /\    \
----     / 5  / \  3 \
----    -----/ 4 \----
+---     / 5  / \  3  \
+---    -----/ 4 \-----
 ---         \  /
 ---          \/
 local Object = require("cloudless_sky.extern.classic")
@@ -54,24 +54,24 @@ Star.GLAZED_PAVILION_PURPLE_SIDE_MULTI_STATIC_COLORS = {
 function Star:new(starConf)
     self.starType = starConf.type
     self.starTypeOnConstruction = starConf.type
-    if StarType[starConf.type] == nil then
+    if not StarType[starConf.type] then
         StarType.emitBadStarTypeError(starConf.type)
     end
 
     self.slotCostOrder = starConf.cost
-    if self.slotCostOrder == nil then
+    if not self.slotCostOrder then
         error(
             "StarType '" .. tostring(starConf.type) .. "' does not have a default slotCostOrder. You must specify one"
         )
     end
     -- for StarType.MULTI_STATIC
     self.slotColorOrder = starConf.color
-    if self.starType == StarType.MULTI_STATIC and starConf.color == nil then
+    if self.starType == StarType.MULTI_STATIC and not starConf.color then
         error("StarType '" .. tostring(self.starType) .. "' must be provided starConf.color")
     end
     -- hijack slotColorOrder to keep track of placed tile colors for StarType.MULTI
     -- (need to enforce having a color only once)
-    if self.starType == StarType.MULTI or self.slotColorOrder == nil then
+    if self.starType == StarType.MULTI or not self.slotColorOrder then
         self.slotColorOrder = {}
         -- just set the array to a random tile color. Elements in the array are only valid
         -- if self.occupiedSlots[ii] is true
@@ -99,7 +99,7 @@ end
 
 --- Deserialize state information not contained in the GameRules/passed in the constructor
 function Star:deserialize(data)
-    if data.color ~= nil then
+    if data.color then
         self.slotColorOrder = data.color
     end
     self.occupiedSlots = data.occupied

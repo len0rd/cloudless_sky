@@ -56,7 +56,7 @@ end
 
 function Player:generatePlacementPossibilities(starIdx, slotIdx, wildTileType)
     local star = self.mat:getStar(starIdx)
-    if star == nil then
+    if not star then
         return {}
     end
 
@@ -107,7 +107,7 @@ function Player:generatePlacementPossibilities(starIdx, slotIdx, wildTileType)
 end
 
 function Player:deserialize(data)
-    if data["name"] ~= nil then
+    if data["name"] then
         self.playerName = data["name"]
     end
     self.score = data.score

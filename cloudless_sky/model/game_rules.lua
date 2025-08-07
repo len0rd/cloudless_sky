@@ -3,7 +3,16 @@
 require("cloudless_sky.util")
 
 -- class returned for interacting with the game rules instance
+---@class GameRules
+---@field bonusSurrounds table Settings for the playmat features players earn bonuses for surrounding
+---@field wildPerRound table Ordered list of the TileType that will be the wild each round
+---@field startScore integer How many points each player starts with
+---@field endGameBonus table Bonuses added to a players score at the end of the game for various play mat conditions
+---@field factoryDisplay table Rules for the factory display/tile selection area
+---@field totalTiles integer Total number of tiles in play during a game
+---@field playerMat table Rules and configuration of the player mat
 local GameRules = {}
+
 GameRules.DEFAULTS = {}
 
 -- the current game rules. access via
@@ -63,11 +72,10 @@ GameRules.DEFAULTS.BASE_GAME_RULES = {
         tilesPerDisplay = 4,
         -- Player can take at most this many wild tiles per turn
         maxWildPerTurn = 1,
-        -- number must be divisible by 6
-        totalTiles = 132,
     },
+    totalTiles = 132,
     playerMat = {
-        maxTileRoundCarryover = 4,
+        maxTileCarryoverPerRound = 4,
         stars = {
             [1] = {
                 type = "ORANGE",
