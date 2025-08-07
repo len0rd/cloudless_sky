@@ -6,16 +6,14 @@ local Object = require("cloudless_sky.extern.classic")
 ---@class TileBag : Object
 local TileBag = Object:extend()
 
---- @param gameRng RandomGenerator random generator being used by the game
 --- @param startValue integer optional. Value to start the count of all TileTypes at. Default is 0
-function TileBag:new(gameRng, startValue)
+function TileBag:new(startValue)
     -- tracks how many of each tile type is present in the bag. Start with all 0's
     local defaultValue = 0
     if startValue ~= nil then
         defaultValue = startValue
     end
     self.tileCounts = {}
-    self.gameRng = gameRng
     for _, tileType in pairs(TileType.ORDERED) do
         self.tileCounts[tileType] = defaultValue
     end
@@ -49,15 +47,16 @@ end
 --- From the tiles currently in this bag, "take" a random one.
 --- "Take" means the tile is removed from the bag when returned by this function
 ---
+--- @param gameRng RandomGenerator random generator being used by the game
 --- @return TileType - Type of the tile taken from the bag. Or nil if the bag is empty
-function TileBag:takeRandomTile()
+function TileBag:takeRandomTile(gameRng)
     if self:empty() then
         return nil
     end
     -- treat the tiles in the bag as one big list and choose an index within it
     -- this means that if there is more of a particular tile in the bag its more
     -- likely to be picked
-    local idx = self.gameRng:random(1, self:total())
+    local idx = gameRng:random(1, self:total())
     -- now start counting up. once the totalCount is >= the random index,
     -- the type to remove has been found.
     -- use TileType.ORDERED for repeatable randomness
@@ -75,10 +74,12 @@ function TileBag:takeRandomTile()
 end
 
 --- Take \p count random tiles from the bag, or until its empty
-function TileBag:takeRandomTiles(count)
+--- @param gameRng RandomGenerator random generator being used by the game
+--- @return table[TileType] List of the TileTypes picked
+function TileBag:takeRandomTiles(gameRng, count)
     local tiles = {}
     for ii = 1, count do
-        local tile = self:takeRandomTile()
+        local tile = self:takeRandomTile(gameRng)
         if tile == nil then
             break
         end

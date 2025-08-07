@@ -20,10 +20,10 @@ end)
 
 notion("takeRandomTile returns valid tile type", function()
     local rng = love.math.newRandomGenerator(0xdeadbeef)
-    local bag = TileBag(rng)
+    local bag = TileBag()
 
     bag:setCountForTileType(TileType.GREEN, 20)
-    check(bag:takeRandomTile()).is(TileType.GREEN)
+    check(bag:takeRandomTile(rng)).is(TileType.GREEN)
     check(bag:total()).is(19)
     check(bag:num(TileType.GREEN)).is(19)
 end)
@@ -31,13 +31,13 @@ end)
 notion("takeRandomTile repeatable with seed", function()
     -- just sanity check we get the same sequence of values with the same seed
     local rng = love.math.newRandomGenerator(0xdeadbeef)
-    local bag = TileBag(rng, 20)
+    local bag = TileBag(20)
 
     local numInBag = bag:total()
     -- assumes TileType order :/
     local expectedTiles = { TileType.PURPLE, TileType.RED, TileType.BLUE, TileType.YELLOW, TileType.GREEN }
     for _, expectedType in ipairs(expectedTiles) do
-        check(bag:takeRandomTile()).is(expectedType)
+        check(bag:takeRandomTile(rng)).is(expectedType)
     end
     check(bag:total()).is(numInBag - #expectedTiles)
 end)
@@ -45,12 +45,12 @@ end)
 notion("takeRandomTiles repeatable with seed", function()
     -- just sanity check we get the same sequence of values with the same seed
     local rng = love.math.newRandomGenerator(0xdeadbeef)
-    local bag = TileBag(rng, 20)
+    local bag = TileBag(20)
 
     local numInBag = bag:total()
     -- assumes TileType order :/
     local expectedTiles = { TileType.PURPLE, TileType.RED, TileType.BLUE, TileType.YELLOW, TileType.GREEN }
-    local actualTiles = bag:takeRandomTiles(#expectedTiles)
+    local actualTiles = bag:takeRandomTiles(rng, #expectedTiles)
     check(actualTiles).shallowMatches(expectedTiles)
     check(bag:total()).is(numInBag - #expectedTiles)
     -- add the tiles back in. then each tile should be back at its starting qty of 20
@@ -64,12 +64,12 @@ end)
 notion("takeRandomTiles returns at most total", function()
     -- verify takeRandomTiles will not return more tiles than whats present in the bag
     local rng = love.math.newRandomGenerator(0xdeadbeef)
-    local bag = TileBag(rng, 1)
+    local bag = TileBag(1)
 
     local numInBag = bag:total()
     check(numInBag).is(#TileType.ORDERED)
 
-    local actualTiles = bag:takeRandomTiles(numInBag + 2)
+    local actualTiles = bag:takeRandomTiles(rng, numInBag + 2)
     check(#actualTiles).is(numInBag)
     check(bag:total()).is(0)
     check(bag:empty()).is(true)
