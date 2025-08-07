@@ -43,7 +43,7 @@ all that information should be passed to them by their controller class
 
 Model classes exist to hold game state and provide convenience functions around running the game itself
 
-![](docs/design.drawio.svg)
+![](docs/model_design.drawio.svg)
 
 
 ### clouldless_sky/states

@@ -2,10 +2,7 @@ if arg[2] == "debug" then
     require("lldebugger").start()
 end
 -- third-party requirements
-local Camera = require("cloudless_sky.extern.hump.camera")
 local Gamestate = require("cloudless_sky.extern.hump.gamestate")
--- local
-local game = require("cloudless_sky.states.game")
 
 -- TODO: better storage/access method?
 fonts = {}
@@ -22,13 +19,7 @@ CameraXDesired, CameraYDesired = 400, 100
 love.window.setMode(1280, 720, { resizable = true })
 love.window.setTitle("Cloudless Sky")
 
-function love.conf(t)
-    t.version = "11.5"
-end
-
 function love.load(args)
-    tick = require("cloudless_sky.extern.tick")
-
     -- run unit tests if --cute arg is passed in
     local cute = require("cloudless_sky.extern.cute")
     cute.go(args)
@@ -65,17 +56,18 @@ function love.load(args)
     end
 
     -- GLOBAL CAMERA
+    local Camera = require("cloudless_sky.extern.hump.camera")
     camera = Camera(CameraXDesired, CameraYDesired)
     camera.smoother = Camera.smooth.damped(5)
 
     -- GAMESTATE
+    game = require("cloudless_sky.states.game")
     Gamestate.registerEvents()
     Gamestate.switch(game)
 end
 
 function love.update(dt)
     -- local mouseX, mouseY = camera:worldCoords(love.mouse.getPosition())
-    tick.update(dt)
     -- camera motion
     -- camera:lockPosition(CameraXDesired, CameraYDesired)
     -- ui updates
