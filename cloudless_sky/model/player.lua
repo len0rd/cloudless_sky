@@ -15,6 +15,8 @@ local TileType = require("cloudless_sky.model.tile_type")
 ---@class Player : Object
 ---@field mat PlayerMat
 ---@field hand TileBag
+---@field passedForPhase boolean During the TilePlacementPhase, players are allowed to pass once they are done
+---     This boolean keeps track of that
 local Player = Object:extend()
 
 function Player:new(starConfigs, startScore, name)
@@ -23,6 +25,8 @@ function Player:new(starConfigs, startScore, name)
     self.hand = TileBag()
     self.score = startScore
     self.playerName = name
+
+    self.passedForPhase = false
     self.actionHistory = {}
 end
 

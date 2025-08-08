@@ -40,7 +40,7 @@ function TileBag:total()
 end
 
 --- Return true if total == 0
-function TileBag:empty()
+function TileBag:isEmpty()
     return self:total() == 0
 end
 
@@ -50,7 +50,7 @@ end
 --- @param gameRng RandomGenerator random generator being used by the game
 --- @return TileType - Type of the tile taken from the bag. Or nil if the bag is empty
 function TileBag:takeRandomTile(gameRng)
-    if self:empty() then
+    if self:isEmpty() then
         return nil
     end
     -- treat the tiles in the bag as one big list and choose an index within it

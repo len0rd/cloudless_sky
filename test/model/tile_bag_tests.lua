@@ -14,7 +14,7 @@ end)
 notion("New TileBag is empty", function()
     local bag = TileBag()
 
-    check(bag:empty()).is(true)
+    check(bag:isEmpty()).is(true)
     check(bag:total()).is(0)
 end)
 
@@ -72,7 +72,7 @@ notion("takeRandomTiles returns at most total", function()
     local actualTiles = bag:takeRandomTiles(rng, numInBag + 2)
     check(#actualTiles).is(numInBag)
     check(bag:total()).is(0)
-    check(bag:empty()).is(true)
+    check(bag:isEmpty()).is(true)
     -- since there's only one of each tileType in this bag, verify all tiles returned are unique
     local unique = true
     local seen = {}
