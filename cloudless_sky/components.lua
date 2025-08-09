@@ -62,9 +62,11 @@ Concord.component(Components.names.mouseHandler, function(c, priority)
 end)
 
 --- full list of all possible mouse click events... yes i will reqret this
-Components.mouseHandler.eventTypes = {
-    matSlotClicked = 1,
-    placeTileClicked = 2,
+Components.mouseHandler = {
+    eventTypes = {
+        matSlotClicked = 1,
+        placeTileClicked = 2,
+    },
 }
 
 --- Entity dimensions can be contained within a width/height
