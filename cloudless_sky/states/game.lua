@@ -65,10 +65,7 @@ function game:draw() end
 -- events
 
 function game:onSave()
-    local serialized = {
-        rules = GameRules.currentRules(),
-        state = gameState:serialize(),
-    }
+    local serialized = gameState:serialize()
     local encoded = json.encode(serialized)
     local file = io.open("savegamelatest.json", "w")
     if file then

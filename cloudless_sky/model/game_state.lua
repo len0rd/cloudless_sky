@@ -32,6 +32,8 @@ GameState.RoundPhaseOrdered = {
 function GameState:new(gameRules, playerNames)
     local tilesPerType = math.floor(gameRules.totalTiles / #TileType.ORDERED)
 
+    self.rules = gameRules
+
     self.tileBag = TileBag(tilesPerType)
     self.discard = TileBag()
 
@@ -49,10 +51,14 @@ function GameState:new(gameRules, playerNames)
         idx = 1,
         phase = GameState.RoundPhase.TILE_SELECTION,
     }
+
+    self.actionQueue = {}
+    self.actionHistory = {}
 end
 
 function GameState:serialize()
     local serialized = {
+        rules = self.rules,
         tileBag = self.tileBag:serialize(),
         discard = self.discard:serialize(),
         players = {},
@@ -74,6 +80,23 @@ function GameState:getStar(playerIdx, starIdx)
     assert(playerIdx > 0 and playerIdx <= #self.players, "playerIdx is out of range")
     assert(starIdx > 0 and starIdx <= #self.players[playerIdx].mat.stars, "starIdx is out of range")
     return self.players[playerIdx].mat.stars[starIdx]
+end
+
+function GameState:getStarType(starIdx)
+    return self.rules.playerMat.stars[starIdx].type
+end
+
+function GameState:getCurrentWildType()
+    return self.rules.wildPerRound[self.round.idx]
+end
+
+function GameState:getMatSlotCost(starIdx, slotIdx)
+    return self.rules.playerMat.stars[starIdx].cost[slotIdx]
+end
+
+-- TODO: should be moved into an action
+function GameState:incrementTurn()
+    self.currentTurnPlayer = (self.currentTurnPlayer % #self.players) + 1
 end
 
 return GameState
