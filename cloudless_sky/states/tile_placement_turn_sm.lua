@@ -3,6 +3,7 @@ local Object = require("cloudless_sky.extern.classic")
 local TilePlacementTurnStateMachine = Object:extend()
 
 local BoxedViewSys = require("cloudless_sky.systems.boxed_view")
+local GameStateMachineMgr = require("cloudless_sky.extern.hump.gamestate")
 
 TilePlacementTurnStateMachine.STATES = {
     IDLE = 1,
@@ -24,13 +25,19 @@ function TilePlacementTurnStateMachine:enter(fromState, playerIdx, gameState, gr
     self.playerIdx = playerIdx
     self.gameState = gameState
     self.graphicsState = graphicsState
-    print("entering PlacementTurnSM!")
+    self.spacePressed = false
+    print("entering PlacementTurnSM for " .. tostring(playerIdx))
 end
 
 function TilePlacementTurnStateMachine:update(dt)
     if self.state == self.STATES.IDLE then
         -- transition to players mat
     end
+    if self.spacePressed then
+        GameStateMachineMgr.pop()
+        return
+    end
+
     self:centerCamera()
 
     self.graphicsState.world:emit("update", dt, self.gameState)
@@ -47,6 +54,12 @@ end
 function TilePlacementTurnStateMachine:mousepressed(x, y, button, istouch)
     self.graphicsState.world:emit("mousePressed", x, y, button, istouch)
     self.mouseClicked = true
+end
+
+function TilePlacementTurnStateMachine:keyreleased(key, code)
+    if key == "space" then
+        self.spacePressed = true
+    end
 end
 
 function TilePlacementTurnStateMachine:centerCamera()

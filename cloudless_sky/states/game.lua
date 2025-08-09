@@ -18,10 +18,7 @@ local game = {}
 
 local spacePressed = false
 
-function game:init() end
-
--- runs every time the state is entered
-function game:enter()
+function game:init()
     local playerNames = { "lenord", "karoty" }
     local rules = GameRules.currentRules()
 
@@ -40,17 +37,27 @@ function game:enter()
     graphicsState.world:addSystems(MousePressedSys, DrawSys)
 
     turnSm = TilePlacementTurnStateMachine()
+end
+
+-- runs every time the state is entered
+function game:enter(from)
+    -- turn finished
 
     -- if saveGame ~= nil then
     --     playerControl:deserialize(saveGame["players"][1])
     -- end
 end
 
+function game:resume(from)
+    print("increment turn!")
+    gameState:incrementTurn()
+end
+
 function game:update(dt)
-    if spacePressed then
-        print("GO TO TURN SM!!")
-        GameStateMachineMgr.push(turnSm, 1, gameState, graphicsState)
-    end
+    -- if spacePressed then
+    --     spacePressed = false
+    GameStateMachineMgr.push(turnSm, gameState.currentTurnPlayer, gameState, graphicsState)
+    -- end
 end
 
 function game:draw() end
