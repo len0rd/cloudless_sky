@@ -4,6 +4,9 @@ local TilePlacementTurnStateMachine = Object:extend()
 
 local BoxedViewSys = require("cloudless_sky.systems.boxed_view")
 local GameStateMachineMgr = require("cloudless_sky.extern.hump.gamestate")
+local MousePressedSys = require("cloudless_sky.systems.mouse_pressed")
+local PlaceTileDialogEntity = require("cloudless_sky.entities.place_tile_dialog_entity")
+local PlayerMatTileAnchorSys = require("cloudless_sky.systems.player_mat_tile_anchor")
 
 TilePlacementTurnStateMachine.STATES = {
     IDLE = 1,
@@ -37,6 +40,30 @@ function TilePlacementTurnStateMachine:update(dt)
         GameStateMachineMgr.pop()
         return
     end
+    local mousePressSys = self.graphicsState.world:getSystem(MousePressedSys)
+    if self.mouseClicked and mousePressSys and mousePressSys.lastPressedEntity then
+        -- TODO: hacky hacky hacky hacky hacky hacky hacky hacky hacky hacky hacky hacky
+
+        local pressCtx = mousePressSys.lastPressedEntity.mouseHandler.clickEvent
+        print("looks like a button press was handled!: " .. table.shallowPrint(pressCtx))
+        local placementOpts = self.gameState.players[pressCtx.playerIdx]:generatePlacementPossibilities(
+            pressCtx.starIdx,
+            pressCtx.slotIdx,
+            self.gameState:getCurrentWildType()
+        )
+        local prompt = PlaceTileDialogEntity.new(
+            pressCtx.playerIdx,
+            pressCtx.starIdx,
+            pressCtx.slotIdx,
+            self.gameState:getMatSlotCost(pressCtx.starIdx, pressCtx.slotIdx),
+            placementOpts,
+            self.gameState:getStarType(pressCtx.starIdx)
+        )
+        self.graphicsState.world:addEntity(prompt)
+
+        local w, h = love.graphics.getPixelDimensions()
+        PlayerMatTileAnchorSys.ensureEntityFullyVisible(prompt, w, h, self.graphicsState.matEntities)
+    end
 
     self:centerCamera()
 
@@ -52,7 +79,8 @@ function TilePlacementTurnStateMachine:draw()
 end
 
 function TilePlacementTurnStateMachine:mousepressed(x, y, button, istouch)
-    self.graphicsState.world:emit("mousePressed", x, y, button, istouch)
+    print("emit mouse press!")
+    self.graphicsState.world:emit("mousepressed", x, y, button, istouch)
     self.mouseClicked = true
 end
 
@@ -60,6 +88,10 @@ function TilePlacementTurnStateMachine:keyreleased(key, code)
     if key == "space" then
         self.spacePressed = true
     end
+end
+
+function TilePlacementTurnStateMachine:resize(w, h)
+    self.graphicsState.world:emit("resize", w, h, self.graphicsState)
 end
 
 function TilePlacementTurnStateMachine:centerCamera()

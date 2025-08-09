@@ -6,38 +6,12 @@ local Components = require("cloudless_sky.components")
 local Constants = require("cloudless_sky.constants")
 local StarView = require("cloudless_sky.view.star_view")
 local BoxedViewSys = require("cloudless_sky.systems.boxed_view")
+local EUtil = require("cloudless_sky.entities.e_util")
 
 ---@class PlayerMatEntity
+---@field stars table[StarView] Mat-index-ordered list of star view objects
 local PlayerMatEntity = {}
 PlayerMatEntity.__index = PlayerMatEntity
-
-local function extend(base, child)
-    -- Preserve the original metatable and add PlayerMatEntity methods
-    local originalMT = getmetatable(base)
-    local newMT = {}
-
-    -- Copy original metatable
-    for k, v in pairs(originalMT) do
-        newMT[k] = v
-    end
-
-    -- Add child methods to the __index
-    local originalIndex = newMT.__index
-    newMT.__index = function(t, k)
-        -- First check child methods
-        if child[k] then
-            return child[k]
-        end
-        -- Then check original base methods
-        if type(originalIndex) == "function" then
-            return originalIndex(t, k)
-        elseif originalIndex then
-            return originalIndex[k]
-        end
-    end
-
-    setmetatable(base, newMT)
-end
 
 -- padding between each star in pixels. must be an even number
 local STAR_PADDING = 2
@@ -55,7 +29,7 @@ function PlayerMatEntity.new(playerIdx, sizePx, starTypes)
     assert(starTypes, "PlayerMatEntity must know what star types it has")
     local x, y = determineWorldCoords(playerIdx, sizePx)
 
-    extend(entity, PlayerMatEntity)
+    EUtil.extendEntity(entity, PlayerMatEntity)
 
     entity
         :give(Components.names.worldPos, x, y)
@@ -118,6 +92,26 @@ function PlayerMatEntity:coordStarSlotIndex(worldX, worldY)
         end
     end
     return 0, 0
+end
+
+function PlayerMatEntity:centerOfSlot(starIdx, slotIdx)
+    assert(starIdx and starIdx > 0 and starIdx <= #self.stars, "Invalid star index!")
+    return self.stars[starIdx]:centerOfSlot(slotIdx)
+end
+
+function PlayerMatEntity:mousePressed(cameraX, cameraY, worldX, worldY, button, istouch)
+    local starIdx, slotIdx = self:coordStarSlotIndex(worldX, worldY)
+    if starIdx ~= 0 and slotIdx ~= 0 then
+        -- we done been clicked!
+        self.mouseHandler.clickEvent = {
+            type = Components.mouseHandler.eventTypes.matSlotClicked,
+            playerIdx = self.playerEntity.idx,
+            starIdx = starIdx,
+            slotIdx = slotIdx,
+        }
+        return true
+    end
+    return false
 end
 
 function PlayerMatEntity:update(dt, gameState)
