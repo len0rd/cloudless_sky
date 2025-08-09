@@ -34,7 +34,14 @@ function game:init()
         graphicsState.world:addEntity(graphicsState.matEntities[ii])
     end
 
-    graphicsState.world:addSystems(MousePressedSys, DrawSys)
+    --- REMEMBER: systems are called in the order they are added
+    graphicsState.world:addSystems(MousePressedSys, DrawSys, PlayerMatTileAnchorSys, EnforceUniqueGroupSys)
+    function graphicsState.world:onEntityAdded(e)
+        if e:has(Components.names.uniqueGroup) then
+            -- right now this is the only situation where systems care about new entities
+            self:emit("entityAdded", e)
+        end
+    end
 
     turnSm = TilePlacementTurnStateMachine()
 end

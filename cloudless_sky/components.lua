@@ -16,6 +16,7 @@ Components.names = {
     mouseFocusable = "mouseFocusable",
     boundingBox = "boundingBox",
     playerEntity = "playerEntity",
+    uniqueGroup = "uniqueGroup",
 }
 
 --- Entity should remain anchored on a particular player mat tile
@@ -60,12 +61,25 @@ Concord.component(Components.names.mouseHandler, function(c, priority)
     c.clickEvent = nil
 end)
 
+--- full list of all possible mouse click events... yes i will reqret this
+Components.mouseHandler.eventTypes = {
+    matSlotClicked = 1,
+    placeTileClicked = 2,
+}
+
 --- Entity dimensions can be contained within a width/height
 Concord.component(Components.names.boundingBox, function(c, w, h)
     assert(w ~= nil and w > 0, "boundingBox component must have a width! got: " .. tostring(w))
     assert(h ~= nil and h > 0, "boundingBox component must have a height! got: " .. tostring(h))
     c.w = w
     c.h = h
+end)
+
+--- Entity is in a "unique group", meaning that only one entity of a given group may exist in the world
+--- at any given time. If a new entity in a uniqueGroup is added, any older entity in the same group
+--- will be removed
+Concord.component(Components.names.uniqueGroup, function(c, ug)
+    c.name = ug
 end)
 
 return Components
