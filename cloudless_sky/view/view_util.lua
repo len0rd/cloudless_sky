@@ -27,21 +27,23 @@ function ViewUtil.euclidianDistance(x1, y1, x2, y2)
     return math.sqrt(dx * dx + dy * dy)
 end
 
-function ViewUtil.shiftVerticies(vertices, xShift, yShift)
-    for ii = 1, #vertices, 2 do
-        vertices[ii] = vertices[ii] + xShift
-        vertices[ii + 1] = vertices[ii + 1] + yShift
+--- Transform X,Y verticies in a flat table by xShift, yShift
+--- @param verticies table. List of verticies formatted {x1,y1, x2,y2, x3,y3, ...}
+function ViewUtil.shiftVerticies(verticies, xShift, yShift)
+    for ii = 1, #verticies, 2 do
+        verticies[ii] = verticies[ii] + xShift
+        verticies[ii + 1] = verticies[ii + 1] + yShift
     end
-    return vertices
+    return verticies
 end
 
 --- @return number, number, number, number BoundingBox. x,y,w,h of the bounding box
----     made by the provided vertices. x,y is the top left coordinate of the bounding box
-function ViewUtil.boundingBoxOfVertices(vertices)
-    local minX, minY = vertices[1], vertices[2]
-    local maxX, maxY = vertices[1], vertices[2]
-    for i = 3, #vertices, 2 do
-        local x, y = vertices[i], vertices[i + 1]
+---     made by the provided verticies. x,y is the top left coordinate of the bounding box
+function ViewUtil.boundingBoxOfVerticies(verticies)
+    local minX, minY = verticies[1], verticies[2]
+    local maxX, maxY = verticies[1], verticies[2]
+    for i = 3, #verticies, 2 do
+        local x, y = verticies[i], verticies[i + 1]
         if x < minX then
             minX = x
         end

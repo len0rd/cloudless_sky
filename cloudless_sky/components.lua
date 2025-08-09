@@ -1,41 +1,73 @@
 --- All game component definitions
 
 local Concord = require("cloudless_sky.extern.concord")
+local Constants = require("cloudless_sky.constants")
 
-local MIN_PRIORITY = 100
+local Components = {}
 
-Concord.component("tileFocus", function(c, starIdx, slotIdx)
+Components.names = {
+    playerMatTileAnchor = "playerMatTileAnchor",
+    playerMatTileFocus = "playerMatTileFocus",
+    killOffCamera = "killOffCamera",
+    worldPos = "worldPos",
+    cameraPos = "cameraPos",
+    drawable = "drawable",
+    mouseHandler = "mouseHandler",
+    mouseFocusable = "mouseFocusable",
+    boundingBox = "boundingBox",
+}
+
+--- Entity should remain anchored on a particular player mat tile
+Concord.component(Components.names.playerMatTileAnchor, function(c, starIdx, slotIdx)
     assert(starIdx ~= nil and starIdx ~= 0, "valid starIdx is required")
     assert(slotIdx ~= nil and slotIdx ~= 0, "valid slotIdx is required")
     c.starIdx = starIdx
     c.slotIdx = slotIdx
 end)
 
-Concord.component("worldPosition", function(c, worldX, worldY)
-    c.worldX = worldX or 0
-    c.worldY = worldY or 0
+--- Entity wants to know what tile is in "focus" ie: the visible player mat tile
+--- currently hovered by mouse or highlighted by control
+--- The component will be updated prior to its :update call (if any)
+Concord.component(Components.names.playerMatTileFocus, function(c)
+    c.focusStarIdx = 0
+    c.focusSlotIdx = 0
 end)
 
-Concord.component("cameraPosition", function(c, cameraX, cameraY)
-    c.cameraX = cameraX or 0
-    c.cameraY = cameraY or 0
+--- If the entity is not in the cameras current view port, remove it from the world
+Concord.component(Components.names.killOffCamera)
+
+--- Entity has a position in the world frame. Typically defines its top-left BBox corner
+Concord.component(Components.names.worldPos, function(c, worldX, worldY)
+    c.x = worldX or 0
+    c.y = worldY or 0
 end)
 
---- Entities that have a draw function. Smaller number = higher priority
-Concord.component("drawable", function(c, priority)
-    c.priority = priority or MIN_PRIORITY
+--- Entity has a position in the camera frame. Typically defines its top-left BBox corner
+Concord.component(Components.names.cameraPos, function(c, cameraX, cameraY)
+    c.x = cameraX or 0
+    c.y = cameraY or 0
 end)
 
---- Entities that have a mousePressed handler which returns true if the mouse event was
+--- Entity has an update and draw function. Smaller number = higher priority
+Concord.component(Components.names.drawable, function(c, priority)
+    c.priority = priority or Constants.drawPriority.min
+end)
+
+--- Entity has a mousePressed handler which returns true if the mouse event was
 --- handled by it or false if not. Smaller number = higher priority
-Concord.component("mouseHandler", function(c, priority)
-    c.priority = priority or MIN_PRIORITY
+--- If the entity handled a mouse press, it can optionally set clickEvent to something. clickEvent will
+--- be reset to nil at the end of each update (on :leaveUpdate )
+Concord.component(Components.names.mouseHandler, function(c, priority)
+    c.priority = priority or Constants.drawPriority.min
+    c.clickEvent = nil
 end)
 
 --- Entity dimensions can be contained within a width/height
-Concord.component("boundingBox", function(c, w, h)
+Concord.component(Components.names.boundingBox, function(c, w, h)
     assert(w ~= nil and w > 0, "boundingBox component must have a width! got: " .. tostring(w))
     assert(h ~= nil and h > 0, "boundingBox component must have a height! got: " .. tostring(h))
     c.w = w
     c.h = h
 end)
+
+return Components

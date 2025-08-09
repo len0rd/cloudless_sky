@@ -45,7 +45,7 @@ function TileView.suitDrawTile(ignored, opt, x, y, w, h)
     local TILE_SIZE = opt["size"] or h - (2 * PAD)
 
     local tileVertices = TileView.tilePolyVerticies(TILE_SIZE, ROT)
-    local _, _, tileW, tileH = ViewUtil.boundingBoxOfVertices(tileVertices)
+    local _, _, tileW, tileH = ViewUtil.boundingBoxOfVerticies(tileVertices)
 
     ViewUtil.shiftVerticies(tileVertices, x + ((w - tileW) / 2) - tileW / 2, y + ((h - tileH) / 2) + (tileH / 2))
     local color = TileView.TILE_COLOR[opt.tileType]

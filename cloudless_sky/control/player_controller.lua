@@ -3,7 +3,6 @@
 local Object = require("cloudless_sky.extern.classic")
 local Player = require("cloudless_sky.model.player")
 local GameRules = require("cloudless_sky.model.game_rules")
-local PlayerMatController = require("cloudless_sky.control.player_mat_controller")
 local TileType = require("cloudless_sky.model.tile_type")
 local PlayerHUD = require("cloudless_sky.view.player_hud")
 local PlaceTilePromptController = require("cloudless_sky.control.place_tile_prompt_controller")

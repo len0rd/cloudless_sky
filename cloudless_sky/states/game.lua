@@ -1,36 +1,66 @@
 -- Game state (game is being actively played)
-local PlayerController = require("cloudless_sky.control.player_controller")
+-- local PlayerController = require("cloudless_sky.control.player_controller")
 local json = require("cloudless_sky.extern.json")
 local GameRules = require("cloudless_sky.model.game_rules")
+local GameState = require("cloudless_sky.model.game_state")
+
+local Concord = require("cloudless_sky.extern.concord")
+local MousePressedSys = require("cloudless_sky.systems.mouse_pressed")
+local DrawSys = require("cloudless_sky.systems.draw")
+
+local PlayerMatEntity = require("cloudless_sky.entities.player_mat_entity")
+
+local TilePlacementTurnStateMachine = require("cloudless_sky.states.tile_placement_turn_sm")
+
+local GameStateMachineMgr = require("cloudless_sky.extern.hump.gamestate")
 
 local game = {}
+
+local spacePressed = false
 
 function game:init() end
 
 -- runs every time the state is entered
-function game:enter(gameSettings, gameState)
-    playerControl = PlayerController("lenord", 200, 200, 600)
-    if saveGame ~= nil then
-        playerControl:deserialize(saveGame["players"][1])
+function game:enter()
+    local playerNames = { "lenord", "karoty" }
+    local rules = GameRules.currentRules()
+
+    gameState = GameState(rules, playerNames)
+
+    graphicsState = {
+        world = Concord.world(),
+        -- make player mat entities easily accessible
+        matEntities = {},
+    }
+    for ii = 1, #playerNames do
+        graphicsState.matEntities[ii] = PlayerMatEntity.new(ii, 600, GameRules.matStarTypes(rules))
+        graphicsState.world:addEntity(graphicsState.matEntities[ii])
     end
+
+    graphicsState.world:addSystems(MousePressedSys, DrawSys)
+
+    turnSm = TilePlacementTurnStateMachine()
+
+    -- if saveGame ~= nil then
+    --     playerControl:deserialize(saveGame["players"][1])
+    -- end
 end
 
 function game:update(dt)
-    playerControl:update(dt)
+    if spacePressed then
+        print("GO TO TURN SM!!")
+        GameStateMachineMgr.push(turnSm, 1, gameState, graphicsState)
+    end
 end
 
-function game:draw()
-    playerControl:draw()
-end
+function game:draw() end
 
 -- events
 
 function game:onSave()
     local serialized = {
         rules = GameRules.currentRules(),
-        players = {
-            playerControl:serialize(),
-        },
+        state = gameState:serialize(),
     }
     local encoded = json.encode(serialized)
     local file = io.open("savegamelatest.json", "w")
@@ -45,18 +75,20 @@ end
 
 function game:mousepressed(x, y, button, istouch)
     local clickX, clickY = camera:worldCoords(x, y)
-    playerControl:mousePressed(clickX, clickY, button, istouch)
+    -- playerControl:mousePressed(clickX, clickY, button, istouch)
 end
 
 function game:keyreleased(key, code)
     if key == "escape" then
         self:onSave()
         love.event.quit(0)
+    elseif key == "space" then
+        spacePressed = true
     end
 end
 
 function game:resize(w, h)
-    playerControl:resize(w, h)
+    -- playerControl:resize(w, h)
 end
 
 return game

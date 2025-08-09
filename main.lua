@@ -2,7 +2,7 @@ if arg[2] == "debug" then
     require("lldebugger").start()
 end
 -- third-party requirements
-local Gamestate = require("cloudless_sky.extern.hump.gamestate")
+local GameStateMachineMgr = require("cloudless_sky.extern.hump.gamestate")
 
 -- TODO: better storage/access method?
 fonts = {}
@@ -62,8 +62,8 @@ function love.load(args)
 
     -- GAMESTATE
     game = require("cloudless_sky.states.game")
-    Gamestate.registerEvents()
-    Gamestate.switch(game)
+    GameStateMachineMgr.registerEvents()
+    GameStateMachineMgr.switch(game)
 end
 
 function love.update(dt)
@@ -84,7 +84,7 @@ function love.mousepressed(x, y, button, istouch) end
 function love.mousereleased(x, y, button, istouch) end
 
 function love.resize(w, h)
-    Gamestate.current():resize(w, h)
+    -- Gamestate.current():resize(w, h)
 end
 
 -- error handling

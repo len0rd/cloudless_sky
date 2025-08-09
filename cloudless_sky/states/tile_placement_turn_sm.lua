@@ -2,6 +2,8 @@
 local Object = require("cloudless_sky.extern.classic")
 local TilePlacementTurnStateMachine = Object:extend()
 
+local BoxedViewSys = require("cloudless_sky.systems.boxed_view")
+
 TilePlacementTurnStateMachine.STATES = {
     IDLE = 1,
     SELECTING_TILE = 2,
@@ -13,24 +15,43 @@ TilePlacementTurnStateMachine.STATES = {
 function TilePlacementTurnStateMachine:new()
     -- nah
     self.state = self.STATES.IDLE
+    self.mouseClicked = false
+    self.cameraZoom = 1.0
 end
 
-function TilePlacementTurnStateMachine:enter(playerIdx, gameState)
+function TilePlacementTurnStateMachine:enter(fromState, playerIdx, gameState, graphicsState)
     self.state = self.STATES.IDLE
     self.playerIdx = playerIdx
     self.gameState = gameState
+    self.graphicsState = graphicsState
+    print("entering PlacementTurnSM!")
 end
 
 function TilePlacementTurnStateMachine:update(dt)
-    -- when blocking animations are in progress, dont run the state machine
-    if not self.blockingAnimMgr:isEmpty() then
-        self.blockingAnimMgr:update(dt)
-        return
-    end
-
     if self.state == self.STATES.IDLE then
         -- transition to players mat
     end
+    self:centerCamera()
+
+    if self.mouseClicked then
+        self.graphicsState.world:emit("leaveUpdate")
+    end
+end
+
+function TilePlacementTurnStateMachine:draw()
+    self.graphicsState.world:emit("draw", self.gameState)
+end
+
+function TilePlacementTurnStateMachine:mousepressed(x, y, button, istouch)
+    self.graphicsState.world:emit("mousePressed", x, y, button, istouch)
+    self.mouseClicked = true
+end
+
+function TilePlacementTurnStateMachine:centerCamera()
+    local matCenterX, matCenterY = BoxedViewSys.worldCenter(self.graphicsState.matEntities[self.playerIdx])
+
+    camera:zoomTo(self.cameraZoom)
+    camera:lockPosition(matCenterX, matCenterY)
 end
 
 return TilePlacementTurnStateMachine

@@ -70,4 +70,12 @@ function GameState:numPlayers()
     return #self.players
 end
 
+--- convenience access functions:
+
+function GameState:getStar(playerIdx, starIdx)
+    assert(playerIdx > 0 and playerIdx <= #self.players, "playerIdx is out of range")
+    assert(starIdx > 0 and starIdx <= #self.players[playerIdx].mat.stars, "starIdx is out of range")
+    return self.players[playerIdx].mat.stars[starIdx]
+end
+
 return GameState

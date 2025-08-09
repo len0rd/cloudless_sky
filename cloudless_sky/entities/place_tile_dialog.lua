@@ -11,7 +11,7 @@ local PROMPT_HEIGHT = 100
 
 function PlaceTileDialog:new(starIdx, slotIdx)
     self = Concord.entity()
-    self:give("tileFocus", starIdx, slotIdx)
+    self:give("playerMatTileFocus", starIdx, slotIdx)
         :give("boundingBox", PROMPT_WIDTH, PROMPT_HEIGHT)
         :give("mouseHandler", 10)
         :give("drawable", 10)

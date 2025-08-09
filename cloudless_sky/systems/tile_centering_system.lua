@@ -3,7 +3,7 @@
 local Concord = require("cloudless_sky.extern.concord")
 
 local TileWorldCenteringSystem = Concord.system({
-    pool = { "tileFocus", "worldPosition", "boundingBox" },
+    pool = { "tileFocus", "worldPos", "boundingBox" },
 })
 
 --- On a resize, ensure the entity stays centered on a tile

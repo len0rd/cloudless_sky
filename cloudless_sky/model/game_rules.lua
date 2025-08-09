@@ -156,4 +156,17 @@ function GameRules.serialize()
     return GameRules.currentRules()
 end
 
+--- Get the mat-indexed list of star types for the provided rules. if rules is nil, current is used
+function GameRules.matStarTypes(rules)
+    local ruleset = rules
+    if not ruleset then
+        ruleset = GameRules.currentRules()
+    end
+    local sTypes = {}
+    for _, star in ipairs(ruleset.playerMat.stars) do
+        table.insert(sTypes, star.type)
+    end
+    return sTypes
+end
+
 return GameRules

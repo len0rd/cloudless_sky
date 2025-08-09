@@ -15,6 +15,9 @@
 **world** = The ECS container for all the game's graphic entities. Entities represent portions of gameState. The only state they own is visualization-related. As such they are typically provided `gameState` on construction and update to enable accurate representation of the current model.
 
 
+- probably a bastardization of true ECS since my entities are full classes that also contain a number of convenience functions... ¯\_(ツ)_/¯
+
+
 QUESTIONS
 
 - how to interact with events??
