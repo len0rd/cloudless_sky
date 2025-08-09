@@ -33,6 +33,8 @@ function TilePlacementTurnStateMachine:update(dt)
     end
     self:centerCamera()
 
+    self.graphicsState.world:emit("update", dt, self.gameState)
+
     if self.mouseClicked then
         self.graphicsState.world:emit("leaveUpdate")
     end

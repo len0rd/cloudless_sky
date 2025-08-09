@@ -49,8 +49,6 @@ function GameState:new(gameRules, playerNames)
         idx = 1,
         phase = GameState.RoundPhase.TILE_SELECTION,
     }
-    self.currentRound = 1
-    self.currentRoundPhase = GameState.RoundPhase.TILE_SELECTION
 end
 
 function GameState:serialize()

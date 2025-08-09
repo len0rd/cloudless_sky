@@ -11,6 +11,34 @@ local BoxedViewSys = require("cloudless_sky.systems.boxed_view")
 local PlayerMatEntity = {}
 PlayerMatEntity.__index = PlayerMatEntity
 
+local function extend(base, child)
+    -- Preserve the original metatable and add PlayerMatEntity methods
+    local originalMT = getmetatable(base)
+    local newMT = {}
+
+    -- Copy original metatable
+    for k, v in pairs(originalMT) do
+        newMT[k] = v
+    end
+
+    -- Add child methods to the __index
+    local originalIndex = newMT.__index
+    newMT.__index = function(t, k)
+        -- First check child methods
+        if child[k] then
+            return child[k]
+        end
+        -- Then check original base methods
+        if type(originalIndex) == "function" then
+            return originalIndex(t, k)
+        elseif originalIndex then
+            return originalIndex[k]
+        end
+    end
+
+    setmetatable(base, newMT)
+end
+
 -- padding between each star in pixels. must be an even number
 local STAR_PADDING = 2
 
@@ -26,40 +54,15 @@ function PlayerMatEntity.new(playerIdx, sizePx, starTypes)
     local entity = Concord.entity()
     assert(starTypes, "PlayerMatEntity must know what star types it has")
     local x, y = determineWorldCoords(playerIdx, sizePx)
-    entity.playerIdx = playerIdx
 
-    -- Preserve the original metatable and add PlayerMatEntity methods
-    local originalMT = getmetatable(entity)
-    local newMT = {}
-
-    -- Copy original metatable
-    for k, v in pairs(originalMT) do
-        newMT[k] = v
-    end
-
-    -- Add PlayerMatEntity methods to the __index
-    local originalIndex = newMT.__index
-    newMT.__index = function(t, k)
-        -- First check PlayerMatEntity methods
-        if PlayerMatEntity[k] then
-            return PlayerMatEntity[k]
-        end
-        -- Then check original Entity methods
-        if type(originalIndex) == "function" then
-            return originalIndex(t, k)
-        elseif originalIndex then
-            return originalIndex[k]
-        end
-    end
-
-    setmetatable(entity, newMT)
+    extend(entity, PlayerMatEntity)
 
     entity
         :give(Components.names.worldPos, x, y)
         :give(Components.names.boundingBox, sizePx, sizePx)
         :give(Components.names.drawable, Constants.drawPriority.playerMat)
         :give(Components.names.mouseHandler, Constants.drawPriority.playerMat)
-        :give(Components.names.playerMatTileFocus)
+        :give(Components.names.playerEntity, playerIdx)
 
     -- get StarViews initialized
     entity.star_size = (entity.boundingBox.w - STAR_PADDING) / 3
@@ -95,6 +98,9 @@ function PlayerMatEntity.new(playerIdx, sizePx, starTypes)
         entity.stars[ii] = StarView(starTypes[ii], origin[1], origin[2], entity.star_size)
     end
 
+    entity.focusStarIdx = 0
+    entity.focusSlotIdx = 0
+
     return entity
 end
 
@@ -115,21 +121,22 @@ function PlayerMatEntity:coordStarSlotIndex(worldX, worldY)
 end
 
 function PlayerMatEntity:update(dt, gameState)
+    self.focusStarIdx, self.focusSlotIdx = self:coordStarSlotIndex(camera:mousePosition())
     for _, star in ipairs(self.stars) do
         star:update(0)
     end
-    if self.playerMatTileFocus.focusStarIdx ~= 0 then
-        self.stars[self.playerMatTileFocus.focusStarIdx]:update(self.playerMatTileFocus.focusSlotIdx)
+    if self.focusStarIdx ~= 0 then
+        self.stars[self.focusStarIdx]:update(self.focusSlotIdx)
     end
 end
 
 function PlayerMatEntity:draw(gameState)
     local numStars = #self.stars
-    local startIdx = (self.playerMatTileFocus.focusStarIdx % numStars) + 1
+    local startIdx = (self.focusStarIdx % numStars) + 1
 
     for ii = startIdx, startIdx + numStars - 1 do
         local starIdx = ((ii - 1) % numStars) + 1
-        self.stars[starIdx]:draw(gameState:getStar(self.playerIdx, starIdx))
+        self.stars[starIdx]:draw(gameState:getStar(self.playerEntity.idx, starIdx))
     end
 end
 

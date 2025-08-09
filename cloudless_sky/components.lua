@@ -15,6 +15,7 @@ Components.names = {
     mouseHandler = "mouseHandler",
     mouseFocusable = "mouseFocusable",
     boundingBox = "boundingBox",
+    playerEntity = "playerEntity",
 }
 
 --- Entity should remain anchored on a particular player mat tile
@@ -25,12 +26,9 @@ Concord.component(Components.names.playerMatTileAnchor, function(c, starIdx, slo
     c.slotIdx = slotIdx
 end)
 
---- Entity wants to know what tile is in "focus" ie: the visible player mat tile
---- currently hovered by mouse or highlighted by control
---- The component will be updated prior to its :update call (if any)
-Concord.component(Components.names.playerMatTileFocus, function(c)
-    c.focusStarIdx = 0
-    c.focusSlotIdx = 0
+--- This entity is tied to a particular player and should only by updated when its that players turn
+Concord.component(Components.names.playerEntity, function(c, playerIdx)
+    c.idx = playerIdx
 end)
 
 --- If the entity is not in the cameras current view port, remove it from the world
