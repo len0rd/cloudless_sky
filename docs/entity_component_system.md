@@ -1,5 +1,19 @@
 # Entity Component System
 
+- all high-level visual board entities:
+    - player mats
+    - factory display
+    - board display
+
+    - should have their respective draw function called on EVERY iteration.
+    - from there relevant entities should check if they are in the camera frame (overlapping worldCoord BB's) and if so, THEN call the rest of draw, otherwise skip!
+    - these entities should exist in the world for the lifetime of the game (not removed/re-instantiated during each turn)
+    - is this bad for performance??
+    - motivation is for transitions between objects. ie: i want to smoothly move from current board to next player board when the turn changes
+
+**gameState** = Container of all non-graphical game state. Top-level model object that can be serialized for save games.
+**world** = The ECS container for all the game's graphic entities. Entities represent portions of gameState. The only state they own is visualization-related. As such they are typically provided `gameState` on construction and update to enable accurate representation of the current model.
+
 
 QUESTIONS
 
