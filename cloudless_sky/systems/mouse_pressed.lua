@@ -7,11 +7,11 @@ local MousePressedSys = Concord.system({
 
 function MousePressedSys:mousepressed(cameraX, cameraY, button, istouch)
     -- ensure entities are priority-sorted
-    table.sort(self.pool, function(a, b)
+    local worldX, worldY = camera:worldCoords(cameraX, cameraY)
+    self.pool:sort(function(a, b)
         return a.mouseHandler.priority < b.mouseHandler.priority
     end)
 
-    local worldX, worldY = camera:worldCoords(cameraX, cameraY)
     for _, e in ipairs(self.pool) do
         if e:mousePressed(cameraX, cameraY, worldX, worldY, button, istouch) then
             -- entity has claimed it handled the mouse. done

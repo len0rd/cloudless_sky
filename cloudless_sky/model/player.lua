@@ -120,7 +120,7 @@ function Player:deserialize(data)
 end
 
 --- @return boolean occupied. True if the given slot has a tile in it, otherwise false
-function Player:slotOccupied(starIdx, slotIdx)
+function Player:isSlotOccupied(starIdx, slotIdx)
     return self.mat:isOccupied(starIdx, slotIdx)
 end
 

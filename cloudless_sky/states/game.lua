@@ -5,8 +5,11 @@ local GameRules = require("cloudless_sky.model.game_rules")
 local GameState = require("cloudless_sky.model.game_state")
 
 local Concord = require("cloudless_sky.extern.concord")
+local Components = require("cloudless_sky.components")
 local MousePressedSys = require("cloudless_sky.systems.mouse_pressed")
 local DrawSys = require("cloudless_sky.systems.draw")
+local PlayerMatTileAnchorSys = require("cloudless_sky.systems.player_mat_tile_anchor")
+local EnforceUniqueGroupSys = require("cloudless_sky.systems.enforce_unique_group")
 
 local PlayerMatEntity = require("cloudless_sky.entities.player_mat_entity")
 

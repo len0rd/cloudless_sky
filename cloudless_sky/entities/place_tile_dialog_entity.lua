@@ -1,6 +1,4 @@
 --- Pop-up dialog for spaces where the player can place a tile
-
-local Object = require("cloudless_sky.extern.classic")
 local Concord = require("cloudless_sky.extern.concord")
 local Components = require("cloudless_sky.components")
 local Constants = require("cloudless_sky.constants")

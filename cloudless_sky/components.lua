@@ -82,6 +82,7 @@ end)
 --- will be removed
 Concord.component(Components.names.uniqueGroup, function(c, ug)
     c.name = ug
+    c.uid = os.clock()
 end)
 
 return Components

@@ -52,7 +52,7 @@ function DrawSys:draw(gameState)
     camera:detach()
 
     -- camera pool always has higher priority than world-entities
-    table.sort(self.cameraPool, sortByPriority)
+    self.cameraPool:sort(sortByPriority)
     for _, e in ipairs(self.cameraPool) do
         e:draw(gameState)
     end

@@ -7,11 +7,22 @@ local EnforceUniqueGroupSys = Concord.system({
 })
 
 function EnforceUniqueGroupSys:entityAdded(newEntity)
+    local entityToRemove = nil
     for _, e in ipairs(self.pool) do
-        if e ~= newEntity and e.uniqueGroup.name == newEntity.uniqueGroup.name then
+        if
+            e.uniqueGroup
+            and e.uniqueGroup.uid ~= newEntity.uniqueGroup.uid
+            and e.uniqueGroup.name == newEntity.uniqueGroup.name
+        then
             -- match. remove the old
-            self:getWorld():removeEntity(e)
+            entityToRemove = e
+            -- assuming that this system has always been running and that there
+            -- is at most one other entity in a given group
+            break
         end
+    end
+    if entityToRemove then
+        entityToRemove:destroy()
     end
 end
 
