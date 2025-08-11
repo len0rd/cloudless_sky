@@ -42,3 +42,24 @@ function table.copy(obj)
     -- Kick things off by processing the root table.
     return process(obj)
 end
+
+--- Function that prints just the top-level strings, integers, and numbers in the given table
+function table.shallowPrint(t)
+    if type(t) ~= "table" then
+        return "Error: Expected table, got " .. type(t)
+    end
+
+    local result = "table = {\n"
+
+    for k, v in pairs(t) do
+        local valueType = type(v)
+        if valueType == "string" or valueType == "number" then
+            local keyStr = type(k) == "string" and k or "[" .. tostring(k) .. "]"
+            local valueStr = valueType == "string" and '"' .. v .. '"' or tostring(v)
+            result = result .. "  " .. keyStr .. " = " .. valueStr .. "\n"
+        end
+    end
+
+    result = result .. "}"
+    return result
+end

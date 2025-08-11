@@ -1,16 +1,21 @@
--- small confirmation prompt for what tile to place
--- along with a selector of how many wilds to use
-local Object = require("cloudless_sky.extern.classic")
-local PlacePromptView = Object:extend()
-local ViewUtil = require("cloudless_sky.view.view_util")
-local TileView = require("cloudless_sky.view.tile_view")
-
-local PlacementPossibility = require("cloudless_sky.model.placement_possibility")
-local TileType = require("cloudless_sky.model.tile_type")
+--- Pop-up dialog for spaces where the player can place a tile
+local Concord = require("cloudless_sky.extern.concord")
+local Components = require("cloudless_sky.components")
+local Constants = require("cloudless_sky.constants")
+local EUtil = require("cloudless_sky.entities.e_util")
 local StarView = require("cloudless_sky.view.star_view")
+local TileView = require("cloudless_sky.view.tile_view")
+local ViewUtil = require("cloudless_sky.view.view_util")
 
 local suit = require("cloudless_sky.extern.suit")
 local flux = require("cloudless_sky.extern.flux")
+
+---@class PlaceTileDialogEntity
+---@field scale number Scale of the entire entity
+---@field transitionTween table flux group for tweening the entity onto the screen
+---@field ui suit Suit UI instance for drawing all the gui poritions of the entity
+local PlaceTileDialogEntity = {}
+PlaceTileDialogEntity.__index = PlaceTileDialogEntity
 
 local PROMPT_WIDTH = 120
 local PROMPT_HEIGHT = 100
@@ -25,12 +30,6 @@ local CORNER_RADIUS_SCALER = 1 / 10
 
 -- for debug
 local WIDGET_BOUNDING_BOXES = false
-
-PlacePromptView.STATES = {
-    ACTIVE = "ACTIVE",
-    CLOSING = "CLOSING",
-    CLOSED = "CLOSED",
-}
 
 --- triangle vertices
 ---      1
@@ -84,72 +83,85 @@ local rightArrowDraw = function(text, opt, x, y, w, h)
     end
 end
 
---- @param tileWorldX integer World X coordinate of the center of the tile the prompt is in relation to
---- @param tileWorldY integer World Y coordinate of the center of the tile the prompt is in relation tofs
---- @param tileCost integer Total number of tiles required to place here.
---- @param placementOptions PlacementPossibility[] List of PlacementPossibility objects for this slot
---- @param starType StarType what star is being played on
-function PlacePromptView:new(tileWorldX, tileWorldY, tileCost, placementOptions, starType)
-    self.tileWorldX = tileWorldX
-    self.tileWorldY = tileWorldY
-    self.tileCost = tileCost
-    self.placementOptions = placementOptions
-    self.placementOptIdx = 1
-    self.state = self.STATES.ACTIVE
+function PlaceTileDialogEntity.new(playerIdx, starIdx, slotIdx, tileCost, placementOptions, starType)
+    local entity = Concord.entity()
 
-    self.placeBtnScale = 1.0
+    entity
+        :give(Components.names.playerMatTileAnchor, starIdx, slotIdx)
+        :give(Components.names.playerEntity, playerIdx)
+        :give(Components.names.boundingBox, PROMPT_WIDTH, PROMPT_HEIGHT)
+        :give(Components.names.mouseHandler, Constants.drawPriority.tilePlacePrompt)
+        :give(Components.names.drawable, Constants.drawPriority.tilePlacePrompt)
+        :give(Components.names.worldPos, 0, 0)
+        :give(Components.names.killOffCamera) -- in the event state machine doesnt remove the prompt, ensure its removed once off camera
+        :give(Components.names.uniqueGroup, "tilePlacementDialogs")
 
-    self.scale = 0.1
-    self.transitionTween = flux.group()
-    self.transitionTween:to(self, 0.25, { scale = MAX_SCALE }):after(self, 0.25, { scale = 1.0 })
+    EUtil.extendEntity(entity, PlaceTileDialogEntity)
 
-    self.placeHoverTween = nil
+    entity.tileCost = tileCost
+    entity.placementOptions = placementOptions
+    entity.placementOptIdx = 1
 
-    self.ui = suit.new()
-    self.ui.theme.color = {
+    entity.placeBtnScale = 1.0
+
+    entity.scale = 0.1
+    entity.transitionTween = flux.group()
+    entity.transitionTween:to(entity, 0.25, { scale = MAX_SCALE }):after(entity, 0.25, { scale = 1.0 })
+
+    entity.placeHoverTween = nil
+
+    entity.ui = suit.new()
+    entity.ui.theme.color = {
         normal = { bg = StarView.UNPLACED_SLOT_COLOR[starType], fg = { 0, 0, 0 } },
-        hovered = { bg = TileView.TILE_COLOR[self.placementOptions[self.placementOptIdx].tileType], fg = { 0, 0, 0 } },
-        active = { bg = TileView.TILE_COLOR[self.placementOptions[self.placementOptIdx].tileType], fg = { 0, 0, 0 } },
+        hovered = {
+            bg = TileView.TILE_COLOR[entity.placementOptions[entity.placementOptIdx].tileType],
+            fg = { 0, 0, 0 },
+        },
+        active = {
+            bg = TileView.TILE_COLOR[entity.placementOptions[entity.placementOptIdx].tileType],
+            fg = { 0, 0, 0 },
+        },
     }
-    self:resize(love.graphics.getWidth(), love.graphics.getHeight(), tileWorldX, tileWorldY)
+
+    return entity
 end
 
---- @return boolean eventHandled. True if click is in prompt bounds and will be handled, else false
-function PlacePromptView:mousePressed(worldX, worldY, button, istouch)
-    if button == 1 then
-        -- check if click is within the prompt:
-        return ViewUtil.ptInRect(worldX, worldY, self.tileWorldX, self.tileWorldY, PROMPT_WIDTH, PROMPT_HEIGHT)
-    end
-
-    return false
-end
-
-function PlacePromptView:_btnHoverTween(tween)
+function PlaceTileDialogEntity:_btnHoverTween(tween)
     tween:to(self, 0.5, { placeBtnScale = 1.1 }):after(self, 0.5, { placeBtnScale = 1.0 }):oncomplete(function()
         self:_btnHoverTween(tween)
     end)
 end
 
-function PlacePromptView:close()
-    -- self.state = self.STATES.CLOSING
-    self.state = self.STATES.CLOSED
+function PlaceTileDialogEntity:mousePressed(cameraX, cameraY, worldX, worldY, button, istouch)
+    if button == 1 then
+        -- check if click is within the prompt:
+        local clickInBBox =
+            ViewUtil.ptInRect(worldX, worldY, self.worldPos.x, self.worldPos.y, self.boundingBox.w, self.boundingBox.h)
+
+        if clickInBBox then
+            local btn = self.placeButton
+            -- place button was pressed. provide info to state machine
+            if ViewUtil.ptInRect(worldX, worldY, btn.x, btn.y, btn.w, btn.h) then
+                self.mouseHandler.clickEvent = {
+                    type = Components.mouseHandler.eventTypes.placeTileClicked,
+                    starIdx = self.playerMatTileAnchor.starIdx,
+                    slotIdx = self.playerMatTileAnchor.slotIdx,
+                    placementOpt = self.placementOptions[self.placementOptIdx],
+                }
+            end
+        end
+
+        return clickInBBox
+    end
+
+    return false
 end
 
-function PlacePromptView:closing()
-    return self.state == self.STATES.CLOSING or self.state == self.STATES.CLOSED
-end
-
-function PlacePromptView:isClosed()
-    return self.state == self.STATES.CLOSED
-end
-
---- @return PlacementPossibility? selected. If the player has just hit the "place" button, the currently selected placement.
----     Otherwise nil
-function PlacePromptView:update(dt)
+function PlaceTileDialogEntity:update(dt, gameState)
     self.transitionTween:update(dt)
 
-    local promptW = PROMPT_WIDTH * self.scale
-    local promptH = PROMPT_HEIGHT * self.scale
+    local promptW = self.boundingBox.w * self.scale
+    local promptH = self.boundingBox.h * self.scale
     local NUM_ROWS = 3
     local cellHeight = promptH / NUM_ROWS
 
@@ -158,7 +170,7 @@ function PlacePromptView:update(dt)
 
     local LAYOUT_PAD = 1
 
-    self.ui.layout:reset(self.tileWorldX, self.tileWorldY, LAYOUT_PAD, LAYOUT_PAD)
+    self.ui.layout:reset(self.worldPos.x, self.worldPos.y, LAYOUT_PAD, LAYOUT_PAD)
     self.ui:Label("Cost: " .. self.tileCost, { font = fonts.ithaca["16"] }, self.ui.layout:row(promptW, cellHeight))
 
     -- cost option row --
@@ -225,65 +237,49 @@ function PlacePromptView:update(dt)
     self.ui.theme.color.active.bg = TileView.TILE_COLOR[self.placementOptions[self.placementOptIdx].tileType]
     self.ui.theme.color.hovered.bg = TileView.TILE_COLOR[self.placementOptions[self.placementOptIdx].tileType]
 
-    local placeButton = self.ui:Button("Place", {
+    self.placeButton = self.ui:Button("Place", {
         font = fonts.ithaca["16"],
         cornerRadius = promptW * CORNER_RADIUS_SCALER - 3,
         outline = 2,
         scale = self.placeBtnScale,
     }, placeX, placeY, placeW, placeH)
     -- handle tweening animation
-    if placeButton.entered then
+    if self.placeButton.entered then
         -- start new animation
         print("enter place btn!")
         self.placeHoverTween = nil
         self.placeHoverTween = flux.group()
         self:_btnHoverTween(self.placeHoverTween)
     end
-    if placeButton.hovered then
+    if self.placeButton.hovered then
         self.placeHoverTween:update(dt)
-    elseif placeButton.left then
+    elseif self.placeButton.left then
         self.placeBtnScale = 1.0
         self.placeHoverTween = nil
     end
 
-    if placeButton.hit then
+    if self.placeButton.hit then
         return self.placementOptions[self.placementOptIdx]
     end
     return nil
 end
 
-function PlacePromptView:draw()
+function PlaceTileDialogEntity:draw(gameState)
     love.graphics.push()
-    if self.state ~= self.STATES.CLOSED then
-        local width = PROMPT_WIDTH * self.scale
-        local height = PROMPT_HEIGHT * self.scale
+    do
+        local width = self.boundingBox.w * self.scale
+        local height = self.boundingBox.h * self.scale
         local cornerR = width * CORNER_RADIUS_SCALER
 
         love.graphics.setColor(1, 1, 1, 1)
-        love.graphics.rectangle("fill", self.tileWorldX, self.tileWorldY, width, height, cornerR, cornerR)
+        love.graphics.rectangle("fill", self.worldPos.x, self.worldPos.y, width, height, cornerR, cornerR)
         love.graphics.setColor({ 0, 0, 0 })
         love.graphics.setLineWidth(2)
-        love.graphics.rectangle("line", self.tileWorldX, self.tileWorldY, width, height, cornerR, cornerR)
+        love.graphics.rectangle("line", self.worldPos.x, self.worldPos.y, width, height, cornerR, cornerR)
 
         self.ui:draw()
     end
     love.graphics.pop()
 end
 
---- events
-
---- Call when the window is resized
---- TODO: need to know the HUD margin for this decision
-function PlacePromptView:resize(w, h, tileWorldX, tileWorldY)
-    self.tileWorldX = tileWorldX
-    self.tileWorldY = tileWorldY
-    local promptWindowX, promptWindowY = camera:cameraCoords(self.tileWorldX, self.tileWorldY)
-    if promptWindowY + PROMPT_HEIGHT > h - 100 then
-        self.tileWorldY = self.tileWorldY - PROMPT_HEIGHT
-    end
-    if promptWindowX + PROMPT_WIDTH > w - 100 then
-        self.tileWorldX = self.tileWorldX - PROMPT_WIDTH
-    end
-end
-
-return PlacePromptView
+return PlaceTileDialogEntity
