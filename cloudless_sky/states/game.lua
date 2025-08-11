@@ -10,6 +10,7 @@ local MousePressedSys = require("cloudless_sky.systems.mouse_pressed")
 local DrawSys = require("cloudless_sky.systems.draw")
 local PlayerMatTileAnchorSys = require("cloudless_sky.systems.player_mat_tile_anchor")
 local EnforceUniqueGroupSys = require("cloudless_sky.systems.enforce_unique_group")
+local EnforceEphemeralSys = require("cloudless_sky.systems.enforce_ephemeral")
 
 local PlayerMatEntity = require("cloudless_sky.entities.player_mat_entity")
 
@@ -45,7 +46,13 @@ function game:init()
     end
 
     --- REMEMBER: systems are called in the order they are added
-    graphicsState.world:addSystems(MousePressedSys, DrawSys, PlayerMatTileAnchorSys, EnforceUniqueGroupSys)
+    graphicsState.world:addSystems(
+        MousePressedSys,
+        EnforceEphemeralSys,
+        DrawSys,
+        PlayerMatTileAnchorSys,
+        EnforceUniqueGroupSys
+    )
     function graphicsState.world:onEntityAdded(e)
         if e:has(Components.names.uniqueGroup) then
             -- right now this is the only situation where systems care about new entities

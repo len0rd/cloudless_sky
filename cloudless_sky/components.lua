@@ -17,6 +17,7 @@ Components.names = {
     boundingBox = "boundingBox",
     playerEntity = "playerEntity",
     uniqueGroup = "uniqueGroup",
+    ephemeral = "ephemeral",
 }
 
 --- Entity should remain anchored on a particular player mat tile
@@ -83,6 +84,12 @@ end)
 Concord.component(Components.names.uniqueGroup, function(c, ug)
     c.name = ug
     c.uid = os.clock()
+end)
+
+--- Entity lasts for a brief time. All entities with ephemeral.done == true
+---  will be removed from the world at the beginning of the next update event
+Concord.component(Components.names.ephemeral, function(c)
+    c.done = false
 end)
 
 return Components
