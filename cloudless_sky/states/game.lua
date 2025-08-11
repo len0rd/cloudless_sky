@@ -27,6 +27,13 @@ function game:init()
 
     gameState = GameState(rules, playerNames)
 
+    -------------------DELTE---------------------
+    local TileType = require("cloudless_sky.model.tile_type")
+    gameState.players[1].hand:setCountForTileType(TileType.RED, 10)
+    gameState.players[1].hand:setCountForTileType(TileType.PURPLE, 2)
+    gameState.players[2].hand:setCountForTileType(TileType.ORANGE, 10)
+    ----------------------END DELTE--------------
+
     graphicsState = {
         world = Concord.world(),
         -- make player mat entities easily accessible
