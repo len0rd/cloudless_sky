@@ -4,7 +4,8 @@ local Constants = {
     ---@field drawPriority table Priorities for various entities
     drawPriority = {
         playerMat = 50,
-        tilePlacePrompt = 49,
+        tileScoreAnimations = 47,
+        tilePlacePrompt = 44,
         min = 100,
     },
 
