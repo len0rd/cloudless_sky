@@ -103,7 +103,7 @@ end
 ---         If either index is invalid, an empty table is returned
 function PlayerMat:placeTile(tileType, starIndex, slotIndex)
     local star = self.stars[starIndex]
-    print("place a " .. tileType .. " tile at " .. starIndex .. ", " .. slotIndex)
+    Log.trace("place a " .. tileType .. " tile at " .. starIndex .. ", " .. slotIndex)
     if not star then
         -- invalid starIndex
         return {}
@@ -123,7 +123,7 @@ function PlayerMat:removeTile(starIndex, slotIndex)
     if star then
         star:removeTile(slotIndex)
     else
-        print("removeTile: bad starIndex" .. starIndex)
+        Log.error("removeTile: bad starIndex" .. starIndex)
     end
 end
 

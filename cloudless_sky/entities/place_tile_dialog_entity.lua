@@ -246,7 +246,7 @@ function PlaceTileDialogEntity:update(dt, gameState)
     -- handle tweening animation
     if self.placeButton.entered then
         -- start new animation
-        print("enter place btn!")
+        Log.trace("enter place btn!")
         self.placeHoverTween = nil
         self.placeHoverTween = flux.group()
         self:_btnHoverTween(self.placeHoverTween)

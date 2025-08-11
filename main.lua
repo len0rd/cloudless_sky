@@ -1,7 +1,9 @@
 if arg[2] == "debug" then
     require("lldebugger").start()
 end
+
 -- third-party requirements
+Log = require("cloudless_sky.extern.log")
 local GameStateMachineMgr = require("cloudless_sky.extern.hump.gamestate")
 
 -- TODO: better storage/access method?
@@ -34,11 +36,8 @@ function love.load(args)
                 local contents = file:read("*a")
                 file:close()
                 saveGame = json.decode(contents)
-                if err then
-                    print("Error decoding JSON:", err)
-                end
             else
-                print("Could not open JSON file:", v)
+                Log.error("Could not open JSON file:", v)
             end
             break
         end

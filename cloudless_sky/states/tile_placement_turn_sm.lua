@@ -30,7 +30,7 @@ function TilePlacementTurnStateMachine:enter(fromState, playerIdx, gameState, gr
     self.gameState = gameState
     self.graphicsState = graphicsState
     self.spacePressed = false
-    print("entering PlacementTurnSM for " .. tostring(playerIdx))
+    Log.trace("entering PlacementTurnSM for " .. tostring(playerIdx))
 end
 
 function TilePlacementTurnStateMachine:_addPlaceDialogEntity(pressCtx)
@@ -86,7 +86,7 @@ function TilePlacementTurnStateMachine:handleUserInput()
                 -- TODO: only allow getting creating new entity if in right turn state
                 self:_addPlaceDialogEntity(pressCtx)
             elseif pressCtx.type == Components.mouseHandler.eventTypes.placeTileClicked then
-                print("TIME TO PLACE A TILE BITCH")
+                -- time to place a tile!
             end
         end
     end

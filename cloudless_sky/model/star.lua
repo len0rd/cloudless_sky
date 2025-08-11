@@ -304,7 +304,7 @@ end
 --- subtracting whatever was added when the tile was placed
 function Star:removeTile(slotIndex)
     if slotIndex < 1 or slotIndex > #self.slotCostOrder then
-        print("removeTile: bad slotIndex" .. slotIndex)
+        Log.error("removeTile: bad slotIndex" .. slotIndex)
     end
     self.occupiedSlots[slotIndex] = false
     if self:isEmpty() and self.starTypeOnConstruction == StarType.MONO then
