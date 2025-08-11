@@ -3,10 +3,15 @@ local Constants = {
 
     ---@field drawPriority table Priorities for various entities
     drawPriority = {
+        -- minimum/lowest priority = largest number that can be used to represent priority
+        min = 100,
+
         playerMat = 50,
         tileScoreAnimations = 47,
         tilePlacePrompt = 44,
-        min = 100,
+
+        -- hud elements should end up on top
+        hudPlayerHand = 20,
     },
 
     -- In game, leave 10% of size on each border clear for HUD elements

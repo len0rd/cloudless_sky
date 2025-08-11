@@ -85,8 +85,10 @@ function TilePlacementTurnStateMachine:handleUserInput()
             if pressCtx.type == Components.mouseHandler.eventTypes.matSlotClicked then
                 -- TODO: only allow getting creating new entity if in right turn state
                 self:_addPlaceDialogEntity(pressCtx)
+                self.state = self.STATES.WAIT_FOR_PLACEMENT
             elseif pressCtx.type == Components.mouseHandler.eventTypes.placeTileClicked then
                 -- time to place a tile!
+                self.state = self.STATES.SCORING
             end
         end
     end

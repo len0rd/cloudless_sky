@@ -58,4 +58,13 @@ function DrawSys:draw(gameState)
     end
 end
 
+function DrawSys:resize(w, h, graphicsState)
+    --- assume elements that are tied to camera/screen position
+    --- care about resizes
+    self.cameraPool:sort(sortByPriority)
+    for _, e in ipairs(self.cameraPool) do
+        e:resize(w, h, graphicsState)
+    end
+end
+
 return DrawSys
