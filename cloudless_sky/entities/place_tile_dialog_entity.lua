@@ -95,6 +95,7 @@ function PlaceTileDialogEntity.new(playerIdx, starIdx, slotIdx, tileCost, placem
         :give(Components.names.worldPos, 0, 0)
         :give(Components.names.killOffCamera) -- in the event state machine doesnt remove the prompt, ensure its removed once off camera
         :give(Components.names.uniqueGroup, "tilePlacementDialogs")
+        :give(Components.names.ephemeral)
 
     EUtil.extendEntity(entity, PlaceTileDialogEntity)
 
@@ -110,8 +111,8 @@ function PlaceTileDialogEntity.new(playerIdx, starIdx, slotIdx, tileCost, placem
 
     entity.placeHoverTween = nil
 
-    entity.ui = suit.new()
-    entity.ui.theme.color = {
+    local customTheme = table.copy(require("cloudless_sky.extern.suit.theme"))
+    customTheme.color = {
         normal = { bg = StarView.UNPLACED_SLOT_COLOR[starType], fg = { 0, 0, 0 } },
         hovered = {
             bg = TileView.TILE_COLOR[entity.placementOptions[entity.placementOptIdx].tileType],
@@ -122,6 +123,7 @@ function PlaceTileDialogEntity.new(playerIdx, starIdx, slotIdx, tileCost, placem
             fg = { 0, 0, 0 },
         },
     }
+    entity.ui = suit.new(customTheme)
 
     return entity
 end
@@ -149,6 +151,9 @@ function PlaceTileDialogEntity:mousePressed(cameraX, cameraY, worldX, worldY, bu
                     placementOpt = self.placementOptions[self.placementOptIdx],
                 }
             end
+        else
+            -- if user clicked outside of the box, just close
+            self.ephemeral.done = true
         end
 
         return clickInBBox
@@ -228,11 +233,6 @@ function PlaceTileDialogEntity:update(dt, gameState)
 
     self.ui.layout:newRow()
 
-    local placeW = (promptW - 2 * LAYOUT_PAD) * self.placeBtnScale
-    local placeH = (cellHeight - NUM_ROWS * LAYOUT_PAD) * self.placeBtnScale
-    local placeX, placeY, placeW, placeH = self.ui.layout:col(placeW, placeH)
-    placeX = placeX - math.max((placeW - promptW) / 2, 0)
-
     -- also update the color
     self.ui.theme.color.active.bg = TileView.TILE_COLOR[self.placementOptions[self.placementOptIdx].tileType]
     self.ui.theme.color.hovered.bg = TileView.TILE_COLOR[self.placementOptions[self.placementOptIdx].tileType]
@@ -242,7 +242,7 @@ function PlaceTileDialogEntity:update(dt, gameState)
         cornerRadius = promptW * CORNER_RADIUS_SCALER - 3,
         outline = 2,
         scale = self.placeBtnScale,
-    }, placeX, placeY, placeW, placeH)
+    }, self.ui.layout:col(promptW, cellHeight))
     -- handle tweening animation
     if self.placeButton.entered then
         -- start new animation
@@ -257,11 +257,6 @@ function PlaceTileDialogEntity:update(dt, gameState)
         self.placeBtnScale = 1.0
         self.placeHoverTween = nil
     end
-
-    if self.placeButton.hit then
-        return self.placementOptions[self.placementOptIdx]
-    end
-    return nil
 end
 
 function PlaceTileDialogEntity:draw(gameState)

@@ -40,6 +40,13 @@ function DrawSys:update(dt, gameState)
     for _, e in ipairs(filteredWorldPool) do
         e:update(dt, gameState)
     end
+
+    -- TODO: add an event for element added/removed to handle resort so its not
+    -- done every update
+    self.cameraPool:sort(sortByPriority)
+    for _, e in ipairs(self.cameraPool) do
+        e:update(dt, gameState)
+    end
 end
 
 function DrawSys:draw(gameState)
@@ -52,7 +59,6 @@ function DrawSys:draw(gameState)
     camera:detach()
 
     -- camera pool always has higher priority than world-entities
-    self.cameraPool:sort(sortByPriority)
     for _, e in ipairs(self.cameraPool) do
         e:draw(gameState)
     end

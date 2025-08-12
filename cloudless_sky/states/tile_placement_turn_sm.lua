@@ -11,21 +11,20 @@ local PlaceTileLackingDialogEntity = require("cloudless_sky.entities.place_tile_
 local PlayerMatTileAnchorSys = require("cloudless_sky.systems.player_mat_tile_anchor")
 
 TilePlacementTurnStateMachine.STATES = {
-    IDLE = 1,
-    WAIT_FOR_PLACEMENT = 2,
-    SCORING = 3,
-    WAIT_FOR_END = 4,
+    WAIT_FOR_PLACEMENT = 1,
+    SCORING = 2,
+    WAIT_FOR_END = 3,
 }
 
 function TilePlacementTurnStateMachine:new()
     -- nah
-    self.state = self.STATES.IDLE
+    self.state = self.STATES.WAIT_FOR_PLACEMENT
     self.mouseClicked = false
     self.cameraZoom = 1.0
 end
 
 function TilePlacementTurnStateMachine:enter(fromState, playerIdx, gameState, graphicsState)
-    self.state = self.STATES.IDLE
+    self.state = self.STATES.WAIT_FOR_PLACEMENT
     self.playerIdx = playerIdx
     self.gameState = gameState
     self.graphicsState = graphicsState
@@ -85,7 +84,6 @@ function TilePlacementTurnStateMachine:handleUserInput()
             if pressCtx.type == Components.mouseHandler.eventTypes.matSlotClicked then
                 -- TODO: only allow getting creating new entity if in right turn state
                 self:_addPlaceDialogEntity(pressCtx)
-                self.state = self.STATES.WAIT_FOR_PLACEMENT
             elseif pressCtx.type == Components.mouseHandler.eventTypes.placeTileClicked then
                 -- time to place a tile!
                 self.state = self.STATES.SCORING
@@ -95,9 +93,6 @@ function TilePlacementTurnStateMachine:handleUserInput()
 end
 
 function TilePlacementTurnStateMachine:update(dt)
-    if self.state == self.STATES.IDLE then
-        -- transition to players mat
-    end
     if self.spacePressed then
         GameStateMachineMgr.pop()
         return

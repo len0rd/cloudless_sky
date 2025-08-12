@@ -13,14 +13,13 @@ local EnforceUniqueGroupSys = require("cloudless_sky.systems.enforce_unique_grou
 local EnforceEphemeralSys = require("cloudless_sky.systems.enforce_ephemeral")
 
 local PlayerMatEntity = require("cloudless_sky.entities.player_mat_entity")
+local PlayerHandHudEntity = require("cloudless_sky.entities.player_hand_hud_entity")
 
 local TilePlacementTurnStateMachine = require("cloudless_sky.states.tile_placement_turn_sm")
 
 local GameStateMachineMgr = require("cloudless_sky.extern.hump.gamestate")
 
 local game = {}
-
-local spacePressed = false
 
 function game:init()
     local playerNames = { "lenord", "karoty" }
@@ -39,11 +38,15 @@ function game:init()
         world = Concord.world(),
         -- make player mat entities easily accessible
         matEntities = {},
+        hud = {
+            hand = PlayerHandHudEntity.new(),
+        },
     }
     for ii = 1, #playerNames do
         graphicsState.matEntities[ii] = PlayerMatEntity.new(ii, 600, GameRules.matStarTypes(rules))
         graphicsState.world:addEntity(graphicsState.matEntities[ii])
     end
+    graphicsState.world:addEntity(graphicsState.hud.hand)
 
     --- REMEMBER: systems are called in the order they are added
     graphicsState.world:addSystems(
@@ -73,7 +76,7 @@ function game:enter(from)
 end
 
 function game:resume(from)
-    print("increment turn!")
+    Log.debug("increment turn!")
     gameState:incrementTurn()
 end
 
