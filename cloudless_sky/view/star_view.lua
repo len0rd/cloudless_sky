@@ -5,6 +5,8 @@ local StarType = require("cloudless_sky.model.star_type")
 local ViewUtil = require("cloudless_sky.view.view_util")
 local TileView = require("cloudless_sky.view.tile_view")
 
+local flux = require("cloudless_sky.extern.flux")
+
 -- increase the size of a slot by this much when its selected/hovered on
 local HOVER_SELECT_SCALE = 0.2
 
@@ -105,6 +107,12 @@ StarView.HOVER_SELECT_OFFSETS = {
 }
 -- stylua: ignore end
 
+function StarView:_runBreathTween(tween)
+    tween:to(self.polys[1], 0.5, { scale = 1.25 }):after(self.polys[1], 0.25, { scale = 1.0 }):oncomplete(function()
+        self:_runBreathTween(tween)
+    end)
+end
+
 --- @param x integer Left-most X world coord of the stars rectangular bounding box
 --- @param y integer Top-most Y world coord of the stars rectangular bounding box
 --- @param size integer Overall width and height of stars rectangular bounding box. Always square
@@ -113,13 +121,21 @@ function StarView:new(starType, x, y, size)
     self.starOriginX = x
     self.starOriginY = y
     self.size = size
+    -- rotate the star this many radians when drawing
+    self.rotation = 0
     -- define the vertices of the 6 polygons that compose the star
     self.polys = {}
     -- set to the slot index that a pointer is hovering over on update
     self.hovered_slot = 0
     for ii, vertices in ipairs(StarView.SLOT_VERTEX_SCALARS) do
-        self.polys[ii] = transformScalerVertices(vertices, self.starOriginX, self.starOriginY, self.size)
+        self.polys[ii] = {
+            verticies = transformScalerVertices(vertices, self.starOriginX, self.starOriginY, self.size),
+            scale = 1.0,
+        }
     end
+
+    self.breathTween = flux.group()
+    -- self:_runBreathTween(self.breathTween)
 end
 
 --- @return table boundingBox. Bounding box of the star in world coords. Formatted x1,y1, x2,y2
@@ -141,8 +157,8 @@ function StarView:coordSlotIndex(x, y)
     if not self:coordInBoundingBox(x, y) then
         return 0
     end
-    for ii, vertices in ipairs(self.polys) do
-        if isPointInConvexQuad(vertices, x, y) then
+    for ii, poly in ipairs(self.polys) do
+        if isPointInConvexQuad(poly.verticies, x, y) then
             return ii
         end
     end
@@ -155,25 +171,7 @@ function StarView:centerOfSlot(slotIndex)
     if slotIndex < 1 or slotIndex > #self.polys then
         return false, false
     end
-    local poly = self.polys[slotIndex]
-    local minX, minY = poly[1], poly[2]
-    local maxX, maxY = poly[1], poly[2]
-    for i = 3, #poly, 2 do
-        local x, y = poly[i], poly[i + 1]
-        if x < minX then
-            minX = x
-        end
-        if y < minY then
-            minY = y
-        end
-        if x > maxX then
-            maxX = x
-        end
-        if y > maxY then
-            maxY = y
-        end
-    end
-    return (minX + maxX) / 2, (minY + maxY) / 2
+    return ViewUtil.centerOfConvexPoly(self.polys[slotIndex].verticies)
 end
 
 function StarView:isHovered()
@@ -193,9 +191,10 @@ function StarView:coordInBoundingBox(x, y)
     return true
 end
 
-function StarView:update(focusSlotIdx)
+function StarView:update(dt, focusSlotIdx)
     -- reset hovered state
     self.hovered_slot = focusSlotIdx
+    self.breathTween:update(dt)
 end
 
 local drawPoly = function(vertices, color)
@@ -211,9 +210,9 @@ function StarView:draw(star)
     local origR, origG, origB, origA = love.graphics.getColor()
     local origLineWidth = love.graphics.getLineWidth()
 
-    for ii, vertices in ipairs(StarView.SLOT_VERTEX_SCALARS) do
+    for ii = 1, #StarView.SLOT_VERTEX_SCALARS do
         if ii ~= self.hovered_slot then
-            local scaledVertices = transformScalerVertices(vertices, self.starOriginX, self.starOriginY, self.size)
+            local scaledVertices = ViewUtil.scaleConvexPolyFromCenter(self.polys[ii].verticies, self.polys[ii].scale)
             local color = StarView.UNPLACED_SLOT_COLOR[self.starType]
             if star:isOccupied(ii) then
                 color = TileView.TILE_COLOR[star:tileAtSlot(ii)]
@@ -238,46 +237,6 @@ function StarView:draw(star)
 
     -- reset color at the end
     love.graphics.setLineWidth(origLineWidth)
-    love.graphics.setColor(origR, origG, origB, origA)
-end
-
---- Draw a star as one big polygon instead of multiple individual
---- TODO: OLD DELETE ME?
-function drawOverallStar(x, y, size)
-    local half = size / 2
-    local oneQuarter = size / 4
-    local oneSixth = size / 6
-    local twoSixth = 2 * oneSixth
-    local fourSixth = 4 * oneSixth
-    local fiveSixth = 5 * oneSixth
-    local threeQuarter = half + oneQuarter
-
-    local origR, origG, origB, origA = love.graphics.getColor()
-
-    -- stylua: ignore start
-    local vertices = {
-        0, oneQuarter,
-        twoSixth, oneQuarter,
-        half, 0,
-        fourSixth, oneQuarter,
-        size, oneQuarter,
-        fiveSixth, half,
-        size, threeQuarter,
-        fourSixth, threeQuarter,
-        half, size,
-        twoSixth, threeQuarter,
-        0, threeQuarter,
-        oneSixth, half,
-    }
-    -- stylua: ignore end
-    vertices = makeRelativeTo(x, y, vertices)
-
-    love.graphics.setColor(love.math.colorFromBytes(28, 94, 83))
-    -- note the star shape is not convex, so it will not render correctly in "fill" mode
-    -- TODO: is there another option for drawing/filling more complex polygons like this?
-    love.graphics.polygon("line", vertices)
-
-    -- reset color at the end
     love.graphics.setColor(origR, origG, origB, origA)
 end
 

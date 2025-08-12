@@ -116,11 +116,13 @@ end
 
 function PlayerMatEntity:update(dt, gameState)
     self.focusStarIdx, self.focusSlotIdx = self:coordStarSlotIndex(camera:mousePosition())
-    for _, star in ipairs(self.stars) do
-        star:update(0)
+    for ii, star in ipairs(self.stars) do
+        if ii ~= self.focusStarIdx then
+            star:update(dt, 0)
+        end
     end
     if self.focusStarIdx ~= 0 then
-        self.stars[self.focusStarIdx]:update(self.focusSlotIdx)
+        self.stars[self.focusStarIdx]:update(dt, self.focusSlotIdx)
     end
 end
 

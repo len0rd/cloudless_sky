@@ -60,4 +60,43 @@ function ViewUtil.boundingBoxOfVerticies(verticies)
     return minX, minY, maxX - minX, maxY - minY
 end
 
+--- @param verticies table. List points that make up the polygon. Rotating between X and Y.
+--- @return number centerX, number centerY Center of the provided verticies in x and y
+function ViewUtil.centerOfConvexPoly(verticies)
+    local minX, minY = verticies[1], verticies[2]
+    local maxX, maxY = verticies[1], verticies[2]
+    for ii = 3, #verticies, 2 do
+        local x, y = verticies[ii], verticies[ii + 1]
+        if x < minX then
+            minX = x
+        end
+        if y < minY then
+            minY = y
+        end
+        if x > maxX then
+            maxX = x
+        end
+        if y > maxY then
+            maxY = y
+        end
+    end
+    return (minX + maxX) / 2, (minY + maxY) / 2
+end
+
+--- Scales a convex polygon from its center point.
+--- @param verticies table. List of verticies formatted {x1, y1, x2, y2, ...}
+--- @param scale number. Scale factor (>1 to enlarge, <1 to shrink)
+--- @return table. New table of scaled verticies
+function ViewUtil.scaleConvexPolyFromCenter(verticies, scale)
+    local cx, cy = ViewUtil.centerOfConvexPoly(verticies)
+    local scaled = {}
+    for ii = 1, #verticies, 2 do
+        local x, y = verticies[ii], verticies[ii + 1]
+        local dx, dy = x - cx, y - cy
+        scaled[ii] = cx + dx * scale
+        scaled[ii + 1] = cy + dy * scale
+    end
+    return scaled
+end
+
 return ViewUtil
