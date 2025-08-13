@@ -144,7 +144,7 @@ function StarView:boundingBox()
     return { self.starOriginX, self.starOriginY, self.starOriginX + self.size, self.starOriginY + self.size }
 end
 
---- @return integer, integer centerCoords. The center of this star in world coords
+--- @return number, number centerCoords. The center of this star in world coords
 function StarView:center()
     local centerX = self.starOriginX + (self.size / 2)
     local centerY = self.starOriginY + (self.size / 2)
@@ -210,9 +210,12 @@ function StarView:draw(star)
     local origR, origG, origB, origA = love.graphics.getColor()
     local origLineWidth = love.graphics.getLineWidth()
 
+    local centerX, centerY = self:center()
+
     for ii = 1, #StarView.SLOT_VERTEX_SCALARS do
         if ii ~= self.hovered_slot then
             local scaledVertices = ViewUtil.scaleConvexPolyFromCenter(self.polys[ii].verticies, self.polys[ii].scale)
+            scaledVertices = ViewUtil.rotateVerticies(scaledVertices, centerX, centerY, self.rotation)
             local color = StarView.UNPLACED_SLOT_COLOR[self.starType]
             if star:isOccupied(ii) then
                 color = TileView.TILE_COLOR[star:tileAtSlot(ii)]
@@ -232,6 +235,7 @@ function StarView:draw(star)
             self.starOriginY + (self.size * StarView.HOVER_SELECT_OFFSETS[self.hovered_slot][2]),
             self.size * (1.0 + HOVER_SELECT_SCALE)
         )
+        scaledVertices = ViewUtil.rotateVerticies(scaledVertices, centerX, centerY, self.rotation)
         drawPoly(scaledVertices, color)
     end
 

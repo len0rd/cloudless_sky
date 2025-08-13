@@ -20,6 +20,14 @@ end
 function ViewUtil.ptInRect(x, y, rectX, rectY, w, h)
     return x >= rectX and x <= rectX + w and y >= rectY and y <= rectY + h
 end
+
+--- Checks if a point (x, y) is inside a circle defined by center (centerX, centerY) and radius
+function ViewUtil.ptInCircle(x, y, centerX, centerY, radius)
+    local dx = x - centerX
+    local dy = y - centerY
+    return (dx * dx + dy * dy) <= (radius * radius)
+end
+
 -- calculate direct distance between 2 points
 function ViewUtil.euclidianDistance(x1, y1, x2, y2)
     local dx = x2 - x1
@@ -97,6 +105,53 @@ function ViewUtil.scaleConvexPolyFromCenter(verticies, scale)
         scaled[ii + 1] = cy + dy * scale
     end
     return scaled
+end
+
+--- Rotates a list of verticies about a provided center point.
+--- @param verticies table List of verticies formatted {x1, y1, x2, y2, ...}
+--- @param centerX number X coordinate of the center point
+--- @param centerY number Y coordinate of the center point
+--- @param angle number Rotation angle in radians
+--- @return table New table of rotated verticies
+function ViewUtil.rotateVerticies(verticies, centerX, centerY, angle)
+    if angle == 0 then
+        return verticies
+    end
+    local cosA = math.cos(angle)
+    local sinA = math.sin(angle)
+    local rotated = {}
+    for ii = 1, #verticies, 2 do
+        local x, y = verticies[ii], verticies[ii + 1]
+        local dx, dy = x - centerX, y - centerY
+        local rx = dx * cosA - dy * sinA
+        local ry = dx * sinA + dy * cosA
+        rotated[ii] = centerX + rx
+        rotated[ii + 1] = centerY + ry
+    end
+    return rotated
+end
+
+--- Calculates a new point given a starting point, distance, and direction in radians.
+--- @param x number Starting x coordinate
+--- @param y number Starting y coordinate
+--- @param distance number Distance to move
+--- @param angle number Direction in radians
+--- @return number newX, number newY
+function ViewUtil.pointFromDistanceAndAngle(x, y, distance, angle)
+    local newX = x + math.cos(angle) * distance
+    local newY = y + math.sin(angle) * distance
+    return newX, newY
+end
+
+--- multiply the points defined in vertexScalers by size and translate
+--- them to be relative to x,y
+function ViewUtil.transformVertexScalers(vertexScalers, size, x, y)
+    local scaledVertices = {}
+    for ii = 1, #vertexScalers, 2 do
+        scaledVertices[ii] = (vertexScalers[ii] * size) + x
+        scaledVertices[ii + 1] = (vertexScalers[ii + 1] * size) + y
+    end
+    return scaledVertices
 end
 
 return ViewUtil
