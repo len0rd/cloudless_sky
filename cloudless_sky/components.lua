@@ -13,7 +13,6 @@ Components.names = {
     cameraPos = "cameraPos",
     drawable = "drawable",
     mouseHandler = "mouseHandler",
-    mouseFocusable = "mouseFocusable",
     boundingBox = "boundingBox",
     playerEntity = "playerEntity",
     uniqueGroup = "uniqueGroup",

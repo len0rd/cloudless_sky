@@ -15,7 +15,7 @@ local Constants = {
     },
 
     -- In game, leave 10% of size on each border clear for HUD elements
-    hudPadPercent = 0.1,
+    hudPadPercent = 0.95,
 }
 
 return Constants

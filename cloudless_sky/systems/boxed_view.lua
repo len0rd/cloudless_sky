@@ -1,5 +1,6 @@
 local Concord = require("cloudless_sky.extern.concord")
 local Components = require("cloudless_sky.components")
+local Constants = require("cloudless_sky.constants")
 
 ---@class BoxedView Utility system for working world-entities that have a bounding box
 local BoxedViewSys = Concord.system({
@@ -12,6 +13,21 @@ function BoxedViewSys.worldCenter(e)
     local centerX = e.worldPos.x + (e.boundingBox.w / 2)
     local centerY = e.worldPos.y + (e.boundingBox.h / 2)
     return centerX, centerY
+end
+
+--- @return number CenterX, number CenterY, number Scale. The center X,Y of the provided
+---     entity in world coordintates. Scale is the max camera scale so the entity \p e
+---     occupies the entire screen. Takes hud margin into account
+function BoxedViewSys.worldFocus(e)
+    local screenW, screenH = love.graphics.getPixelDimensions()
+
+    local maxWidth = screenW * Constants.hudPadPercent
+    local maxHeight = screenH * Constants.hudPadPercent
+    local widthZoomFactor = maxWidth / e.boundingBox.w
+    local heightZoomFactor = maxHeight / e.boundingBox.h
+
+    local eCenterX, eCenterY = BoxedViewSys.worldCenter(e)
+    return eCenterX, eCenterY, math.min(widthZoomFactor, heightZoomFactor)
 end
 
 --- Return true if the provided worldX. worldY coordintate is within entity \p e's bounding box,

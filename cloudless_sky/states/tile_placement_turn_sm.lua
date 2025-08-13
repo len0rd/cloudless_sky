@@ -20,7 +20,6 @@ function TilePlacementTurnStateMachine:new()
     -- nah
     self.state = self.STATES.WAIT_FOR_PLACEMENT
     self.mouseClicked = false
-    self.cameraZoom = 1.0
 end
 
 function TilePlacementTurnStateMachine:enter(fromState, playerIdx, gameState, graphicsState)
@@ -130,9 +129,10 @@ function TilePlacementTurnStateMachine:resize(w, h)
 end
 
 function TilePlacementTurnStateMachine:centerCamera()
-    local matCenterX, matCenterY = BoxedViewSys.worldCenter(self.graphicsState.matEntities[self.playerIdx])
+    local currentPlayMat = self.graphicsState.matEntities[self.playerIdx]
+    local matCenterX, matCenterY, matZoom = BoxedViewSys.worldFocus(currentPlayMat)
 
-    camera:zoomTo(self.cameraZoom)
+    camera:zoomTo(matZoom)
     camera:lockPosition(matCenterX, matCenterY)
 end
 
