@@ -33,6 +33,7 @@ function PlayerHandHudEntity.new()
     EUtil.extendEntity(entity, PlayerHandHudEntity)
 
     local screenWidth, screenHeight = love.graphics.getPixelDimensions()
+    entity.handTiles = {}
     entity:resize(screenWidth, screenHeight, nil)
 
     entity.openHandBtnScale = 1.0
@@ -51,15 +52,22 @@ function PlayerHandHudEntity:mousePressed(cameraX, cameraY, worldX, worldY, butt
             if self.state == self.STATES.UNOPENED then
                 self.state = PlayerHandHudEntity.STATES.OPENED
                 self.openHandTween = flux.group()
-                self.openHandTween
+                local tweenTemp = self.openHandTween
                     :to(self, 0.25, { _handBackgroundRadius = self._handBackgroundTargetRadius })
-                    :after(self.handTiles[1], 0.25, { x = self.handTiles[1].destX, y = self.handTiles[1].destY })
+
+                for ii=1,#self.handTiles do
+                    tweenTemp = tweenTemp:after(self.handTiles[ii], 0.1, { x = self.handTiles[ii].destX, y = self.handTiles[ii].destY })
+                end
                 self.openHandHoverTween = nil
             else
                 self.openHandTween = flux.group()
-                self.openHandTween
-                    :to(self.handTiles[1], 0.25, { x = self.star.starOriginX, y = self.star.starOriginY })
-                    :after(self, 0.25, { _handBackgroundRadius = self._openHandBtnRadius * 0.9 })
+
+
+                local tweenTemp = self.openHandTween:to(self.handTiles[1], 0.1, { x = self.star.starOriginX, y = self.star.starOriginY })
+                for ii=2,#self.handTiles do
+                    tweenTemp = tweenTemp:after(self.handTiles[ii], 0.1, { x = self.star.starOriginX, y = self.star.starOriginY })
+                end
+                tweenTemp:after(self, 0.25, { _handBackgroundRadius = self._openHandBtnRadius * 0.9 })
                     :oncomplete(function()
                         self.state = PlayerHandHudEntity.STATES.UNOPENED
                     end)
@@ -119,13 +127,15 @@ function PlayerHandHudEntity:draw(gameState)
     end
     self.ui:draw()
     if self.state == self.STATES.OPENED then
-        TileView.drawTileAt(
-            self.handTiles[1].type,
-            self.handTiles[1].size,
-            math.pi / 4,
-            self.handTiles[1].x,
-            self.handTiles[1].y
-        )
+        for ii=1,#self.handTiles do
+            TileView.drawTileAt(
+                self.handTiles[ii].type,
+                self.handTiles[ii].size,
+                self.handTiles[ii].angle,
+                self.handTiles[ii].x,
+                self.handTiles[ii].y
+            )
+        end
     end
     self.star:draw()
 end
@@ -146,22 +156,27 @@ function PlayerHandHudEntity:resize(w, h, _)
     self.star = PlayerHandStarView(self.circleCenter.x + STAR_PAD, self.circleCenter.y - hRadius - STAR_PAD, hRadius)
 
     local tileDistFromCenter = ((self._handBackgroundRadius - self._openHandBtnRadius) / 2) + self._openHandBtnRadius
-    local destX, destY = ViewUtil.pointFromDistanceAndAngle(
-        self.star.starOriginX,
-        self.star.starOriginY,
-        tileDistFromCenter,
-        -math.pi / 4
-    )
-    self.handTiles = {
-        {
-            type = TileType.RED,
+
+    for ii = 1, #TileType.ORDERED do
+        local angle =  ((ii-1) * math.pi / (#TileType.ORDERED))
+        local destX, destY = ViewUtil.pointFromDistanceAndAngle(
+            self.star.starOriginX,
+            self.star.starOriginY,
+            tileDistFromCenter,
+            -math.pi / 2 + angle
+        )
+        local currentX, currentY = self.star.starOriginX, self.star.starOriginY
+
+        self.handTiles[ii] = {
+            type = TileType.ORDERED[ii],
             destX = destX,
             destY = destY,
-            x = self.star.starOriginX,
-            y = self.star.starOriginY,
-            size = math.floor(self._openHandBtnRadius / 2),
-        },
-    }
+            x = currentX,
+            y = currentY,
+            size = math.floor(self._openHandBtnRadius / 3),
+            angle = angle,
+        }
+    end
 end
 
 return PlayerHandHudEntity
