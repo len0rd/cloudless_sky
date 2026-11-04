@@ -1,11 +1,8 @@
 --- State machine for a single player turn during a TilePlacement phase
-local Object = require("cloudless_sky.extern.classic")
-local TilePlacementTurnStateMachine = Object:extend()
+local TurnStateMachine = require("cloudless_sky.states.turn_sm_base")
+local WorldStateMachine = require("cloudless_sky.states.world_sm")
 
 local Components = require("cloudless_sky.components")
-local BoxedViewSys = require("cloudless_sky.systems.boxed_view")
-local GameStateMachineMgr = require("cloudless_sky.extern.hump.gamestate")
-local MousePressedSys = require("cloudless_sky.systems.mouse_pressed")
 local PlaceTileDialogEntity = require("cloudless_sky.entities.place_tile_dialog_entity")
 local PlaceTileLackingDialogEntity = require("cloudless_sky.entities.place_tile_lacking_dialog_entity")
 local PlayerMatTileAnchorSys = require("cloudless_sky.systems.player_mat_tile_anchor")
@@ -13,6 +10,9 @@ local PlaceTileAction = require("cloudless_sky.action.place_tile")
 local ScoreTextEntity = require("cloudless_sky.entities.score_text_entity")
 local PassAction = require("cloudless_sky.action.pass")
 local PassConfirmDialogEntity = require("cloudless_sky.entities.pass_confirm_dialog_entity")
+
+---@class TilePlacementTurnStateMachine : TurnStateMachine
+local TilePlacementTurnStateMachine = TurnStateMachine:extend()
 
 -- after passing, wait this long before ending the turn so the HUD score count-down can be seen
 local PASS_END_DELAY_S = 0.8
@@ -32,33 +32,61 @@ TilePlacementTurnStateMachine.STATES = {
     PASSING = 5,
 }
 
-function TilePlacementTurnStateMachine:new()
-    -- nah
-    self.state = self.STATES.WAIT_FOR_PLACEMENT
-    self.mouseClicked = false
-end
-
-function TilePlacementTurnStateMachine:enter(fromState, playerIdx, gameState, graphicsState)
-    self.playerIdx = playerIdx
-    self.gameState = gameState
-    self.graphicsState = graphicsState
-    self.endTurnRequested = false
+function TilePlacementTurnStateMachine:onEnter()
     self.passDialog = nil
     self.passEndTimer = 0
+    self:setViewFocus(WorldStateMachine.VIEW.MAT)
     self:_setState(self.STATES.WAIT_FOR_PLACEMENT)
-    Log.trace("entering PlacementTurnSM for " .. tostring(playerIdx))
+    Log.trace("entering PlacementTurnSM for " .. tostring(self.playerIdx))
 end
 
---- Set the turn state and keep the HUD buttons in sync with it
-function TilePlacementTurnStateMachine:_setState(newState)
-    self.state = newState
-    local hud = self.graphicsState.hud.container
-    hud:setDoneEnabled(newState == self.STATES.WAIT_FOR_END)
+function TilePlacementTurnStateMachine:hudButtons(state)
+    local done = state == self.STATES.WAIT_FOR_END
     -- passing replaces placing a tile, so it's only possible before placing
-    hud:setPassEnabled(newState == self.STATES.WAIT_FOR_PLACEMENT)
+    local pass = state == self.STATES.WAIT_FOR_PLACEMENT
     -- no undo mid-animation, while confirming a pass, or after passing (passing ends the turn)
-    local settled = newState == self.STATES.WAIT_FOR_PLACEMENT or newState == self.STATES.WAIT_FOR_END
-    hud:setUndoEnabled(settled and self.gameState:canUndoChoice())
+    local settled = state == self.STATES.WAIT_FOR_PLACEMENT or state == self.STATES.WAIT_FOR_END
+    return done, pass, settled and self.gameState:canUndoChoice()
+end
+
+--- @return integer state The turn state implied by the actions taken so far this turn.
+---     Used after an undo so the state machine doesn't need to know what was undone
+function TilePlacementTurnStateMachine:stateFromHistory()
+    -- TODO: once bonuses exist, return CLAIM_BONUS while the player has pending bonus picks
+    for ii = self.gameState.turnHistoryStart + 1, #self.gameState.actionHistory do
+        if self.gameState.actionHistory[ii].name == "PlaceTile" then
+            return self.STATES.WAIT_FOR_END
+        end
+    end
+    return self.STATES.WAIT_FOR_PLACEMENT
+end
+
+function TilePlacementTurnStateMachine:onUpdate(dt)
+    if self.state == self.STATES.PASSING then
+        self.passEndTimer = self.passEndTimer - dt
+        if self.passEndTimer <= 0 then
+            self.endTurnRequested = true
+        end
+    end
+end
+
+function TilePlacementTurnStateMachine:onLeave()
+    -- eg: debug key ended the turn while the dialog was open
+    self:_closePassDialog()
+end
+
+--- animate undone placements being removed from the mat
+function TilePlacementTurnStateMachine:onUndone(undoneActions)
+    for _, action in ipairs(undoneActions) do
+        if action.name == "PlaceTile" then
+            local ctx = action.ctx
+            self.graphicsState.matEntities[ctx.playerIdx]:animateTileRemoved(
+                ctx.starIdx,
+                ctx.slotIdx,
+                ctx.placement.tileType
+            )
+        end
+    end
 end
 
 --- Open the pass confirmation dialog, pre-filled with suggested tiles to keep
@@ -86,43 +114,12 @@ function TilePlacementTurnStateMachine:_pass(keep)
     if not performed then
         -- dialog should only allow valid choices, so this is a bug
         Log.error("invalid pass from dialog: " .. tostring(reason))
-        self:_setState(self:_stateFromHistory())
+        self:_setState(self:stateFromHistory())
         return
     end
     Log.debug("player " .. tostring(self.playerIdx) .. " passed for the round")
     self.passEndTimer = PASS_END_DELAY_S
     self:_setState(self.STATES.PASSING)
-end
-
---- @return integer state The turn state implied by the actions taken so far this turn.
----     Used after an undo so the state machine doesn't need to know what was undone
-function TilePlacementTurnStateMachine:_stateFromHistory()
-    -- TODO: once bonuses exist, return CLAIM_BONUS while the player has pending bonus picks
-    for ii = self.gameState.turnHistoryStart + 1, #self.gameState.actionHistory do
-        if self.gameState.actionHistory[ii].name == "PlaceTile" then
-            return self.STATES.WAIT_FOR_END
-        end
-    end
-    return self.STATES.WAIT_FOR_PLACEMENT
-end
-
---- Undo the player's most recent choice this turn and animate it being reversed
-function TilePlacementTurnStateMachine:_undo()
-    local undone = self.gameState:undoLastChoice()
-    if not undone then
-        return
-    end
-    for _, action in ipairs(undone) do
-        if action.name == "PlaceTile" then
-            local ctx = action.ctx
-            self.graphicsState.matEntities[ctx.playerIdx]:animateTileRemoved(
-                ctx.starIdx,
-                ctx.slotIdx,
-                ctx.placement.tileType
-            )
-        end
-    end
-    self:_setState(self:_stateFromHistory())
 end
 
 function TilePlacementTurnStateMachine:_addPlaceDialogEntity(pressCtx)
@@ -185,7 +182,7 @@ function TilePlacementTurnStateMachine:_placeTile(pressCtx, dialogEntity)
     local matEntity = self.graphicsState.matEntities[self.playerIdx]
     matEntity:animateTilePlaced(pressCtx.starIdx, pressCtx.slotIdx, function()
         if turnIdx == self.gameState.turnIdx and self.state == self.STATES.SCORING then
-            self:_setState(self:_stateFromHistory())
+            self:_setState(self:stateFromHistory())
         end
     end)
 
@@ -196,101 +193,29 @@ function TilePlacementTurnStateMachine:_placeTile(pressCtx, dialogEntity)
     PlayerMatTileAnchorSys.ensureEntityFullyVisible(scoreText, w, h, self.graphicsState.matEntities)
 end
 
-function TilePlacementTurnStateMachine:handleUserInput()
-    if self.mouseClicked then
-        local mousePressSys = self.graphicsState.world:getSystem(MousePressedSys)
-        if mousePressSys and mousePressSys.lastPressedEntity then
-            local pressCtx = mousePressSys.lastPressedEntity.mouseHandler.clickEvent
-            if not pressCtx then
-                -- entity handled a click that doesnt require state machine interaction
-                return
-            end
-
-            if pressCtx.type == Components.mouseHandler.eventTypes.matSlotClicked then
-                -- only one placement per turn
-                if self.state == self.STATES.WAIT_FOR_PLACEMENT then
-                    self:_addPlaceDialogEntity(pressCtx)
-                end
-            elseif pressCtx.type == Components.mouseHandler.eventTypes.placeTileClicked then
-                if self.state == self.STATES.WAIT_FOR_PLACEMENT then
-                    self:_placeTile(pressCtx, mousePressSys.lastPressedEntity)
-                end
-            elseif pressCtx.type == Components.mouseHandler.eventTypes.endTurnClicked then
-                self.endTurnRequested = true
-            elseif pressCtx.type == Components.mouseHandler.eventTypes.undoClicked then
-                if self.state ~= self.STATES.SCORING then
-                    self:_undo()
-                end
-            elseif pressCtx.type == Components.mouseHandler.eventTypes.passClicked then
-                if self.state == self.STATES.WAIT_FOR_PLACEMENT then
-                    self:_openPassDialog()
-                end
-            elseif pressCtx.type == Components.mouseHandler.eventTypes.passCancelled then
-                self:_closePassDialog()
-                self:_setState(self:_stateFromHistory())
-            elseif pressCtx.type == Components.mouseHandler.eventTypes.passConfirmed then
-                if self.state == self.STATES.CONFIRM_PASS then
-                    self:_pass(pressCtx.keep)
-                end
-            end
+function TilePlacementTurnStateMachine:onClickEvent(pressCtx, entity)
+    local eventTypes = Components.mouseHandler.eventTypes
+    if pressCtx.type == eventTypes.matSlotClicked then
+        -- only one placement per turn
+        if self.state == self.STATES.WAIT_FOR_PLACEMENT then
+            self:_addPlaceDialogEntity(pressCtx)
         end
-    end
-end
-
-function TilePlacementTurnStateMachine:update(dt)
-    if self.state == self.STATES.PASSING then
-        self.passEndTimer = self.passEndTimer - dt
-        if self.passEndTimer <= 0 then
-            self.endTurnRequested = true
+    elseif pressCtx.type == eventTypes.placeTileClicked then
+        if self.state == self.STATES.WAIT_FOR_PLACEMENT then
+            self:_placeTile(pressCtx, entity)
         end
-    end
-
-    if self.endTurnRequested then
-        -- eg: debug key ended the turn while the dialog was open
+    elseif pressCtx.type == eventTypes.passClicked then
+        if self.state == self.STATES.WAIT_FOR_PLACEMENT then
+            self:_openPassDialog()
+        end
+    elseif pressCtx.type == eventTypes.passCancelled then
         self:_closePassDialog()
-        GameStateMachineMgr.pop()
-        return
+        self:_setState(self:stateFromHistory())
+    elseif pressCtx.type == eventTypes.passConfirmed then
+        if self.state == self.STATES.CONFIRM_PASS then
+            self:_pass(pressCtx.keep)
+        end
     end
-
-    self:handleUserInput()
-
-    self:centerCamera()
-
-    self.graphicsState.world:emit("update", dt, self.gameState)
-
-    if self.mouseClicked then
-        self.mouseClicked = false
-        self.graphicsState.world:emit("leaveUpdate")
-    end
-end
-
-function TilePlacementTurnStateMachine:draw()
-    self.graphicsState.world:emit("draw", self.gameState)
-end
-
-function TilePlacementTurnStateMachine:mousepressed(x, y, button, istouch)
-    self.graphicsState.world:emit("mousepressed", x, y, button, istouch)
-    self.mouseClicked = true
-end
-
-function TilePlacementTurnStateMachine:keyreleased(key, code)
-    if key == "space" then
-        self.endTurnRequested = true
-    end
-end
-
-function TilePlacementTurnStateMachine:resize(w, h)
-    self.graphicsState.world:emit("resize", w, h, self.graphicsState)
-end
-
-function TilePlacementTurnStateMachine:centerCamera()
-    local currentPlayMat = self.graphicsState.matEntities[self.playerIdx]
-    local matCenterX, matCenterY, matZoom = BoxedViewSys.worldFocus(currentPlayMat)
-    local hudBBox = self.graphicsState.hud.container.boundingBox
-    matCenterX = matCenterX - (hudBBox.w / 2)
-
-    camera:zoomTo(matZoom)
-    camera:lockPosition(matCenterX, matCenterY)
 end
 
 return TilePlacementTurnStateMachine

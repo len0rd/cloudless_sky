@@ -72,6 +72,9 @@ Components.mouseHandler = {
         undoClicked = 5,
         passConfirmed = 6,
         passCancelled = 7,
+        tableTileClicked = 8,
+        pickUpClicked = 9,
+        toggleViewClicked = 10,
     },
 }
 

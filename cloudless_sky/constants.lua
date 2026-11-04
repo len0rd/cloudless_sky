@@ -7,6 +7,7 @@ local Constants = {
         min = 100,
 
         playerMat = 50,
+        tableArea = 50,
         tileScoreAnimations = 47,
         tilePlacePrompt = 44,
 
