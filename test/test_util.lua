@@ -21,7 +21,8 @@ function TestUtil.copyRules()
 end
 
 --- @return string snapshot of the game state a player's actions may touch: their score, hand and
----     mat, the tower (discard) and the history length. Compare two snapshots to check state is unchanged
+---     mat, the tower (discard), bag, factory displays, center, start token, round phase and the
+---     history length. Compare two snapshots to check state is unchanged
 function TestUtil.snapshot(gameState, playerIdx)
     playerIdx = playerIdx or 1
     local player = gameState.players[playerIdx]
@@ -35,8 +36,34 @@ function TestUtil.snapshot(gameState, playerIdx)
             table.insert(parts, starIdx .. "." .. slotIdx .. "=" .. tostring(star:tileAtSlot(slotIdx)))
         end
     end
+    for _, tileType in ipairs(TileType.ORDERED) do
+        table.insert(parts, "bag." .. tileType .. "=" .. gameState.tileBag:num(tileType))
+        table.insert(parts, "center." .. tileType .. "=" .. gameState.center:num(tileType))
+        for displayIdx, display in ipairs(gameState.factoryDisplays) do
+            table.insert(parts, "display" .. displayIdx .. "." .. tileType .. "=" .. display:num(tileType))
+        end
+    end
+    table.insert(parts, "token=" .. tostring(gameState.startTokenHolder))
+    table.insert(parts, "phase=" .. tostring(gameState.round.phase))
     table.insert(parts, "history=" .. #gameState.actionHistory)
     return table.concat(parts, ",")
+end
+
+--- @return TileBag a bag with the given TileType -> count contents
+function TestUtil.bagOf(counts)
+    local TileBag = require("cloudless_sky.model.tile_bag")
+    local bag = TileBag()
+    for tileType, count in pairs(counts) do
+        bag:addTiles(tileType, count)
+    end
+    return bag
+end
+
+--- Set \p bag's contents to exactly the given TileType -> count table (missing types become 0)
+function TestUtil.setBag(bag, counts)
+    for _, tileType in ipairs(TileType.ORDERED) do
+        bag:setCountForTileType(tileType, counts[tileType] or 0)
+    end
 end
 
 return TestUtil

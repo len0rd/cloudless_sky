@@ -23,6 +23,8 @@ local SCORE_ROW_H = 0.05
 local MAX_HAND_CELL_H = 0.10
 local BUTTON_ROW_H = 0.07
 local HAND_COLS = 2
+-- rows of buttons at the bottom: done, pass, undo + view toggle
+local NUM_BUTTON_ROWS = 3
 local EMPTY_SLOT_ALPHA = 0.35
 
 local BG_COLOR = { 0.12, 0.12, 0.18, 0.85 }
@@ -63,10 +65,13 @@ function PlayerHudContainerEntity.new()
     entity.doneEnabled = false
     entity.undoEnabled = false
     entity.passEnabled = true
+    entity.viewToggleEnabled = false
+    entity.viewToggleLabel = "Table"
     entity.buttons = {
         done = { scale = 1.0, hoverTween = nil },
         pass = { scale = 1.0, hoverTween = nil },
         undo = { scale = 1.0, hoverTween = nil },
+        viewToggle = { scale = 1.0, hoverTween = nil },
     }
 
     -- data cached from gameState during update for use in draw
@@ -114,6 +119,17 @@ function PlayerHudContainerEntity:setUndoEnabled(enabled)
     end
 end
 
+--- Set up the button that switches the camera between the table and the player's mat
+--- @param label string button text (where pressing it goes, eg: "Table" or "Mat")
+function PlayerHudContainerEntity:setViewToggle(label, enabled)
+    self.viewToggleLabel = label
+    self.viewToggleEnabled = enabled
+    if not enabled then
+        self.buttons.viewToggle.scale = 1.0
+        self.buttons.viewToggle.hoverTween = nil
+    end
+end
+
 function PlayerHudContainerEntity:mousePressed(cameraX, cameraY, worldX, worldY, button, istouch)
     local bbox = self.boundingBox
     if not ViewUtil.ptInRect(cameraX, cameraY, self.cameraPos.x, self.cameraPos.y, bbox.w, bbox.h) then
@@ -121,13 +137,17 @@ function PlayerHudContainerEntity:mousePressed(cameraX, cameraY, worldX, worldY,
     end
 
     if button == 1 then
-        local done, pass, undo = self.doneRect, self.passRect, self.undoRect
+        local done, pass, undo, toggle = self.doneRect, self.passRect, self.undoRect, self.secondaryRect
         if self.doneEnabled and ViewUtil.ptInRect(cameraX, cameraY, done.x, done.y, done.w, done.h) then
             self.mouseHandler.clickEvent = { type = Components.mouseHandler.eventTypes.endTurnClicked }
         elseif self.passEnabled and ViewUtil.ptInRect(cameraX, cameraY, pass.x, pass.y, pass.w, pass.h) then
             self.mouseHandler.clickEvent = { type = Components.mouseHandler.eventTypes.passClicked }
         elseif self.undoEnabled and ViewUtil.ptInRect(cameraX, cameraY, undo.x, undo.y, undo.w, undo.h) then
             self.mouseHandler.clickEvent = { type = Components.mouseHandler.eventTypes.undoClicked }
+        elseif
+            self.viewToggleEnabled and ViewUtil.ptInRect(cameraX, cameraY, toggle.x, toggle.y, toggle.w, toggle.h)
+        then
+            self.mouseHandler.clickEvent = { type = Components.mouseHandler.eventTypes.toggleViewClicked }
         end
     end
 
@@ -225,6 +245,17 @@ function PlayerHudContainerEntity:update(dt, gameState)
         scale = self.buttons.undo.scale,
     }, self.undoRect.x, self.undoRect.y, self.undoRect.w, self.undoRect.h)
     self:_animateButton(self.buttons.undo, undoBtn, self.undoEnabled, dt)
+
+    local r = self.secondaryRect
+    local toggleBtn = self.ui:Button(self.viewToggleLabel, {
+        id = "hudViewToggle",
+        draw = ViewUtil.suitButtonDraw,
+        color = self.viewToggleEnabled and BUTTON_COLORS or DISABLED_BUTTON_COLORS,
+        cornerRadius = cornerRadius,
+        outline = 2,
+        scale = self.buttons.viewToggle.scale,
+    }, r.x, r.y, r.w, r.h)
+    self:_animateButton(self.buttons.viewToggle, toggleBtn, self.viewToggleEnabled, dt)
 end
 
 function PlayerHudContainerEntity:_drawHandCell(cell, count, isWild)
@@ -356,14 +387,14 @@ function PlayerHudContainerEntity:resize(w, h, _)
     
     -- UI buttons: aligned to bottom
     local btnH = math.floor(h * BUTTON_ROW_H)
-    y = self.boundingBox.h - ((btnH + pad) * table.count(self.buttons))
+    y = self.boundingBox.h - ((btnH + pad) * NUM_BUTTON_ROWS)
 
     self.doneRect = { x = pad, y = y, w = innerW, h = btnH }
     y = y + btnH + pad
     self.passRect = { x = pad, y = y, w = innerW, h = btnH }
     y = y + btnH + pad
 
-    -- half-width row: undo on the left, right half reserved for a future button
+    -- half-width row: undo on the left, view toggle on the right
     local halfW = math.floor((innerW - pad) / 2)
     self.undoRect = { x = pad, y = y, w = halfW, h = btnH }
     self.secondaryRect = { x = pad + halfW + pad, y = y, w = halfW, h = btnH }

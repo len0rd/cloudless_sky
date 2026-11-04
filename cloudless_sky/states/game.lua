@@ -14,8 +14,10 @@ local EnforceEphemeralSys = require("cloudless_sky.systems.enforce_ephemeral")
 
 local PlayerMatEntity = require("cloudless_sky.entities.player_mat_entity")
 local PlayerHudContainerEntity = require("cloudless_sky.entities.player_hud_container")
+local TableAreaEntity = require("cloudless_sky.entities.table_area_entity")
 
-local TilePlacementTurnStateMachine = require("cloudless_sky.states.tile_placement_turn_sm")
+local GameRoundStateMachine = require("cloudless_sky.states.game_round_sm")
+local WorldStateMachine = require("cloudless_sky.states.world_sm")
 
 local GameStateMachineMgr = require("cloudless_sky.extern.hump.gamestate")
 
@@ -27,13 +29,6 @@ function game:init()
 
     gameState = GameState(rules, playerNames, love.math.newRandomGenerator(os.time()))
 
-    -------------------DELTE---------------------
-    local TileType = require("cloudless_sky.model.tile_type")
-    gameState.players[1].hand:setCountForTileType(TileType.RED, 10)
-    gameState.players[1].hand:setCountForTileType(TileType.PURPLE, 2)
-    gameState.players[2].hand:setCountForTileType(TileType.ORANGE, 10)
-    ----------------------END DELTE--------------
-
     graphicsState = {
         world = Concord.world(),
         -- make player mat entities easily accessible
@@ -41,11 +36,17 @@ function game:init()
         hud = {
             container = PlayerHudContainerEntity.new(),
         },
+        -- factory displays, center of the table, bag and tower
+        table = nil,
+        -- what the camera is looking at (WorldStateMachine.VIEW)
+        viewFocus = WorldStateMachine.VIEW.TABLE,
     }
     for ii = 1, #playerNames do
         graphicsState.matEntities[ii] = PlayerMatEntity.new(ii, 600, GameRules.matStarTypes(rules))
         graphicsState.world:addEntity(graphicsState.matEntities[ii])
     end
+    graphicsState.table = TableAreaEntity.new(gameState, graphicsState.matEntities)
+    graphicsState.world:addEntity(graphicsState.table)
     graphicsState.world:addEntity(graphicsState.hud.container)
 
     --- REMEMBER: systems are called in the order they are added
@@ -63,7 +64,8 @@ function game:init()
         end
     end
 
-    turnSm = TilePlacementTurnStateMachine()
+    self.roundSm = GameRoundStateMachine()
+    self.gameOver = false
 end
 
 -- runs every time the state is entered
@@ -76,23 +78,26 @@ function game:enter(from)
 end
 
 function game:resume(from)
-    Log.debug("increment turn!")
-    gameState:incrementTurn()
+    -- a round just ended
+    if gameState:isFinalRound() and gameState:allPlayersPassed() then
+        -- TODO: final scoring (star completion, number bonuses, leftover tile penalty)
+        Log.info("game over! final scoring is not implemented yet")
+        self.gameOver = true
+    end
 end
 
 function game:update(dt)
-    if gameState:allPlayersPassed() then
-        -- TODO: end the round (Phase 3: refill factory displays, clear passedForPhase, advance round)
-        if not self.loggedRoundOver then
-            Log.info("all players have passed. round end is not implemented yet")
-            self.loggedRoundOver = true
-        end
+    if self.gameOver then
+        -- keep the world running (animations, hover) so the final state can be looked at
+        graphicsState.world:emit("update", dt, gameState)
         return
     end
-    GameStateMachineMgr.push(turnSm, gameState.currentTurnPlayer, gameState, graphicsState)
+    GameStateMachineMgr.push(self.roundSm, gameState, graphicsState)
 end
 
-function game:draw() end
+function game:draw()
+    graphicsState.world:emit("draw", gameState)
+end
 
 -- events
 

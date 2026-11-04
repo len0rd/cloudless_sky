@@ -15,9 +15,17 @@ local GameRules = require("cloudless_sky.model.game_rules")
 ---@field actionHistory Action[] Every action performed, oldest first
 ---@field turnIdx integer Increments every turn and is never reused. Identifies the current turn
 ---@field turnHistoryStart integer #actionHistory when the current turn started
+---@field factoryDisplays TileBag[] The factory displays tiles are picked from during tile selection
+---@field center TileBag The center of the table. Tiles left on a display after a pick are moved here
+---@field startTokenHolder integer|nil Index of the player holding the start player token.
+---     nil while the token is in the center of the table
 ---@field rng GameRng The only source of randomness for game logic. Actions that draw from it
 ---     record its state (rng:getState()) before drawing so they can be undone/replayed exactly
 local GameState = Object:extend()
+
+--- Tile sources (where tiles are taken from during tile selection) are integers:
+--- GameState.CENTER for the center of the table, 1..numFactoryDisplays() for a factory display
+GameState.CENTER = 0
 
 --- Interface for the random generator passed to GameState. The model doesn't depend on any
 --- particular implementation
@@ -65,6 +73,15 @@ function GameState:new(gameRules, playerNames, rng)
         table.insert(self.players, newPlayer)
     end
 
+    local numDisplays = gameRules.factoryDisplay.displaysPerPlayerCount[tostring(#playerNames)]
+    assert(numDisplays, "rules don't define a factory display count for " .. #playerNames .. " players")
+    self.factoryDisplays = {}
+    for ii = 1, numDisplays do
+        self.factoryDisplays[ii] = TileBag()
+    end
+    self.center = TileBag()
+    self.startTokenHolder = nil
+
     self.round = {
         idx = 1,
         phase = GameState.RoundPhase.TILE_SELECTION,
@@ -86,11 +103,19 @@ function GameState:serialize()
         discard = self.discard:serialize(),
         players = {},
         round = self.round,
+        factoryDisplays = {},
+        center = self.center:serialize(),
+        startTokenHolder = self.startTokenHolder,
+        startPlayer = self.startPlayer,
+        currentTurnPlayer = self.currentTurnPlayer,
         -- TODO: restore with self.rng:setState(data.rngState) once GameState deserialization exists
         rngState = self.rng:getState(),
     }
     for ii, player in ipairs(self.players) do
         serialized.players[ii] = player:serialize()
+    end
+    for ii, display in ipairs(self.factoryDisplays) do
+        serialized.factoryDisplays[ii] = display:serialize()
     end
     return serialized
 end
@@ -140,6 +165,32 @@ end
 function GameState:allPlayersPassed()
     for _, player in ipairs(self.players) do
         if not player.passedForPhase then
+            return false
+        end
+    end
+    return true
+end
+
+function GameState:numFactoryDisplays()
+    return #self.factoryDisplays
+end
+
+--- @param source integer GameState.CENTER or a factory display index
+--- @return TileBag|nil bag The tiles at \p source, or nil if \p source isn't valid
+function GameState:tileSource(source)
+    if source == GameState.CENTER then
+        return self.center
+    end
+    return self.factoryDisplays[source]
+end
+
+--- @return boolean True when every factory display and the center are empty (tile selection is over)
+function GameState:allTileSourcesEmpty()
+    if not self.center:isEmpty() then
+        return false
+    end
+    for _, display in ipairs(self.factoryDisplays) do
+        if not display:isEmpty() then
             return false
         end
     end
@@ -229,7 +280,15 @@ function GameState:incrementTurn()
         end
         nextPlayer = (nextPlayer % numPlayers) + 1
     end
-    self.currentTurnPlayer = nextPlayer
+    self:beginTurn(nextPlayer)
+end
+
+--- Start a new turn for \p playerIdx. Nothing performed before this can be undone by the player
+--- (see undoLastChoice)
+-- TODO: should be moved into an action (see incrementTurn)
+function GameState:beginTurn(playerIdx)
+    assert(self.players[playerIdx], "invalid playerIdx " .. tostring(playerIdx))
+    self.currentTurnPlayer = playerIdx
     self.turnIdx = self.turnIdx + 1
     self.turnHistoryStart = #self.actionHistory
 end

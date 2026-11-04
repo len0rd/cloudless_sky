@@ -1,0 +1,107 @@
+--- Base class for state machines that drive the ECS world: updating/drawing it, routing mouse
+--- presses, and pointing the camera at the current view (the table or the current player's mat).
+--- Only the top state machine on the GameStateMachineMgr stack gets love callbacks, so each one
+--- drives the world itself through these helpers.
+local Object = require("cloudless_sky.extern.classic")
+local Components = require("cloudless_sky.components")
+local BoxedViewSys = require("cloudless_sky.systems.boxed_view")
+local MousePressedSys = require("cloudless_sky.systems.mouse_pressed")
+
+---@class WorldStateMachine : Object
+---@field gameState GameState
+---@field graphicsState table
+local WorldStateMachine = Object:extend()
+
+--- graphicsState.viewFocus values
+WorldStateMachine.VIEW = {
+    TABLE = "table",
+    MAT = "mat",
+}
+
+function WorldStateMachine:_bind(gameState, graphicsState)
+    self.gameState = gameState
+    self.graphicsState = graphicsState
+    self.mouseClicked = false
+end
+
+--- Point the camera at \p focus (WorldStateMachine.VIEW) and update the HUD's view toggle button
+function WorldStateMachine:setViewFocus(focus)
+    self.graphicsState.viewFocus = focus
+    local label = focus == WorldStateMachine.VIEW.TABLE and "Mat" or "Table"
+    self.graphicsState.hud.container:setViewToggle(label, true)
+end
+
+function WorldStateMachine:toggleViewFocus()
+    if self.graphicsState.viewFocus == WorldStateMachine.VIEW.TABLE then
+        self:setViewFocus(WorldStateMachine.VIEW.MAT)
+    else
+        self:setViewFocus(WorldStateMachine.VIEW.TABLE)
+    end
+end
+
+--- @return table entity the world entity the camera is focused on
+function WorldStateMachine:focusEntity()
+    if self.graphicsState.viewFocus == WorldStateMachine.VIEW.TABLE then
+        return self.graphicsState.table
+    end
+    return self.graphicsState.matEntities[self.gameState.currentTurnPlayer]
+end
+
+function WorldStateMachine:focusCamera()
+    local centerX, centerY, zoom = BoxedViewSys.worldFocus(self:focusEntity())
+    -- shift so the focused entity is centered in the space right of the HUD
+    local hudBBox = self.graphicsState.hud.container.boundingBox
+    centerX = centerX - (hudBBox.w / 2)
+
+    camera:zoomTo(zoom)
+    camera:lockPosition(centerX, centerY)
+end
+
+--- @return table|nil clickEvent, table|nil entity. The click event (and the entity that produced it)
+---     from a mouse press since the last update, if any
+function WorldStateMachine:pendingClick()
+    if not self.mouseClicked then
+        return nil, nil
+    end
+    local mousePressSys = self.graphicsState.world:getSystem(MousePressedSys)
+    local entity = mousePressSys and mousePressSys.lastPressedEntity
+    if not entity then
+        return nil, nil
+    end
+    return entity.mouseHandler.clickEvent, entity
+end
+
+--- Handle click events every world state machine treats the same way
+--- @return boolean handled
+function WorldStateMachine:handleCommonClick(pressCtx)
+    if pressCtx.type == Components.mouseHandler.eventTypes.toggleViewClicked then
+        self:toggleViewFocus()
+        return true
+    end
+    return false
+end
+
+--- Move the camera, update every entity, and clear this update's click events
+function WorldStateMachine:updateWorld(dt)
+    self:focusCamera()
+    self.graphicsState.world:emit("update", dt, self.gameState)
+    if self.mouseClicked then
+        self.mouseClicked = false
+        self.graphicsState.world:emit("leaveUpdate")
+    end
+end
+
+function WorldStateMachine:draw()
+    self.graphicsState.world:emit("draw", self.gameState)
+end
+
+function WorldStateMachine:mousepressed(x, y, button, istouch)
+    self.graphicsState.world:emit("mousepressed", x, y, button, istouch)
+    self.mouseClicked = true
+end
+
+function WorldStateMachine:resize(w, h)
+    self.graphicsState.world:emit("resize", w, h, self.graphicsState)
+end
+
+return WorldStateMachine
