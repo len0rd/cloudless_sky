@@ -13,6 +13,7 @@
 ---     - AddScoreAction with the (negative) penalty, if there is one
 local Action = require("cloudless_sky.action.action")
 local AddScoreAction = require("cloudless_sky.action.add_score")
+local Player = require("cloudless_sky.model.player")
 local TileType = require("cloudless_sky.model.tile_type")
 
 ---@class PassAction : Action
@@ -20,9 +21,6 @@ local PassAction = Action:extend()
 local ACTION_NAME = "Pass"
 
 Action.register(ACTION_NAME, PassAction)
-
--- lowest score a pass penalty can bring a player to
-local MIN_SCORE_AFTER_PENALTY = 1
 
 --- @param playerIdx integer GameState index of the player passing
 --- @param keep table TileType -> count of tiles from the player's hand to keep for the next round.
@@ -84,12 +82,6 @@ function PassAction:validate(gameState)
     return true, nil
 end
 
---- @return integer penalty Points a player with \p score loses for discarding \p numDiscarded tiles
----     (the score can't go below MIN_SCORE_AFTER_PENALTY)
-function PassAction.penaltyFor(score, numDiscarded)
-    return math.max(0, math.min(numDiscarded, score - MIN_SCORE_AFTER_PENALTY))
-end
-
 function PassAction:perform(gameState)
     local valid, reason = self:validate(gameState)
     assert(valid, "Invalid PassAction: " .. tostring(reason))
@@ -108,7 +100,7 @@ function PassAction:perform(gameState)
     end
     player.passedForPhase = true
 
-    ctx.penalty = PassAction.penaltyFor(player.score, total(ctx.discarded))
+    ctx.penalty = Player.clampedPenalty(player.score, total(ctx.discarded))
     if ctx.penalty > 0 then
         return { AddScoreAction(ctx.playerIdx, -ctx.penalty) }
     end

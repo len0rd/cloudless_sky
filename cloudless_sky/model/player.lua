@@ -16,6 +16,15 @@ local TileType = require("cloudless_sky.model.tile_type")
 ---     This boolean keeps track of that
 local Player = Object:extend()
 
+--- lowest score a penalty (passing, first pick from the center) can bring a player to
+Player.MIN_SCORE_AFTER_PENALTY = 1
+
+--- @return integer penalty Points a player with \p score actually loses for a penalty of \p points
+---     (the score can't go below Player.MIN_SCORE_AFTER_PENALTY)
+function Player.clampedPenalty(score, points)
+    return math.max(0, math.min(points, score - Player.MIN_SCORE_AFTER_PENALTY))
+end
+
 function Player:new(starConfigs, startScore, name)
     self.mat = PlayMat(starConfigs)
     -- since this TileBag functions as the players hand, the game RNG is not needed

@@ -11,7 +11,7 @@ local Concord = require("cloudless_sky.extern.concord")
 local Components = require("cloudless_sky.components")
 local Constants = require("cloudless_sky.constants")
 local EUtil = require("cloudless_sky.entities.e_util")
-local PassAction = require("cloudless_sky.action.pass")
+local Player = require("cloudless_sky.model.player")
 local TileType = require("cloudless_sky.model.tile_type")
 local TileView = require("cloudless_sky.view.tile_view")
 local ViewUtil = require("cloudless_sky.view.view_util")
@@ -145,7 +145,7 @@ function PassConfirmDialogEntity:_discardInfo()
         end
     end
     local numDiscarded = self.handTotal - kept
-    return numDiscarded, PassAction.penaltyFor(self.score, numDiscarded)
+    return numDiscarded, Player.clampedPenalty(self.score, numDiscarded)
 end
 
 --- @return table|nil entries picker entries for the open picker: { tileType|false, count, rect }.
