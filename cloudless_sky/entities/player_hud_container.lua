@@ -230,7 +230,7 @@ function PlayerHudContainerEntity:_drawHandCell(cell, count, isWild)
 
     -- tile on the left of the cell. tile polygon is ~2/3 as wide as its size, so it
     -- only needs ~40% of the cell width
-    local tileAreaW = math.floor(cell.w * 0.4)
+    local tileAreaW = math.floor(cell.w * 0.5)
     local tileSize = math.floor(cell.h * 0.8)
     local tileX = cell.x + math.floor((tileAreaW - tileSize) / 2)
     local tileY = cell.y + math.floor((cell.h - tileSize) / 2)
@@ -312,7 +312,7 @@ function PlayerHudContainerEntity:resize(w, h, _)
     self.pad = pad
     local innerW = panelW - 2 * pad
 
-    -- all layout values are floored so text/shapes land on whole pixels
+    -- all layout values are floored to land on whole pixels
     local y = pad
     self.nameRect = { x = pad, y = y, w = innerW, h = math.floor(h * NAME_ROW_H) }
     y = y + self.nameRect.h
@@ -340,10 +340,14 @@ function PlayerHudContainerEntity:resize(w, h, _)
     end
     local numRows = math.ceil(#TileType.ORDERED / HAND_COLS)
     y = y + numRows * cellH + numRows * halfPad
-    self.buttonDividerY = y + 0.5
-    y = y + pad
 
+    self.buttonDividerY = y + 0.5
+    local handGridBtm  = y + pad
+    
+    -- UI buttons: aligned to bottom
     local btnH = math.floor(h * BUTTON_ROW_H)
+    y = self.boundingBox.h - ((btnH + pad) * table.count(self.buttons))
+
     self.doneRect = { x = pad, y = y, w = innerW, h = btnH }
     y = y + btnH + pad
     self.passRect = { x = pad, y = y, w = innerW, h = btnH }

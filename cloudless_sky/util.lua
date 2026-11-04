@@ -43,6 +43,15 @@ function table.copy(obj)
     return process(obj)
 end
 
+--- @return integer count. The number of key-value pairs in the given table
+function table.count(t)
+    local count = 0
+    for _ in pairs(t) do
+        count = count + 1
+    end
+    return count
+end
+
 --- Function that prints just the top-level strings, integers, and numbers in the given table
 function table.shallowPrint(t)
     if type(t) ~= "table" then

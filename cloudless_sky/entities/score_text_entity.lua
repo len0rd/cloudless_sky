@@ -10,7 +10,8 @@ ScoreTextEntity.__index = ScoreTextEntity
 
 -- estimated max width of the text box
 local ESTIMATED_TEXT_WIDTH = 120
-local ESTIMATED_TEXT_HEIGHT = 40
+local ESTIMATED_TEXT_HEIGHT = 60
+local DISPLAY_TIME_SEC = 1.0
 
 function ScoreTextEntity.new(playerIdx, starIdx, slotIdx, scorePts)
     local entity = Concord.entity()
@@ -26,15 +27,18 @@ function ScoreTextEntity.new(playerIdx, starIdx, slotIdx, scorePts)
 
     entity.textbox = Text.new("center", {
         color = { 1, 1, 1, 1 },
-        font = fonts.ithaca["32"],
+        shadow_color = { 0, 0, 0, 1 },
+        print_speed = 0.04,
+        font = fonts.ithaca["64"],
     })
     local pointText = "Points!"
     if scorePts == 1 then
         pointText = "Point!"
     end
     entity.textbox:send(
-        "[dropshadow=3][bounce]+" .. tostring(math.floor(scorePts)) .. " " .. pointText .. "[/bounce][/dropshadow]"
+        "[dropshadow=10][bounce]+" .. tostring(math.floor(scorePts)) .. " " .. pointText .. "[/bounce][/dropshadow]"
     )
+    entity.elapsedSec = 0.0
 
     EUtil.extendEntity(entity, ScoreTextEntity)
 
@@ -43,7 +47,8 @@ end
 
 function ScoreTextEntity:update(dt, gameState)
     self.textbox:update(dt)
-    self.ephemeral.done = self.textbox:is_finished()
+    self.elapsedSec = self.elapsedSec + dt
+    self.ephemeral.done = self.textbox:is_finished() and self.elapsedSec >= DISPLAY_TIME_SEC
 end
 
 --- drawn in screen space (see DrawSys) so the pixel font isn't scaled by camera zoom

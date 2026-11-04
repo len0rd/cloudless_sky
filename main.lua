@@ -52,6 +52,8 @@ function love.load(args)
     fonts.ithaca = {
         ["16"] = love.graphics.newFont("assets/fonts/Ithaca.ttf", 16, "mono"),
         ["32"] = love.graphics.newFont("assets/fonts/Ithaca.ttf", 32, "mono"),
+        ["48"] = love.graphics.newFont("assets/fonts/Ithaca.ttf", 48, "mono"),
+        ["64"] = love.graphics.newFont("assets/fonts/Ithaca.ttf", 64, "mono"),
     }
     fonts.ithacaBySize = { fonts.ithaca["32"], fonts.ithaca["16"] }
     for _, font in pairs(fonts.ithaca) do
