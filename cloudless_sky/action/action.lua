@@ -9,6 +9,9 @@ local Object = require("cloudless_sky.extern.classic")
 
 ---@class Action : Object
 ---@field name string Name of this action. corresponds to its type
+---@field isFollowUp boolean False if this action was a player choice (passed to GameState:performAction).
+---     True if it was performed automatically as a consequence of another action.
+---     GameState:undoLastChoice undoes history up to and including the most recent non-follow-up action
 local Action = Object:extend()
 
 --- List of all known actions. Action implementations add their name to this list
@@ -22,6 +25,7 @@ end
 function Action:new(name, ctx)
     self.name = name
     self.ctx = ctx
+    self.isFollowUp = false
 end
 
 --- Check if this action can be performed on the given game state. Actions with preconditions
@@ -52,13 +56,18 @@ function Action:serialize()
     if self.ctx ~= nil and next(self.ctx) ~= nil then
         serialized.ctx = self.ctx
     end
+    if self.isFollowUp then
+        serialized.isFollowUp = true
+    end
 
     return serialized
 end
 
 function Action.deserialize(data)
     assert(Action.known[data.name], "Action '" .. data.name .. "' has not been registered for Action.deserialize")
-    return Action.known[data.name].deserialize(data.ctx)
+    local action = Action.known[data.name].deserialize(data.ctx)
+    action.isFollowUp = data.isFollowUp == true
+    return action
 end
 
 return Action

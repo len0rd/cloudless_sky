@@ -69,6 +69,7 @@ Components.mouseHandler = {
         placeTileClicked = 2,
         endTurnClicked = 3,
         passClicked = 4,
+        undoClicked = 5,
     },
 }
 

@@ -149,13 +149,43 @@ function StarView:new(starType, x, y, size)
 
     -- tween for tile being placed
     self.placeTween = flux.group()
-    -- which star-slots are being animated
+    -- which star-slots are being animated. slotIdx -> { removing = bool, tileType = TileType|nil }
+    -- tileType is only set when removing (model may no longer know removed tile color)
     self.animatingSlots = {}
 end
+
+-- tile removal (undo) animation settings
+local REMOVE_END_SCALE = 0.2
+local REMOVE_DURATION_S = 0.25
 
 -- tile placement animation settings
 local PLACE_START_SCALE = 0.2
 local PLACE_DURATION_S = 0.6
+
+--- "shrink out" animation for a tile that was just removed from \p slotIndex
+--- @param tileType TileType color of the removed tile. The model no longer knows it
+--- @param onComplete function|nil called once the animation finishes
+function StarView:playRemoveAnimation(slotIndex, tileType, onComplete)
+    local poly = self.polys[slotIndex]
+    if not poly then
+        if onComplete then
+            onComplete()
+        end
+        return
+    end
+    self.animatingSlots[slotIndex] = { removing = true, tileType = tileType }
+    poly.scale = 1.0
+    self.placeTween
+        :to(poly, REMOVE_DURATION_S, { scale = REMOVE_END_SCALE })
+        :ease("backin")
+        :oncomplete(function()
+            self.animatingSlots[slotIndex] = nil
+            poly.scale = 1.0
+            if onComplete then
+                onComplete()
+            end
+        end)
+end
 
 --- "bounce in" animation for a tile that was just placed in \p slotIndex
 --- @param onComplete function|nil called once the animation finishes
@@ -167,7 +197,7 @@ function StarView:playPlaceAnimation(slotIndex, onComplete)
         end
         return
     end
-    self.animatingSlots[slotIndex] = true
+    self.animatingSlots[slotIndex] = { removing = false }
     poly.scale = PLACE_START_SCALE
     self.placeTween
         :to(poly, PLACE_DURATION_S, { scale = 1.0 })
@@ -299,7 +329,9 @@ function StarView:drawCostLabels(star, worldToScreen, worldScale)
     local font = ViewUtil.largestFontThatFits("6", boxSize, boxSize)
 
     for ii = 1, #StarView.SLOT_VERTEX_SCALARS do
-        if not star:isOccupied(ii) then
+        local removing = self.animatingSlots[ii] and self.animatingSlots[ii].removing
+        -- hide cost under placed tiles, and under tiles still shrinking away after an undo
+        if not star:isOccupied(ii) and not removing then
             local vertices = self:_drawnSlotVertices(ii, hoveredSlot)
 
             -- the outer tip is the vertex farthest from the star's center
@@ -339,8 +371,9 @@ function StarView:draw(star)
     for ii = 1, #StarView.SLOT_VERTEX_SCALARS do
         if ii ~= hoveredSlot then
             local unplacedColor = StarView.UNPLACED_SLOT_COLOR[self.starType]
-            if self.animatingSlots[ii] then
-                -- draw empty slots underneath the tile thats bouncing in
+            local anim = self.animatingSlots[ii]
+            if anim then
+                -- draw empty slots underneath the tile thats bouncing in/shrinking out
                 local baseVertices = ViewUtil.rotateVerticies(self.polys[ii].verticies, centerX, centerY, self.rotation)
                 drawPoly(baseVertices, unplacedColor)
             end
@@ -349,6 +382,8 @@ function StarView:draw(star)
             local color = unplacedColor
             if star:isOccupied(ii) then
                 color = TileView.TILE_COLOR[star:tileAtSlot(ii)]
+            elseif anim and anim.removing then
+                color = TileView.TILE_COLOR[anim.tileType]
             end
             drawPoly(scaledVertices, color)
         end

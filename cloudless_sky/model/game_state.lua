@@ -11,6 +11,11 @@ local Player = require("cloudless_sky.model.player")
 ---@field nextStartPlayer integer Index of player that will be the first player when the round is incremented
 ---@field currentTurnPlayer integer Index of the player who is taking a turn right now
 ---@field players table[Player] Array containing each player in the game
+---@field actionHistory Action[] Every action performed, oldest first
+---@field turnIdx integer Increments every turn and is never reused. Identifies the current turn
+---@field turnHistoryStart integer #actionHistory when the current turn started
+---@field rng love.RandomGenerator The only source of randomness for game logic. Actions that draw from it
+---     record its state (rng:getState()) before drawing so they can be undone/replayed exactly
 local GameState = Object:extend()
 
 -- the phases that happen each round
@@ -29,7 +34,8 @@ GameState.RoundPhaseOrdered = {
 --- Start a new game!
 --- @param gameRules GameRules ruleset for this game
 --- @param playerNames table[string] List of player names. Length of list is used to determine number of players
-function GameState:new(gameRules, playerNames)
+--- @param seed number|nil Optional seed for the game's random generator. Defaults to the current time
+function GameState:new(gameRules, playerNames, seed)
     local tilesPerType = math.floor(gameRules.totalTiles / #TileType.ORDERED)
 
     self.rules = gameRules
@@ -54,6 +60,11 @@ function GameState:new(gameRules, playerNames)
 
     self.actionQueue = {}
     self.actionHistory = {}
+
+    self.turnIdx = 1
+    self.turnHistoryStart = 0
+
+    self.rng = love.math.newRandomGenerator(seed or os.time())
 end
 
 function GameState:serialize()
@@ -63,6 +74,8 @@ function GameState:serialize()
         discard = self.discard:serialize(),
         players = {},
         round = self.round,
+        -- TODO: restore with self.rng:setState(data.rngState) once GameState deserialization exists
+        rngState = self.rng:getState(),
     }
     for ii, player in ipairs(self.players) do
         serialized.players[ii] = player:serialize()
@@ -110,21 +123,47 @@ function GameState:performAction(action)
     end
 
     local performed = {}
-    local function performRecursive(a)
+    local function performRecursive(a, isFollowUp)
+        a.isFollowUp = isFollowUp
         local followUps = a:perform(self) or {}
         table.insert(self.actionHistory, a)
         table.insert(performed, a)
         for _, followUp in ipairs(followUps) do
-            performRecursive(followUp)
+            performRecursive(followUp, true)
         end
     end
-    performRecursive(action)
+    -- the action passed in is a player choice. Everything it triggers is a follow-up
+    performRecursive(action, false)
     return performed
 end
 
+--- @return boolean True if the current turn has a player choice that can be undone
+function GameState:canUndoChoice()
+    return #self.actionHistory > self.turnHistoryStart
+end
+
+--- Undo the most recent player choice made this turn: its follow-up actions (newest first), then
+--- the choice itself (the most recent action with isFollowUp == false).
+--- Never undoes actions from before the current turn (see turnHistoryStart)
+--- @return Action[]|nil undone. The actions undone, newest first. nil if there is nothing to undo this turn
+function GameState:undoLastChoice()
+    if not self:canUndoChoice() then
+        return nil
+    end
+    local undone = {}
+    while #self.actionHistory > self.turnHistoryStart do
+        local action = self:undoLastAction()
+        table.insert(undone, action)
+        if not action.isFollowUp then
+            break
+        end
+    end
+    return undone
+end
+
 --- Undo the most recently performed action and remove it from actionHistory.
---- Note follow-up actions are recorded individually, so undoing a PlaceTileAction fully
---- requires undoing its AddScoreAction first (they are undone in reverse order of performance)
+--- This is a single step: it ignores choice grouping and turn boundaries. For player-facing undo
+--- use undoLastChoice
 --- @return Action|nil undone. The action that was undone, or nil if there is no history
 function GameState:undoLastAction()
     local action = table.remove(self.actionHistory)
@@ -134,9 +173,12 @@ function GameState:undoLastAction()
     return action
 end
 
--- TODO: should be moved into an action
+--- Advance to the next player's turn. The current turn's actions can no longer be undone
+-- TODO: should be moved into an action (its perform/undo would then update turnIdx/turnHistoryStart)
 function GameState:incrementTurn()
     self.currentTurnPlayer = (self.currentTurnPlayer % #self.players) + 1
+    self.turnIdx = self.turnIdx + 1
+    self.turnHistoryStart = #self.actionHistory
 end
 
 return GameState

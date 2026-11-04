@@ -27,20 +27,55 @@ function TilePlacementTurnStateMachine:new()
     -- nah
     self.state = self.STATES.WAIT_FOR_PLACEMENT
     self.mouseClicked = false
-    -- incremented every time a turn starts. Animation callbacks compare against it so a
-    -- callback from a previous turn (eg: player passed mid-animation) can't affect this one
-    self.turnToken = 0
 end
 
 function TilePlacementTurnStateMachine:enter(fromState, playerIdx, gameState, graphicsState)
-    self.state = self.STATES.WAIT_FOR_PLACEMENT
     self.playerIdx = playerIdx
     self.gameState = gameState
     self.graphicsState = graphicsState
     self.endTurnRequested = false
-    self.turnToken = self.turnToken + 1
-    self.graphicsState.hud.container:setDoneEnabled(false)
+    self:_setState(self.STATES.WAIT_FOR_PLACEMENT)
     Log.trace("entering PlacementTurnSM for " .. tostring(playerIdx))
+end
+
+--- Set the turn state and keep the HUD buttons in sync with it
+function TilePlacementTurnStateMachine:_setState(newState)
+    self.state = newState
+    local hud = self.graphicsState.hud.container
+    hud:setDoneEnabled(newState == self.STATES.WAIT_FOR_END)
+    -- don't allow undo mid-animation
+    hud:setUndoEnabled(newState ~= self.STATES.SCORING and self.gameState:canUndoChoice())
+end
+
+--- @return integer state The turn state implied by the actions taken so far this turn.
+---     Used after an undo so the state machine doesn't need to know what was undone
+function TilePlacementTurnStateMachine:_stateFromHistory()
+    -- TODO: once bonuses exist, return CLAIM_BONUS while the player has pending bonus picks
+    for ii = self.gameState.turnHistoryStart + 1, #self.gameState.actionHistory do
+        if self.gameState.actionHistory[ii].name == "PlaceTile" then
+            return self.STATES.WAIT_FOR_END
+        end
+    end
+    return self.STATES.WAIT_FOR_PLACEMENT
+end
+
+--- Undo the player's most recent choice this turn and animate it being reversed
+function TilePlacementTurnStateMachine:_undo()
+    local undone = self.gameState:undoLastChoice()
+    if not undone then
+        return
+    end
+    for _, action in ipairs(undone) do
+        if action.name == "PlaceTile" then
+            local ctx = action.ctx
+            self.graphicsState.matEntities[ctx.playerIdx]:animateTileRemoved(
+                ctx.starIdx,
+                ctx.slotIdx,
+                ctx.placement.tileType
+            )
+        end
+    end
+    self:_setState(self:_stateFromHistory())
 end
 
 function TilePlacementTurnStateMachine:_addPlaceDialogEntity(pressCtx)
@@ -95,15 +130,15 @@ function TilePlacementTurnStateMachine:_placeTile(pressCtx, dialogEntity)
         return
     end
     dialogEntity.ephemeral.done = true
-    self.state = self.STATES.SCORING
+    self:_setState(self.STATES.SCORING)
 
-    -- tile bounce-in. once done, the player may end their turn
-    local token = self.turnToken
+    -- tile bounce-in. once done, the player may end their turn (or undo).
+    -- ignore the callback if the turn has changed since (eg: player passed mid-animation)
+    local turnIdx = self.gameState.turnIdx
     local matEntity = self.graphicsState.matEntities[self.playerIdx]
     matEntity:animateTilePlaced(pressCtx.starIdx, pressCtx.slotIdx, function()
-        if token == self.turnToken and self.state == self.STATES.SCORING then
-            self.state = self.STATES.WAIT_FOR_END
-            self.graphicsState.hud.container:setDoneEnabled(true)
+        if turnIdx == self.gameState.turnIdx and self.state == self.STATES.SCORING then
+            self:_setState(self:_stateFromHistory())
         end
     end)
 
@@ -135,6 +170,10 @@ function TilePlacementTurnStateMachine:handleUserInput()
                 end
             elseif pressCtx.type == Components.mouseHandler.eventTypes.endTurnClicked then
                 self.endTurnRequested = true
+            elseif pressCtx.type == Components.mouseHandler.eventTypes.undoClicked then
+                if self.state ~= self.STATES.SCORING then
+                    self:_undo()
+                end
             elseif pressCtx.type == Components.mouseHandler.eventTypes.passClicked then
                 Log.debug("player " .. tostring(self.playerIdx) .. " passed for the round")
                 self.gameState.players[self.playerIdx].passedForPhase = true

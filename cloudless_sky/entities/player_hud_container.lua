@@ -28,8 +28,9 @@ local EMPTY_SLOT_ALPHA = 0.35
 local BG_COLOR = { 0.12, 0.12, 0.18, 0.85 }
 local TEXT_COLOR = { 1, 1, 1, 1 }
 local DIVIDER_COLOR = { 1, 1, 1, 0.3 }
--- score text flashes this color when the score changes, then fades back to TEXT_COLOR
+-- score text flashes this color when the score goes up/down, then fades back to TEXT_COLOR
 local SCORE_FLASH_COLOR = { 1, 0.82, 0.3, 1 }
+local SCORE_DECREASE_FLASH_COLOR = { 0.85, 0.35, 0.35, 1 }
 local SCORE_COUNT_TIME_S = 1.0
 local SCORE_FLASH_TIME_S = 2.0
 
@@ -60,9 +61,11 @@ function PlayerHudContainerEntity.new()
 
     entity.ui = suit.new()
     entity.doneEnabled = false
+    entity.undoEnabled = false
     entity.buttons = {
         done = { scale = 1.0, hoverTween = nil },
         pass = { scale = 1.0, hoverTween = nil },
+        undo = { scale = 1.0, hoverTween = nil },
     }
 
     -- data cached from gameState during update for use in draw
@@ -74,6 +77,7 @@ function PlayerHudContainerEntity.new()
     entity.scoreTarget = 0
     -- 1.0 = fully SCORE_FLASH_COLOR, 0.0 = TEXT_COLOR
     entity.scoreFlash = 0
+    entity.scoreFlashColor = SCORE_FLASH_COLOR
     entity.scoreTween = flux.group()
 
     local screenWidth, screenHeight = love.graphics.getPixelDimensions()
@@ -91,6 +95,15 @@ function PlayerHudContainerEntity:setDoneEnabled(enabled)
     end
 end
 
+--- Enable/disable the undo button. Controlled by the turn state machine
+function PlayerHudContainerEntity:setUndoEnabled(enabled)
+    self.undoEnabled = enabled
+    if not enabled then
+        self.buttons.undo.scale = 1.0
+        self.buttons.undo.hoverTween = nil
+    end
+end
+
 function PlayerHudContainerEntity:mousePressed(cameraX, cameraY, worldX, worldY, button, istouch)
     local bbox = self.boundingBox
     if not ViewUtil.ptInRect(cameraX, cameraY, self.cameraPos.x, self.cameraPos.y, bbox.w, bbox.h) then
@@ -98,11 +111,13 @@ function PlayerHudContainerEntity:mousePressed(cameraX, cameraY, worldX, worldY,
     end
 
     if button == 1 then
-        local done, pass = self.doneRect, self.passRect
+        local done, pass, undo = self.doneRect, self.passRect, self.undoRect
         if self.doneEnabled and ViewUtil.ptInRect(cameraX, cameraY, done.x, done.y, done.w, done.h) then
             self.mouseHandler.clickEvent = { type = Components.mouseHandler.eventTypes.endTurnClicked }
         elseif ViewUtil.ptInRect(cameraX, cameraY, pass.x, pass.y, pass.w, pass.h) then
             self.mouseHandler.clickEvent = { type = Components.mouseHandler.eventTypes.passClicked }
+        elseif self.undoEnabled and ViewUtil.ptInRect(cameraX, cameraY, undo.x, undo.y, undo.w, undo.h) then
+            self.mouseHandler.clickEvent = { type = Components.mouseHandler.eventTypes.undoClicked }
         end
     end
 
@@ -151,6 +166,7 @@ function PlayerHudContainerEntity:_updateScore(dt, previousPlayer)
         self.scoreFlash = 0
         self.scoreTween = flux.group()
     elseif score ~= self.scoreTarget then
+        self.scoreFlashColor = score > self.scoreTarget and SCORE_FLASH_COLOR or SCORE_DECREASE_FLASH_COLOR
         self.scoreTarget = score
         self.scoreFlash = 1
         self.scoreTween = flux.group()
@@ -189,6 +205,16 @@ function PlayerHudContainerEntity:update(dt, gameState)
         scale = self.buttons.pass.scale,
     }, self.passRect.x, self.passRect.y, self.passRect.w, self.passRect.h)
     self:_animateButton(self.buttons.pass, passBtn, true, dt)
+
+    local undoBtn = self.ui:Button("Undo", {
+        id = "hudUndo",
+        draw = ViewUtil.suitButtonDraw,
+        color = self.undoEnabled and BUTTON_COLORS or DISABLED_BUTTON_COLORS,
+        cornerRadius = cornerRadius,
+        outline = 2,
+        scale = self.buttons.undo.scale,
+    }, self.undoRect.x, self.undoRect.y, self.undoRect.w, self.undoRect.h)
+    self:_animateButton(self.buttons.undo, undoBtn, self.undoEnabled, dt)
 end
 
 function PlayerHudContainerEntity:_drawHandCell(cell, count, isWild)
@@ -249,10 +275,11 @@ function PlayerHudContainerEntity:draw(gameState)
         ViewUtil.printPixelText(name, ViewUtil.largestFontThatFits(name, r.w, r.h), r.x, r.y, r.w, r.h)
         r = self.scoreRect
         local f = self.scoreFlash
+        local flashColor = self.scoreFlashColor
         love.graphics.setColor(
-            TEXT_COLOR[1] + (SCORE_FLASH_COLOR[1] - TEXT_COLOR[1]) * f,
-            TEXT_COLOR[2] + (SCORE_FLASH_COLOR[2] - TEXT_COLOR[2]) * f,
-            TEXT_COLOR[3] + (SCORE_FLASH_COLOR[3] - TEXT_COLOR[3]) * f,
+            TEXT_COLOR[1] + (flashColor[1] - TEXT_COLOR[1]) * f,
+            TEXT_COLOR[2] + (flashColor[2] - TEXT_COLOR[2]) * f,
+            TEXT_COLOR[3] + (flashColor[3] - TEXT_COLOR[3]) * f,
             1
         )
         local scoreText = "Score: " .. tostring(math.floor(self.displayedScore + 0.5))
@@ -320,6 +347,12 @@ function PlayerHudContainerEntity:resize(w, h, _)
     self.doneRect = { x = pad, y = y, w = innerW, h = btnH }
     y = y + btnH + pad
     self.passRect = { x = pad, y = y, w = innerW, h = btnH }
+    y = y + btnH + pad
+
+    -- half-width row: undo on the left, right half reserved for a future button
+    local halfW = math.floor((innerW - pad) / 2)
+    self.undoRect = { x = pad, y = y, w = halfW, h = btnH }
+    self.secondaryRect = { x = pad + halfW + pad, y = y, w = halfW, h = btnH }
 end
 
 return PlayerHudContainerEntity

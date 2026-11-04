@@ -2,10 +2,9 @@ local cute = require("cloudless_sky.extern.cute")
 local Action = require("cloudless_sky.action.action")
 local AddScoreAction = require("cloudless_sky.action.add_score")
 local PlaceTileAction = require("cloudless_sky.action.place_tile")
-local GameRules = require("cloudless_sky.model.game_rules")
-local GameState = require("cloudless_sky.model.game_state")
 local PlacementPossibility = require("cloudless_sky.model.placement_possibility")
 local TileType = require("cloudless_sky.model.tile_type")
+local TestUtil = require("test.test_util")
 
 -- star indices/costs on the default (base game) mat. See GameRules.DEFAULTS.BASE_GAME_RULES
 local RED_STAR = 2 -- costs { 5, 6, 1, 2, 3, 4 }
@@ -14,25 +13,10 @@ local MULTI_STAR = 7 -- costs { 1, 2, 3, 4, 5, 6 }
 
 local P1 = 1
 
-local newGame = function()
-    return GameState(GameRules.currentRules(), { "p1", "p2" })
-end
+local newGame = TestUtil.newGame
 
---- @return string snapshot of all state a PlaceTileAction may touch for player 1
 local snapshot = function(gameState)
-    local player = gameState.players[P1]
-    local parts = { "score=" .. player.score }
-    for _, tileType in ipairs(TileType.ORDERED) do
-        table.insert(parts, "hand." .. tileType .. "=" .. player.hand:num(tileType))
-        table.insert(parts, "discard." .. tileType .. "=" .. gameState.discard:num(tileType))
-    end
-    for starIdx, star in ipairs(player.mat.stars) do
-        for slotIdx = 1, star:numSlots() do
-            table.insert(parts, starIdx .. "." .. slotIdx .. "=" .. tostring(star:tileAtSlot(slotIdx)))
-        end
-    end
-    table.insert(parts, "history=" .. #gameState.actionHistory)
-    return table.concat(parts, ",")
+    return TestUtil.snapshot(gameState, P1)
 end
 
 --- place a tile on the purple star paying entirely in purple

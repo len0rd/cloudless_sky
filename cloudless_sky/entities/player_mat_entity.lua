@@ -106,6 +106,14 @@ function PlayerMatEntity:animateTilePlaced(starIdx, slotIdx, onComplete)
     self.stars[starIdx]:playPlaceAnimation(slotIdx, onComplete)
 end
 
+--- Animate a tile that was just removed from the given slot
+--- @param tileType TileType color of the removed tile
+--- @param onComplete function|nil called when the animation finishes
+function PlayerMatEntity:animateTileRemoved(starIdx, slotIdx, tileType, onComplete)
+    assert(starIdx and starIdx > 0 and starIdx <= #self.stars, "Invalid star index!")
+    self.stars[starIdx]:playRemoveAnimation(slotIdx, tileType, onComplete)
+end
+
 function PlayerMatEntity:mousePressed(cameraX, cameraY, worldX, worldY, button, istouch)
     local starIdx, slotIdx = self:coordStarSlotIndex(worldX, worldY)
     if starIdx ~= 0 and slotIdx ~= 0 then
