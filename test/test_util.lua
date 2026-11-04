@@ -10,7 +10,7 @@ TestUtil.SEED = 0xdeadbeef
 
 --- @return GameState a new 2 player game using the default rules
 function TestUtil.newGame()
-    return GameState(GameRules.currentRules(), { "p1", "p2" }, TestUtil.SEED)
+    return GameState(GameRules.currentRules(), { "p1", "p2" }, love.math.newRandomGenerator(TestUtil.SEED))
 end
 
 --- @return string snapshot of the game state a player's actions may touch: their score, hand and

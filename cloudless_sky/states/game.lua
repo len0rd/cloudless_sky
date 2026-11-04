@@ -25,7 +25,7 @@ function game:init()
     local playerNames = { "lenord", "karoty" }
     local rules = GameRules.currentRules()
 
-    gameState = GameState(rules, playerNames)
+    gameState = GameState(rules, playerNames, love.math.newRandomGenerator(os.time()))
 
     -------------------DELTE---------------------
     local TileType = require("cloudless_sky.model.tile_type")

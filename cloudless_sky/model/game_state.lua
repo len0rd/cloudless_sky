@@ -14,9 +14,16 @@ local Player = require("cloudless_sky.model.player")
 ---@field actionHistory Action[] Every action performed, oldest first
 ---@field turnIdx integer Increments every turn and is never reused. Identifies the current turn
 ---@field turnHistoryStart integer #actionHistory when the current turn started
----@field rng love.RandomGenerator The only source of randomness for game logic. Actions that draw from it
+---@field rng GameRng The only source of randomness for game logic. Actions that draw from it
 ---     record its state (rng:getState()) before drawing so they can be undone/replayed exactly
 local GameState = Object:extend()
+
+--- Interface for the random generator passed to GameState. The model doesn't depend on any
+--- particular implementation
+---@class GameRng
+---@field random fun(self, min: integer, max: integer): integer random integer in [min, max]
+---@field getState fun(self): any serializable state
+---@field setState fun(self, state: any) restore a state returned by getState
 
 -- the phases that happen each round
 GameState.RoundPhase = {
@@ -34,8 +41,12 @@ GameState.RoundPhaseOrdered = {
 --- Start a new game!
 --- @param gameRules GameRules ruleset for this game
 --- @param playerNames table[string] List of player names. Length of list is used to determine number of players
---- @param seed number|nil Optional seed for the game's random generator. Defaults to the current time
-function GameState:new(gameRules, playerNames, seed)
+--- @param rng GameRng random generator for all game logic randomness. Should already be seeded
+function GameState:new(gameRules, playerNames, rng)
+    assert(
+        rng and rng.random and rng.getState and rng.setState,
+        "GameState requires a random generator with random, getState and setState"
+    )
     local tilesPerType = math.floor(gameRules.totalTiles / #TileType.ORDERED)
 
     self.rules = gameRules
@@ -64,7 +75,7 @@ function GameState:new(gameRules, playerNames, seed)
     self.turnIdx = 1
     self.turnHistoryStart = 0
 
-    self.rng = love.math.newRandomGenerator(seed or os.time())
+    self.rng = rng
 end
 
 function GameState:serialize()

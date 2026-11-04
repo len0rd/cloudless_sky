@@ -1,12 +1,9 @@
 local cute = require("cloudless_sky.extern.cute")
 local Action = require("cloudless_sky.action.action")
 local AddScoreAction = require("cloudless_sky.action.add_score")
-local GameRules = require("cloudless_sky.model.game_rules")
-local GameState = require("cloudless_sky.model.game_state")
+local TestUtil = require("test.test_util")
 
-local newGame = function()
-    return GameState(GameRules.currentRules(), { "p1", "p2" })
-end
+local newGame = TestUtil.newGame
 
 notion("AddScoreAction perform adds and undo subtracts", function()
     local gameState = newGame()
