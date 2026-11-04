@@ -97,6 +97,7 @@ function PlaceTileDialogEntity.new(playerIdx, starIdx, slotIdx, tileCost, placem
         :give(Components.names.killOffCamera) -- in the event state machine doesnt remove the prompt, ensure its removed once off camera
         :give(Components.names.uniqueGroup, "tilePlacementDialogs")
         :give(Components.names.ephemeral)
+        :give(Components.names.dismissOnClickOutside)
 
     EUtil.extendEntity(entity, PlaceTileDialogEntity)
 
@@ -142,33 +143,25 @@ function PlaceTileDialogEntity:screenOrigin()
     return math.floor(x + 0.5), math.floor(y + 0.5)
 end
 
+--- Claims any press inside the dialog. Presses outside it dismiss the dialog
+--- (dismissOnClickOutside, see MousePressedSys)
 function PlaceTileDialogEntity:mousePressed(cameraX, cameraY, worldX, worldY, button, istouch)
-    if button == 1 then
-        -- check if click is within the prompt:
-        local originX, originY = self:screenOrigin()
-        local clickInBBox =
-            ViewUtil.ptInRect(cameraX, cameraY, originX, originY, self.boundingBox.w, self.boundingBox.h)
-
-        if clickInBBox then
-            local btn = self.placeButton
-            -- place button was pressed. provide info to state machine
-            if btn and ViewUtil.ptInRect(cameraX, cameraY, btn.x, btn.y, btn.w, btn.h) then
-                self.mouseHandler.clickEvent = {
-                    type = Components.mouseHandler.eventTypes.placeTileClicked,
-                    starIdx = self.playerMatTileAnchor.starIdx,
-                    slotIdx = self.playerMatTileAnchor.slotIdx,
-                    placementOpt = self.placementOptions[self.placementOptIdx],
-                }
-            end
-        else
-            -- if user clicked outside of the box, just close
-            self.ephemeral.done = true
-        end
-
-        return clickInBBox
+    local originX, originY = self:screenOrigin()
+    if not ViewUtil.ptInRect(cameraX, cameraY, originX, originY, self.boundingBox.w, self.boundingBox.h) then
+        return false
     end
 
-    return false
+    local btn = self.placeButton
+    if button == 1 and btn and ViewUtil.ptInRect(cameraX, cameraY, btn.x, btn.y, btn.w, btn.h) then
+        -- place button was pressed. provide info to state machine
+        self.mouseHandler.clickEvent = {
+            type = Components.mouseHandler.eventTypes.placeTileClicked,
+            starIdx = self.playerMatTileAnchor.starIdx,
+            slotIdx = self.playerMatTileAnchor.slotIdx,
+            placementOpt = self.placementOptions[self.placementOptIdx],
+        }
+    end
+    return true
 end
 
 function PlaceTileDialogEntity:update(dt, gameState)

@@ -17,6 +17,7 @@ Components.names = {
     playerEntity = "playerEntity",
     uniqueGroup = "uniqueGroup",
     ephemeral = "ephemeral",
+    dismissOnClickOutside = "dismissOnClickOutside",
 }
 
 --- Entity should remain anchored on a particular player mat tile
@@ -92,5 +93,8 @@ end)
 Concord.component(Components.names.ephemeral, function(c)
     c.done = false
 end)
+
+--- Entity is dismissed (ephemeral.done set true) whenever mouse press not claimed by the Entity
+Concord.component(Components.names.dismissOnClickOutside)
 
 return Components

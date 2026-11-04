@@ -27,9 +27,12 @@ function PlaceTileLackingDialogEntity.new(playerIdx, starIdx, slotIdx, tileCost)
         :give(Components.names.playerEntity, playerIdx)
         :give(Components.names.boundingBox, PROMPT_WIDTH, PROMPT_HEIGHT)
         :give(Components.names.drawable, Constants.drawPriority.tilePlacePrompt)
+        :give(Components.names.mouseHandler, Constants.drawPriority.tilePlacePrompt)
         :give(Components.names.worldPos, 0, 0)
         :give(Components.names.killOffCamera) -- in the event state machine doesnt remove the prompt, ensure its removed once off camera
         :give(Components.names.uniqueGroup, "tilePlacementDialogs")
+        :give(Components.names.ephemeral)
+        :give(Components.names.dismissOnClickOutside)
 
     EUtil.extendEntity(entity, PlaceTileLackingDialogEntity)
 
@@ -50,6 +53,13 @@ end
 function PlaceTileLackingDialogEntity:screenOrigin()
     local x, y = camera:cameraCoords(self.worldPos.x, self.worldPos.y)
     return math.floor(x + 0.5), math.floor(y + 0.5)
+end
+
+--- Claims any press inside the dialog (so it doesn't fall through to the mat).
+--- Presses outside it dismiss the dialog (dismissOnClickOutside, see MousePressedSys)
+function PlaceTileLackingDialogEntity:mousePressed(cameraX, cameraY, worldX, worldY, button, istouch)
+    local originX, originY = self:screenOrigin()
+    return ViewUtil.ptInRect(cameraX, cameraY, originX, originY, self.boundingBox.w, self.boundingBox.h)
 end
 
 function PlaceTileLackingDialogEntity:update(dt, gameState)
