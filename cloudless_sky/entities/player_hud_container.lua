@@ -28,6 +28,10 @@ local EMPTY_SLOT_ALPHA = 0.35
 local BG_COLOR = { 0.12, 0.12, 0.18, 0.85 }
 local TEXT_COLOR = { 1, 1, 1, 1 }
 local DIVIDER_COLOR = { 1, 1, 1, 0.3 }
+-- score text flashes this color when the score changes, then fades back to TEXT_COLOR
+local SCORE_FLASH_COLOR = { 1, 0.82, 0.3, 1 }
+local SCORE_COUNT_TIME_S = 1.0
+local SCORE_FLASH_TIME_S = 2.0
 
 local BUTTON_COLORS = {
     normal = { bg = { 0.25, 0.25, 0.25 }, fg = { 1, 1, 1 } },
@@ -64,6 +68,13 @@ function PlayerHudContainerEntity.new()
     -- data cached from gameState during update for use in draw
     entity.player = nil
     entity.wildType = nil
+
+    -- score shown in the HUD. Counts up to the player's actual score when it changes
+    entity.displayedScore = 0
+    entity.scoreTarget = 0
+    -- 1.0 = fully SCORE_FLASH_COLOR, 0.0 = TEXT_COLOR
+    entity.scoreFlash = 0
+    entity.scoreTween = flux.group()
 
     local screenWidth, screenHeight = love.graphics.getPixelDimensions()
     entity:resize(screenWidth, screenHeight, nil)
@@ -129,9 +140,31 @@ function PlayerHudContainerEntity:_animateButton(btnCtx, btnState, enabled, dt)
     end
 end
 
+--- Keep displayedScore in sync with the current player's score:
+---     - new player: snap to their score (no animation)
+---     - same player, score changed: count up/down to the new score and flash the text
+function PlayerHudContainerEntity:_updateScore(dt, previousPlayer)
+    local score = self.player.score
+    if self.player ~= previousPlayer then
+        self.displayedScore = score
+        self.scoreTarget = score
+        self.scoreFlash = 0
+        self.scoreTween = flux.group()
+    elseif score ~= self.scoreTarget then
+        self.scoreTarget = score
+        self.scoreFlash = 1
+        self.scoreTween = flux.group()
+        self.scoreTween:to(self, SCORE_COUNT_TIME_S, { displayedScore = score }):ease("quadout")
+        self.scoreTween:to(self, SCORE_FLASH_TIME_S, { scoreFlash = 0 }):ease("quadin")
+    end
+    self.scoreTween:update(dt)
+end
+
 function PlayerHudContainerEntity:update(dt, gameState)
+    local previousPlayer = self.player
     self.player = gameState.players[gameState.currentTurnPlayer]
     self.wildType = gameState:getCurrentWildType()
+    self:_updateScore(dt, previousPlayer)
 
     -- HUD lives in screen space, so the default (screen) mouse position is correct
     self.ui:enterFrame()
@@ -215,7 +248,14 @@ function PlayerHudContainerEntity:draw(gameState)
         local name = self.player.playerName or ""
         ViewUtil.printPixelText(name, ViewUtil.largestFontThatFits(name, r.w, r.h), r.x, r.y, r.w, r.h)
         r = self.scoreRect
-        local scoreText = "Score: " .. tostring(self.player.score)
+        local f = self.scoreFlash
+        love.graphics.setColor(
+            TEXT_COLOR[1] + (SCORE_FLASH_COLOR[1] - TEXT_COLOR[1]) * f,
+            TEXT_COLOR[2] + (SCORE_FLASH_COLOR[2] - TEXT_COLOR[2]) * f,
+            TEXT_COLOR[3] + (SCORE_FLASH_COLOR[3] - TEXT_COLOR[3]) * f,
+            1
+        )
+        local scoreText = "Score: " .. tostring(math.floor(self.displayedScore + 0.5))
         ViewUtil.printPixelText(scoreText, ViewUtil.largestFontThatFits(scoreText, r.w, r.h), r.x, r.y, r.w, r.h)
         self:_drawDivider(self.handDividerY)
 

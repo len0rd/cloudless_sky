@@ -94,6 +94,46 @@ function GameState:getMatSlotCost(starIdx, slotIdx)
     return self.rules.playerMat.stars[starIdx].cost[slotIdx]
 end
 
+--- Perform an action on this game state and record it in actionHistory.
+--- Any follow-up actions it returns are performed (and recorded) immediately after it,
+--- depth-first, in the order they were returned.
+--- The action is validated first (Action:validate). An invalid action is rejected without
+--- changing any state (no error is raised).
+--- @param action Action the action to perform
+--- @return Action[]|nil performed Every action performed, in order (\p action first). Useful for
+---     the UI to decide what to animate. nil if \p action was invalid
+--- @return string|nil reason Why \p action was invalid
+function GameState:performAction(action)
+    local valid, reason = action:validate(self)
+    if not valid then
+        return nil, reason
+    end
+
+    local performed = {}
+    local function performRecursive(a)
+        local followUps = a:perform(self) or {}
+        table.insert(self.actionHistory, a)
+        table.insert(performed, a)
+        for _, followUp in ipairs(followUps) do
+            performRecursive(followUp)
+        end
+    end
+    performRecursive(action)
+    return performed
+end
+
+--- Undo the most recently performed action and remove it from actionHistory.
+--- Note follow-up actions are recorded individually, so undoing a PlaceTileAction fully
+--- requires undoing its AddScoreAction first (they are undone in reverse order of performance)
+--- @return Action|nil undone. The action that was undone, or nil if there is no history
+function GameState:undoLastAction()
+    local action = table.remove(self.actionHistory)
+    if action then
+        action:undo(self)
+    end
+    return action
+end
+
 -- TODO: should be moved into an action
 function GameState:incrementTurn()
     self.currentTurnPlayer = (self.currentTurnPlayer % #self.players) + 1

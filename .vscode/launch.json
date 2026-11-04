@@ -19,6 +19,18 @@
             ]
         },
         {
+            "name": "Unit Tests (headless)",
+            "type": "lua-local",
+            "request": "launch",
+            "program": {
+                "command": "love"
+            },
+            "args": [
+                ".",
+                "--cute-headless"
+            ]
+        },
+        {
             "name": "Release",
             "type": "lua-local",
             "request": "launch",

@@ -99,6 +99,13 @@ function PlayerMatEntity:centerOfSlot(starIdx, slotIdx)
     return self.stars[starIdx]:centerOfSlot(slotIdx)
 end
 
+--- Animate a tile that was just placed in the given slot
+--- @param onComplete function|nil called when the animation finishes
+function PlayerMatEntity:animateTilePlaced(starIdx, slotIdx, onComplete)
+    assert(starIdx and starIdx > 0 and starIdx <= #self.stars, "Invalid star index!")
+    self.stars[starIdx]:playPlaceAnimation(slotIdx, onComplete)
+end
+
 function PlayerMatEntity:mousePressed(cameraX, cameraY, worldX, worldY, button, istouch)
     local starIdx, slotIdx = self:coordStarSlotIndex(worldX, worldY)
     if starIdx ~= 0 and slotIdx ~= 0 then

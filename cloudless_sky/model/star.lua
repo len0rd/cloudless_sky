@@ -206,8 +206,8 @@ function Star:isTileTypeAllowedInSlot(tileType, slotIdx)
     end
     if self.starType == StarType.MONO then
         -- MONO star type is updated to the correct color as soon as the
-        -- first tile is placed. So if type is still MONO, any tile may be placed
-        return true
+        -- first tile is placed. So if type is still MONO, any tile may be placed in an empty slot
+        return not self.occupiedSlots[slotIdx]
     elseif self.starType == StarType.MULTI_STATIC then
         -- MULTI_STATIC must have slotColorOrder defined
         -- tile can be placed if the slot is not occupied and its color matches the tile
@@ -310,8 +310,10 @@ function Star:removeTile(slotIndex)
     if self:isEmpty() and self.starTypeOnConstruction == StarType.MONO then
         self.starType = StarType.MONO
     end
-    -- revert star color assignment just to be overly cautious
-    self.starColorOrder[slotIndex] = ""
+    -- revert tracked tile color (MULTI/MONO/basic stars). MULTI_STATIC colors are fixed by the mat
+    if self.starTypeOnConstruction ~= StarType.MULTI_STATIC then
+        self.slotColorOrder[slotIndex] = ""
+    end
 end
 
 --- Place a tile on this star in the specified slot

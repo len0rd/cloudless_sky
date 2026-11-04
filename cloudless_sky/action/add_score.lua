@@ -10,7 +10,7 @@ Action.register(ACTION_NAME, AddScoreAction)
 ---@param playerIdx integer GameState index of the player to add the given score to
 ---@param score integer Number of points to add to player at playerIdx
 function AddScoreAction:new(playerIdx, score)
-    AddScoreAction.super.new(ACTION_NAME, { playerIdx = playerIdx, score = score })
+    AddScoreAction.super.new(self, ACTION_NAME, { playerIdx = playerIdx, score = score })
 end
 
 function AddScoreAction.deserialize(ctx)

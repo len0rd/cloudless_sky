@@ -10,6 +10,15 @@ xhost +SI:localuser:$(id -un)
 
 Then the user you run with needs to have a matching UID/GID
 
+## Testing
+
+Unit tests use [cute](cloudless_sky/extern/cute.lua):
+
+```
+love . --cute-headless   # run all tests, print results, exit (non-zero exit code on failure)
+love . --cute            # run all tests, then launch the game with a results overlay ([h] to hide)
+```
+
 ## TODO
 
 - Win32/64 binaries via python makelove package + Wine

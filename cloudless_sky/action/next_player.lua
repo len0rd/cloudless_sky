@@ -8,7 +8,7 @@ local ACTION_NAME = "NextPlayer"
 Action.register(ACTION_NAME, NextPlayerAction)
 
 function NextPlayerAction:new()
-    self.super.new(ACTION_NAME, {})
+    NextPlayerAction.super.new(self, ACTION_NAME, {})
 end
 
 function NextPlayerAction.deserialize(data)

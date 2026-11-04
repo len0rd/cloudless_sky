@@ -9,10 +9,17 @@ local MousePressedSys = require("cloudless_sky.systems.mouse_pressed")
 local PlaceTileDialogEntity = require("cloudless_sky.entities.place_tile_dialog_entity")
 local PlaceTileLackingDialogEntity = require("cloudless_sky.entities.place_tile_lacking_dialog_entity")
 local PlayerMatTileAnchorSys = require("cloudless_sky.systems.player_mat_tile_anchor")
+local PlaceTileAction = require("cloudless_sky.action.place_tile")
+local ScoreTextEntity = require("cloudless_sky.entities.score_text_entity")
 
 TilePlacementTurnStateMachine.STATES = {
+    -- waiting for current player to place a tile or pass
     WAIT_FOR_PLACEMENT = 1,
+    -- a tile has been placed and its animations are playing
+    -- TODO: placement bonuses (surrounding pillars/statues/windows) need a state between
+    --  SCORING and WAIT_FOR_END where the player picks their bonus tiles
     SCORING = 2,
+    -- placement done. player may end their turn
     WAIT_FOR_END = 3,
 }
 
@@ -20,6 +27,9 @@ function TilePlacementTurnStateMachine:new()
     -- nah
     self.state = self.STATES.WAIT_FOR_PLACEMENT
     self.mouseClicked = false
+    -- incremented every time a turn starts. Animation callbacks compare against it so a
+    -- callback from a previous turn (eg: player passed mid-animation) can't affect this one
+    self.turnToken = 0
 end
 
 function TilePlacementTurnStateMachine:enter(fromState, playerIdx, gameState, graphicsState)
@@ -28,6 +38,7 @@ function TilePlacementTurnStateMachine:enter(fromState, playerIdx, gameState, gr
     self.gameState = gameState
     self.graphicsState = graphicsState
     self.endTurnRequested = false
+    self.turnToken = self.turnToken + 1
     self.graphicsState.hud.container:setDoneEnabled(false)
     Log.trace("entering PlacementTurnSM for " .. tostring(playerIdx))
 end
@@ -71,6 +82,38 @@ function TilePlacementTurnStateMachine:_addPlaceDialogEntity(pressCtx)
     end
 end
 
+--- Perform tile placement on game state and kick off animations.
+--- Moves to SCORING, then to WAIT_FOR_END once the tile animation completes
+--- @param pressCtx table placeTileClicked click event from PlaceTileDialogEntity
+--- @param dialogEntity table the dialog that was clicked. Closed once the tile is placed
+function TilePlacementTurnStateMachine:_placeTile(pressCtx, dialogEntity)
+    local action = PlaceTileAction(self.playerIdx, pressCtx.starIdx, pressCtx.slotIdx, pressCtx.placementOpt)
+    local performed, reason = self.gameState:performAction(action)
+    if not performed then
+        -- dialog should only ever offer valid placements, so this is a bug
+        Log.error("invalid placement offered by dialog: " .. tostring(reason))
+        return
+    end
+    dialogEntity.ephemeral.done = true
+    self.state = self.STATES.SCORING
+
+    -- tile bounce-in. once done, the player may end their turn
+    local token = self.turnToken
+    local matEntity = self.graphicsState.matEntities[self.playerIdx]
+    matEntity:animateTilePlaced(pressCtx.starIdx, pressCtx.slotIdx, function()
+        if token == self.turnToken and self.state == self.STATES.SCORING then
+            self.state = self.STATES.WAIT_FOR_END
+            self.graphicsState.hud.container:setDoneEnabled(true)
+        end
+    end)
+
+    -- "+N Points!" popup at the slot. The HUD score tweens up on its own once it sees the new score
+    local scoreText = ScoreTextEntity.new(self.playerIdx, pressCtx.starIdx, pressCtx.slotIdx, action.score)
+    self.graphicsState.world:addEntity(scoreText)
+    local w, h = love.graphics.getPixelDimensions()
+    PlayerMatTileAnchorSys.ensureEntityFullyVisible(scoreText, w, h, self.graphicsState.matEntities)
+end
+
 function TilePlacementTurnStateMachine:handleUserInput()
     if self.mouseClicked then
         local mousePressSys = self.graphicsState.world:getSystem(MousePressedSys)
@@ -82,13 +125,14 @@ function TilePlacementTurnStateMachine:handleUserInput()
             end
 
             if pressCtx.type == Components.mouseHandler.eventTypes.matSlotClicked then
-                -- TODO: only allow getting creating new entity if in right turn state
-                self:_addPlaceDialogEntity(pressCtx)
+                -- only one placement per turn
+                if self.state == self.STATES.WAIT_FOR_PLACEMENT then
+                    self:_addPlaceDialogEntity(pressCtx)
+                end
             elseif pressCtx.type == Components.mouseHandler.eventTypes.placeTileClicked then
-                -- time to place a tile!
-                self.state = self.STATES.SCORING
-                -- TODO: move once placement/scoring is fully wired so it's enabled after the placement completes
-                self.graphicsState.hud.container:setDoneEnabled(true)
+                if self.state == self.STATES.WAIT_FOR_PLACEMENT then
+                    self:_placeTile(pressCtx, mousePressSys.lastPressedEntity)
+                end
             elseif pressCtx.type == Components.mouseHandler.eventTypes.endTurnClicked then
                 self.endTurnRequested = true
             elseif pressCtx.type == Components.mouseHandler.eventTypes.passClicked then

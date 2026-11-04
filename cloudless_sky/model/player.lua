@@ -2,13 +2,10 @@
 --      - Their PlayMat with all its stars
 --      - Tiles in hand/tiles saved between rounds
 --      - Their score
---      - Turn stack (to support undo)
 ---@class Object
 local Object = require("cloudless_sky.extern.classic")
 local PlayMat = require("cloudless_sky.model.player_mat")
 local TileBag = require("cloudless_sky.model.tile_bag")
-local ScoreEvent = require("cloudless_sky.model.score_event")
-local PlayerEvent = require("cloudless_sky.model.player_event")
 local PlacementPossibility = require("cloudless_sky.model.placement_possibility")
 local TileType = require("cloudless_sky.model.tile_type")
 
@@ -27,7 +24,6 @@ function Player:new(starConfigs, startScore, name)
     self.playerName = name
 
     self.passedForPhase = false
-    self.actionHistory = {}
 end
 
 function Player:starType(starIndex)
@@ -40,22 +36,7 @@ function Player:serialize()
         hand = self.hand:serialize(),
         score = self.score,
         name = self.playerName,
-        events = self.actionHistory,
     }
-end
-
---- Play a tile in a slot
---- @param starIdx number Index of star to play selectedPlacement in
---- @param slotIdx number index of slot to play selectedPlacement in
---- @param selectedPlacement PlacementPossibility the placement to play
---- @return table events. The list of events that occurred when the tile was played.
----     First event is the score
-function Player:performPlacement(starIdx, slotIdx, selectedPlacement)
-    -- TODO: sanity check that the placement is valid
-    local events = self.mat:placeTile(selectedPlacement.tileType, starIdx, slotIdx)
-    assert(#events > 0)
-    self:addScoreEvent(selectedPlacement, starIdx, slotIdx, events)
-    return events
 end
 
 function Player:generatePlacementPossibilities(starIdx, slotIdx, wildTileType)
@@ -122,34 +103,6 @@ end
 --- @return boolean occupied. True if the given slot has a tile in it, otherwise false
 function Player:isSlotOccupied(starIdx, slotIdx)
     return self.mat:isOccupied(starIdx, slotIdx)
-end
-
---- @return table events All score events performed by the player. Sorted by when they occurred
----     Oldest at index 1
-function Player:getAllScoreEvents()
-    local scoreEvents = {}
-    for _, event in ipairs(self.actionHistory) do
-        if event.type == "score" then
-            table.insert(scoreEvents, event.data)
-        end
-    end
-    return scoreEvents
-end
-
---- Add a score event/action to this players history
---- @param placementInfo PlacementPossibility information on the tile placement performed to trigger this score
-function Player:addScoreEvent(placementInfo, starIndex, slotIndex, score)
-    table.insert(
-        self.actionHistory,
-        PlayerEvent.new("score", ScoreEvent.new(placementInfo:toTable(), starIndex, slotIndex, score))
-    )
-    -- add this new score to our total!
-    self.score = self.score + score[1]
-    -- subtract tile costs from hand
-    self.hand:removeTiles(placementInfo.tileType, placementInfo.tileCount)
-    if placementInfo.wildCount > 0 then
-        self.hand:removeTiles(placementInfo.wildType, placementInfo.wildCount)
-    end
 end
 
 return Player

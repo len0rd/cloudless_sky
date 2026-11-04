@@ -136,6 +136,38 @@ function StarView:new(starType, x, y, size)
 
     self.breathTween = flux.group()
     -- self:_runBreathTween(self.breathTween)
+
+    -- tween for tile being placed
+    self.placeTween = flux.group()
+    -- which star-slots are being animated
+    self.animatingSlots = {}
+end
+
+-- tile placement animation settings
+local PLACE_START_SCALE = 0.2
+local PLACE_DURATION_S = 0.6
+
+--- "bounce in" animation for a tile that was just placed in \p slotIndex
+--- @param onComplete function|nil called once the animation finishes
+function StarView:playPlaceAnimation(slotIndex, onComplete)
+    local poly = self.polys[slotIndex]
+    if not poly then
+        if onComplete then
+            onComplete()
+        end
+        return
+    end
+    self.animatingSlots[slotIndex] = true
+    poly.scale = PLACE_START_SCALE
+    self.placeTween
+        :to(poly, PLACE_DURATION_S, { scale = 1.0 })
+        :ease("backout")
+        :oncomplete(function()
+            self.animatingSlots[slotIndex] = nil
+            if onComplete then
+                onComplete()
+            end
+        end)
 end
 
 --- @return table boundingBox. Bounding box of the star in world coords. Formatted x1,y1, x2,y2
@@ -195,6 +227,7 @@ function StarView:update(dt, focusSlotIdx)
     -- reset hovered state
     self.hovered_slot = focusSlotIdx
     self.breathTween:update(dt)
+    self.placeTween:update(dt)
 end
 
 local drawPoly = function(vertices, color)
@@ -212,27 +245,39 @@ function StarView:draw(star)
 
     local centerX, centerY = self:center()
 
+    -- slots animating a tile placement ignore hover so the animation is visible
+    local hoveredSlot = self.hovered_slot
+    if self.animatingSlots[hoveredSlot] then
+        hoveredSlot = 0
+    end
+
     for ii = 1, #StarView.SLOT_VERTEX_SCALARS do
-        if ii ~= self.hovered_slot then
+        if ii ~= hoveredSlot then
+            local unplacedColor = StarView.UNPLACED_SLOT_COLOR[self.starType]
+            if self.animatingSlots[ii] then
+                -- draw empty slots underneath the tile thats bouncing in
+                local baseVertices = ViewUtil.rotateVerticies(self.polys[ii].verticies, centerX, centerY, self.rotation)
+                drawPoly(baseVertices, unplacedColor)
+            end
             local scaledVertices = ViewUtil.scaleConvexPolyFromCenter(self.polys[ii].verticies, self.polys[ii].scale)
             scaledVertices = ViewUtil.rotateVerticies(scaledVertices, centerX, centerY, self.rotation)
-            local color = StarView.UNPLACED_SLOT_COLOR[self.starType]
+            local color = unplacedColor
             if star:isOccupied(ii) then
                 color = TileView.TILE_COLOR[star:tileAtSlot(ii)]
             end
             drawPoly(scaledVertices, color)
         end
     end
-    if self.hovered_slot ~= 0 then
+    if hoveredSlot ~= 0 then
         -- slot is currently being hovered over. draw last for layering
         local color = StarView.UNPLACED_SLOT_COLOR[self.starType]
-        if star:isOccupied(self.hovered_slot) then
-            color = TileView.TILE_COLOR[star:tileAtSlot(self.hovered_slot)]
+        if star:isOccupied(hoveredSlot) then
+            color = TileView.TILE_COLOR[star:tileAtSlot(hoveredSlot)]
         end
         local scaledVertices = transformScalerVertices(
-            StarView.SLOT_VERTEX_SCALARS[self.hovered_slot],
-            self.starOriginX + (self.size * StarView.HOVER_SELECT_OFFSETS[self.hovered_slot][1]),
-            self.starOriginY + (self.size * StarView.HOVER_SELECT_OFFSETS[self.hovered_slot][2]),
+            StarView.SLOT_VERTEX_SCALARS[hoveredSlot],
+            self.starOriginX + (self.size * StarView.HOVER_SELECT_OFFSETS[hoveredSlot][1]),
+            self.starOriginY + (self.size * StarView.HOVER_SELECT_OFFSETS[hoveredSlot][2]),
             self.size * (1.0 + HOVER_SELECT_SCALE)
         )
         scaledVertices = ViewUtil.rotateVerticies(scaledVertices, centerX, centerY, self.rotation)

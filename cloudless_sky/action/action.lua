@@ -24,6 +24,15 @@ function Action:new(name, ctx)
     self.ctx = ctx
 end
 
+--- Check if this action can be performed on the given game state. Actions with preconditions
+--- should override this.
+--- @param gameState GameState current state of the game
+--- @return boolean valid
+--- @return string|nil reason Why the action is invalid
+function Action:validate(gameState)
+    return true, nil
+end
+
 --- Perform this action
 --- @param gameState GameState current state of the game on which the action will be performed
 --- @return table[Action] List of actions that have resulted from this action
@@ -40,7 +49,7 @@ function Action:serialize()
     local serialized = {
         name = self.name,
     }
-    if self.ctx ~= nil and #self.ctx > 0 then
+    if self.ctx ~= nil and next(self.ctx) ~= nil then
         serialized.ctx = self.ctx
     end
 

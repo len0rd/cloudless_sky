@@ -9,8 +9,8 @@ local ScoreTextEntity = {}
 ScoreTextEntity.__index = ScoreTextEntity
 
 -- estimated max width of the text box
-local ESTIMATED_TEXT_WIDTH = 100
-local ESTIMATED_TEXT_HEIGHT = 30
+local ESTIMATED_TEXT_WIDTH = 120
+local ESTIMATED_TEXT_HEIGHT = 40
 
 function ScoreTextEntity.new(playerIdx, starIdx, slotIdx, scorePts)
     local entity = Concord.entity()
@@ -33,7 +33,7 @@ function ScoreTextEntity.new(playerIdx, starIdx, slotIdx, scorePts)
         pointText = "Point!"
     end
     entity.textbox:send(
-        "[dropshadow=3][bounce]" .. tostring(math.floor(scorePts)) .. " " .. pointText .. "[/bounce][/dropshadow]"
+        "[dropshadow=3][bounce]+" .. tostring(math.floor(scorePts)) .. " " .. pointText .. "[/bounce][/dropshadow]"
     )
 
     EUtil.extendEntity(entity, ScoreTextEntity)
