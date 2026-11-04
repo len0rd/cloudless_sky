@@ -133,14 +133,34 @@ function PlayerMatEntity:update(dt, gameState)
     end
 end
 
-function PlayerMatEntity:draw(gameState)
+--- @return table starIdxs star indices in draw order. The focused (hovered) star is drawn last so its
+---     enlarged hovered slot is on top
+function PlayerMatEntity:_starDrawOrder()
     local numStars = #self.stars
     local startIdx = (self.focusStarIdx % numStars) + 1
-
+    local order = {}
     for ii = startIdx, startIdx + numStars - 1 do
-        local starIdx = ((ii - 1) % numStars) + 1
+        table.insert(order, ((ii - 1) % numStars) + 1)
+    end
+    return order
+end
+
+function PlayerMatEntity:draw(gameState)
+    for _, starIdx in ipairs(self:_starDrawOrder()) do
         self.stars[starIdx]:draw(gameState:getStar(self.playerEntity.idx, starIdx))
     end
+end
+
+--- slot cost labels. Drawn in screen space (see DrawSys) so the pixel font stays crisp
+function PlayerMatEntity:drawScreen(gameState)
+    local origR, origG, origB, origA = love.graphics.getColor()
+    local worldToScreen = function(x, y)
+        return camera:cameraCoords(x, y)
+    end
+    for _, starIdx in ipairs(self:_starDrawOrder()) do
+        self.stars[starIdx]:drawCostLabels(gameState:getStar(self.playerEntity.idx, starIdx), worldToScreen, camera.scale)
+    end
+    love.graphics.setColor(origR, origG, origB, origA)
 end
 
 return PlayerMatEntity

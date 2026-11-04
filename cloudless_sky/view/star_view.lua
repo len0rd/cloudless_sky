@@ -48,6 +48,16 @@ StarView.UNPLACED_SLOT_COLOR = {
 }
 StarView.UNPLACED_SLOT_COLOR = ViewUtil.normalizeColorTables(StarView.UNPLACED_SLOT_COLOR)
 
+-- slot cost labels are drawn in a darker variant of the star's color
+local COST_LABEL_DARKEN = 0.55
+-- color for slot cost labels on stars without a single color (MONO, MULTI)
+local COST_LABEL_GRAY = { 0.35, 0.35, 0.35 }
+-- how far (0 = outer tip, 1 = slot center) the cost label sits from the slot's outer tip
+local COST_LABEL_TIP_INSET = 0.3
+-- max cost label height as a fraction of the star's on-screen size. All slots in a star share
+-- the same font so the labels are consistent
+local COST_LABEL_MAX_HEIGHT = 0.1
+
 
 -- stylua: ignore start
 -- defines where the vertex for each slot in the star is placed as a scaler that can be
@@ -236,6 +246,81 @@ local drawPoly = function(vertices, color)
     love.graphics.setColor({ 0, 0, 0 })
     love.graphics.setLineWidth(2)
     love.graphics.polygon("line", vertices)
+end
+
+--- @return table vertices World-space vertices of \p slotIdx as drawn (accounts for hover enlargement and
+---     star rotation, but not placement animation scale)
+function StarView:_drawnSlotVertices(slotIdx, hoveredSlot)
+    local centerX, centerY = self:center()
+    local vertices
+    if slotIdx == hoveredSlot then
+        vertices = transformScalerVertices(
+            StarView.SLOT_VERTEX_SCALARS[slotIdx],
+            self.starOriginX + (self.size * StarView.HOVER_SELECT_OFFSETS[slotIdx][1]),
+            self.starOriginY + (self.size * StarView.HOVER_SELECT_OFFSETS[slotIdx][2]),
+            self.size * (1.0 + HOVER_SELECT_SCALE)
+        )
+    else
+        vertices = self.polys[slotIdx].verticies
+    end
+    return ViewUtil.rotateVerticies(vertices, centerX, centerY, self.rotation)
+end
+
+--- @return table color RGB color for slot cost labels: a darker variant of the slot's color,
+---     or gray for stars without a single color
+function StarView:_costLabelColor(star, slotIdx)
+    local baseColor = nil
+    if star.starType == StarType.MULTI_STATIC then
+        baseColor = TileView.TILE_COLOR[star.slotColorOrder[slotIdx]]
+    else
+        -- MONO stars take on a color once a tile is placed, so use the model's current type
+        baseColor = TileView.TILE_COLOR[star.starType]
+    end
+    if not baseColor then
+        return COST_LABEL_GRAY
+    end
+    return { baseColor[1] * COST_LABEL_DARKEN, baseColor[2] * COST_LABEL_DARKEN, baseColor[3] * COST_LABEL_DARKEN }
+end
+
+--- Draw the cost of each empty slot just inside its outer tip. Drawn in screen space so the
+--- pixel font isn't scaled by camera zoom.
+--- @param star Star model instance that corresponds to this view
+--- @param worldToScreen function (worldX, worldY) -> screenX, screenY
+--- @param worldScale number screen pixels per world unit (camera zoom)
+function StarView:drawCostLabels(star, worldToScreen, worldScale)
+    local starCenterX, starCenterY = self:center()
+    local hoveredSlot = self.hovered_slot
+    if self.animatingSlots[hoveredSlot] then
+        hoveredSlot = 0
+    end
+
+    local boxSize = math.floor(self.size * worldScale * COST_LABEL_MAX_HEIGHT)
+    -- costs are single digits, so any digit gives the font's footprint
+    local font = ViewUtil.largestFontThatFits("6", boxSize, boxSize)
+
+    for ii = 1, #StarView.SLOT_VERTEX_SCALARS do
+        if not star:isOccupied(ii) then
+            local vertices = self:_drawnSlotVertices(ii, hoveredSlot)
+
+            -- the outer tip is the vertex farthest from the star's center
+            local tipX, tipY, tipDist = 0, 0, -1
+            for v = 1, #vertices, 2 do
+                local dist = ViewUtil.euclidianDistance(starCenterX, starCenterY, vertices[v], vertices[v + 1])
+                if dist > tipDist then
+                    tipX, tipY, tipDist = vertices[v], vertices[v + 1], dist
+                end
+            end
+            local slotCenterX, slotCenterY = ViewUtil.centerOfConvexPoly(vertices)
+            local labelX = tipX + (slotCenterX - tipX) * COST_LABEL_TIP_INSET
+            local labelY = tipY + (slotCenterY - tipY) * COST_LABEL_TIP_INSET
+
+            local text = tostring(star:slotIndexToCost(ii))
+
+            local screenX, screenY = worldToScreen(labelX, labelY)
+            love.graphics.setColor(self:_costLabelColor(star, ii))
+            ViewUtil.printPixelText(text, font, screenX - boxSize / 2, screenY - boxSize / 2, boxSize, boxSize)
+        end
+    end
 end
 
 --- @param star Star. Star model class instance that corresponds to this view

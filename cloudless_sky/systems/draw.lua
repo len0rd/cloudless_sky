@@ -61,11 +61,19 @@ function DrawSys:draw(gameState)
     camera:detach()
 
     -- world entities may also draw in screen space (anchored to a world position, but not
-    -- scaled by camera zoom). Used for pixel-font text, which blurs when scaled
+    -- scaled by camera zoom). Used for pixel-font text, which blurs when scaled.
+    -- Drawn lowest priority first so higher priority (smaller number) entities end up on top
+    local screenDrawers = {}
     for _, e in ipairs(self.worldPool) do
         if e.drawScreen then
-            e:drawScreen(gameState)
+            table.insert(screenDrawers, e)
         end
+    end
+    table.sort(screenDrawers, function(a, b)
+        return a.drawable.priority > b.drawable.priority
+    end)
+    for _, e in ipairs(screenDrawers) do
+        e:drawScreen(gameState)
     end
 
     -- camera pool always has higher priority than world-entities
