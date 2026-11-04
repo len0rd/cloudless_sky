@@ -154,4 +154,61 @@ function ViewUtil.transformVertexScalers(vertexScalers, size, x, y)
     return scaledVertices
 end
 
+
+function ViewUtil.drawOutlinedRectangle(x, y, w, h, cornerRadius, lineWidth, outlineColor)
+    lineWidth = lineWidth or 2
+    outlineColor = outlineColor or { 0, 0, 0 }
+    love.graphics.rectangle("fill", x, y, w, h, cornerRadius, cornerRadius)
+    love.graphics.setColor(outlineColor)
+    love.graphics.setLineWidth(lineWidth)
+    love.graphics.rectangle("line", x, y, w, h, cornerRadius, cornerRadius)
+end
+
+--------------------------------------------------------------------------------
+-- Pixel-font text helpers
+-- Pixel fonts must be drawn in screen space (never under camera zoom) at whole-pixel
+-- positions to stay crisp. These helpers do the rounding.
+--------------------------------------------------------------------------------
+
+--- @return love.Font font The largest pixel font (from fonts.ithacaBySize) whose rendering of
+---     \p text fits within \p w x \p h. Falls back to the smallest font if none fit.
+function ViewUtil.largestFontThatFits(text, w, h)
+    for _, font in ipairs(fonts.ithacaBySize) do
+        if font:getWidth(text) <= w and (h == nil or font:getHeight() <= h) then
+            return font
+        end
+    end
+    return fonts.ithacaBySize[#fonts.ithacaBySize]
+end
+
+--- Print \p text horizontally aligned within [x, x+w] and vertically centered in [y, y+h],
+--- snapped to whole pixels. Color must be set by the caller.
+--- @param align string|nil "left", "center" (default) or "right"
+function ViewUtil.printPixelText(text, font, x, y, w, h, align)
+    local textY = y + (h - font:getHeight()) / 2
+    love.graphics.printf(text, font, math.floor(x + 0.5), math.floor(textY + 0.5), math.floor(w), align or "center")
+end
+
+--- suit draw function for Labels: vertically centered, pixel-snapped text.
+--- If opt.font is not provided, the largest font that fits the cell is used.
+function ViewUtil.suitLabelDraw(text, opt, x, y, w, h)
+    local font = opt.fixedFont or ViewUtil.largestFontThatFits(text, w - 4, h)
+    love.graphics.setColor((opt.color and opt.color.normal and opt.color.normal.fg) or { 0, 0, 0 })
+    ViewUtil.printPixelText(text, font, x, y, w, h, opt.align)
+end
+
+--- suit draw function for Buttons. Like suit's theme.Button but keeps the label vertically
+--- centered and pixel-snapped. The label text is not scaled with opt.scale (scaling a pixel font
+--- by a non-integer amount blurs it), only the box is.
+--- If opt.fixedFont is not provided, the largest font that fits the button is used.
+function ViewUtil.suitButtonDraw(text, opt, x, y, w, h)
+    local suitTheme = require("cloudless_sky.extern.suit.theme")
+    local colors = (opt.color and opt.color[opt.state]) or (opt.color and opt.color.normal) or suitTheme.color.normal
+    suitTheme.drawBox(x, y, w, h, colors, opt.cornerRadius, opt.outline, opt.scale or 1.0)
+
+    local font = opt.fixedFont or ViewUtil.largestFontThatFits(text, w - 4, h)
+    love.graphics.setColor(colors.fg)
+    ViewUtil.printPixelText(text, font, x, y, w, h, "center")
+end
+
 return ViewUtil

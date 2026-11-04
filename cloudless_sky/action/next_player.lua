@@ -26,7 +26,7 @@ function NextPlayerAction:perform(gameState)
         for i = 1, numPlayers do
             local idx = ((startPlayer - 1 + i) % numPlayers) + 1
             --- if player has not passed and has some tiles remaining in their hand
-            if not gameState.players[idx].passedForPhase and gameState.players[idx].hand.total() > 0 then
+            if not gameState.players[idx].passedForPhase and gameState.players[idx].hand:total() > 0 then
                 gameState.currentTurnPlayer = idx
                 found = true
                 break

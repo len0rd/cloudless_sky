@@ -66,6 +66,8 @@ Components.mouseHandler = {
     eventTypes = {
         matSlotClicked = 1,
         placeTileClicked = 2,
+        endTurnClicked = 3,
+        passClicked = 4,
     },
 }
 

@@ -13,7 +13,7 @@ local EnforceUniqueGroupSys = require("cloudless_sky.systems.enforce_unique_grou
 local EnforceEphemeralSys = require("cloudless_sky.systems.enforce_ephemeral")
 
 local PlayerMatEntity = require("cloudless_sky.entities.player_mat_entity")
-local PlayerHandHudEntity = require("cloudless_sky.entities.player_hand_hud_entity")
+local PlayerHudContainerEntity = require("cloudless_sky.entities.player_hud_container")
 
 local TilePlacementTurnStateMachine = require("cloudless_sky.states.tile_placement_turn_sm")
 
@@ -39,14 +39,14 @@ function game:init()
         -- make player mat entities easily accessible
         matEntities = {},
         hud = {
-            hand = PlayerHandHudEntity.new(),
+            container = PlayerHudContainerEntity.new(),
         },
     }
     for ii = 1, #playerNames do
         graphicsState.matEntities[ii] = PlayerMatEntity.new(ii, 600, GameRules.matStarTypes(rules))
         graphicsState.world:addEntity(graphicsState.matEntities[ii])
     end
-    graphicsState.world:addEntity(graphicsState.hud.hand)
+    graphicsState.world:addEntity(graphicsState.hud.container)
 
     --- REMEMBER: systems are called in the order they are added
     graphicsState.world:addSystems(

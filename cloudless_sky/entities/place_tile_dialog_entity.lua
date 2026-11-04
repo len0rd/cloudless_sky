@@ -17,8 +17,9 @@ local flux = require("cloudless_sky.extern.flux")
 local PlaceTileDialogEntity = {}
 PlaceTileDialogEntity.__index = PlaceTileDialogEntity
 
-local PROMPT_WIDTH = 120
-local PROMPT_HEIGHT = 100
+-- dialog dimensions in screen pixels
+local PROMPT_WIDTH = 160
+local PROMPT_HEIGHT = 120
 
 -- max scale the border box will be drawn at during transitionTween
 local MAX_SCALE = 1.5
@@ -134,16 +135,24 @@ function PlaceTileDialogEntity:_btnHoverTween(tween)
     end)
 end
 
+--- @return integer screenX, integer screenY. Top-left of the dialog in screen coordinates,
+---     snapped to whole pixels
+function PlaceTileDialogEntity:screenOrigin()
+    local x, y = camera:cameraCoords(self.worldPos.x, self.worldPos.y)
+    return math.floor(x + 0.5), math.floor(y + 0.5)
+end
+
 function PlaceTileDialogEntity:mousePressed(cameraX, cameraY, worldX, worldY, button, istouch)
     if button == 1 then
         -- check if click is within the prompt:
+        local originX, originY = self:screenOrigin()
         local clickInBBox =
-            ViewUtil.ptInRect(worldX, worldY, self.worldPos.x, self.worldPos.y, self.boundingBox.w, self.boundingBox.h)
+            ViewUtil.ptInRect(cameraX, cameraY, originX, originY, self.boundingBox.w, self.boundingBox.h)
 
         if clickInBBox then
             local btn = self.placeButton
             -- place button was pressed. provide info to state machine
-            if ViewUtil.ptInRect(worldX, worldY, btn.x, btn.y, btn.w, btn.h) then
+            if btn and ViewUtil.ptInRect(cameraX, cameraY, btn.x, btn.y, btn.w, btn.h) then
                 self.mouseHandler.clickEvent = {
                     type = Components.mouseHandler.eventTypes.placeTileClicked,
                     starIdx = self.playerMatTileAnchor.starIdx,
@@ -165,18 +174,19 @@ end
 function PlaceTileDialogEntity:update(dt, gameState)
     self.transitionTween:update(dt)
 
-    local promptW = self.boundingBox.w * self.scale
-    local promptH = self.boundingBox.h * self.scale
+    local promptW = math.floor(self.boundingBox.w * self.scale)
+    local promptH = math.floor(self.boundingBox.h * self.scale)
     local NUM_ROWS = 3
-    local cellHeight = promptH / NUM_ROWS
+    local cellHeight = math.floor(promptH / NUM_ROWS)
 
-    local mouseWorldX, mouseWorldY = camera:mousePosition()
-    self.ui:enterFrame(mouseWorldX, mouseWorldY)
+    -- dialog is laid out in screen space, so the default (screen) mouse position is correct
+    self.ui:enterFrame()
 
     local LAYOUT_PAD = 1
 
-    self.ui.layout:reset(self.worldPos.x, self.worldPos.y, LAYOUT_PAD, LAYOUT_PAD)
-    self.ui:Label("Cost: " .. self.tileCost, { font = fonts.ithaca["16"] }, self.ui.layout:row(promptW, cellHeight))
+    local originX, originY = self:screenOrigin()
+    self.ui.layout:reset(originX, originY, LAYOUT_PAD, LAYOUT_PAD)
+    self.ui:Label("Cost: " .. self.tileCost, { draw = ViewUtil.suitLabelDraw }, self.ui.layout:row(promptW, cellHeight))
 
     -- cost option row --
     local currentPromptCtx = self.placementOptions[self.placementOptIdx]
@@ -188,13 +198,13 @@ function PlaceTileDialogEntity:update(dt, gameState)
 
     -- L/R arrow buttons take up 1/6 each. Tile display takes up the other 2/3
     -- decide how much X-space each element gets based on the placement options
-    local cellWidth = (promptW - 2 * LAYOUT_PAD) / 3
+    local cellWidth = math.floor((promptW - 2 * LAYOUT_PAD) / 3)
     if not displayOptionSelectBtns then
-        cellWidth = (promptW - 2 * LAYOUT_PAD) / 2
+        cellWidth = math.floor((promptW - 2 * LAYOUT_PAD) / 2)
     end
     local tileCellWidth = cellWidth
     if displayWildTile then
-        tileCellWidth = tileCellWidth / 2
+        tileCellWidth = math.floor(tileCellWidth / 2)
     end
 
     self.ui.layout:newRow()
@@ -210,14 +220,22 @@ function PlaceTileDialogEntity:update(dt, gameState)
     end
 
     self.ui:Label(nil, currentPromptCtx, self.ui.layout:col(tileCellWidth, cellHeight))
-    self.ui:Label(tostring(currentPromptCtx.tileCount), {}, self.ui.layout:col(tileCellWidth, cellHeight))
+    self.ui:Label(
+        tostring(currentPromptCtx.tileCount),
+        { draw = ViewUtil.suitLabelDraw },
+        self.ui.layout:col(tileCellWidth, cellHeight)
+    )
     if displayWildTile then
         self.ui:Label(
             nil,
             { draw = TileView.suitDrawTile, tileType = currentPromptCtx.wildType, boundingBox = WIDGET_BOUNDING_BOXES },
             self.ui.layout:col(tileCellWidth, cellHeight)
         )
-        self.ui:Label(tostring(currentPromptCtx.wildCount), {}, self.ui.layout:col(tileCellWidth, cellHeight))
+        self.ui:Label(
+            tostring(currentPromptCtx.wildCount),
+            { draw = ViewUtil.suitLabelDraw },
+            self.ui.layout:col(tileCellWidth, cellHeight)
+        )
     end
 
     if displayOptionSelectBtns then
@@ -238,7 +256,7 @@ function PlaceTileDialogEntity:update(dt, gameState)
     self.ui.theme.color.hovered.bg = TileView.TILE_COLOR[self.placementOptions[self.placementOptIdx].tileType]
 
     self.placeButton = self.ui:Button("Place", {
-        font = fonts.ithaca["16"],
+        draw = ViewUtil.suitButtonDraw,
         cornerRadius = promptW * CORNER_RADIUS_SCALER - 3,
         outline = 2,
         scale = self.placeBtnScale,
@@ -259,18 +277,20 @@ function PlaceTileDialogEntity:update(dt, gameState)
     end
 end
 
-function PlaceTileDialogEntity:draw(gameState)
+--- drawn in screen space (see DrawSys)
+function PlaceTileDialogEntity:drawScreen(gameState)
     love.graphics.push()
     do
-        local width = self.boundingBox.w * self.scale
-        local height = self.boundingBox.h * self.scale
+        local width = math.floor(self.boundingBox.w * self.scale)
+        local height = math.floor(self.boundingBox.h * self.scale)
         local cornerR = width * CORNER_RADIUS_SCALER
+        local originX, originY = self:screenOrigin()
 
         love.graphics.setColor(1, 1, 1, 1)
-        love.graphics.rectangle("fill", self.worldPos.x, self.worldPos.y, width, height, cornerR, cornerR)
+        love.graphics.rectangle("fill", originX, originY, width, height, cornerR, cornerR)
         love.graphics.setColor({ 0, 0, 0 })
         love.graphics.setLineWidth(2)
-        love.graphics.rectangle("line", self.worldPos.x, self.worldPos.y, width, height, cornerR, cornerR)
+        love.graphics.rectangle("line", originX, originY, width, height, cornerR, cornerR)
 
         self.ui:draw()
     end

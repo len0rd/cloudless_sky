@@ -54,9 +54,19 @@ function DrawSys:draw(gameState)
 
     camera:attach()
     for _, e in ipairs(self.worldPool) do
-        e:draw(gameState)
+        if e.draw then
+            e:draw(gameState)
+        end
     end
     camera:detach()
+
+    -- world entities may also draw in screen space (anchored to a world position, but not
+    -- scaled by camera zoom). Used for pixel-font text, which blurs when scaled
+    for _, e in ipairs(self.worldPool) do
+        if e.drawScreen then
+            e:drawScreen(gameState)
+        end
+    end
 
     -- camera pool always has higher priority than world-entities
     for _, e in ipairs(self.cameraPool) do

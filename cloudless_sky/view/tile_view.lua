@@ -56,16 +56,18 @@ function TileView.tilePolyVerticies(size, rot)
     return ViewUtil.rotateVerticies(verticies, centerX, centerY, rot)
 end
 
-function TileView.drawTileAt(type, size, rot, x, y)
+--- @param alpha number|nil optional opacity (0-1) for the tile. Defaults to fully opaque
+function TileView.drawTileAt(type, size, rot, x, y, alpha)
+    alpha = alpha or 1.0
     local tileVertices = TileView.betterPolyVerticies(size, rot, x, y)
     -- tileVertices = ViewUtil.shiftVerticies(tileVertices, x, y)
     local color = TileView.TILE_COLOR[type]
 
     love.graphics.push()
     do
-        love.graphics.setColor(color[1], color[2], color[3])
+        love.graphics.setColor(color[1], color[2], color[3], alpha)
         love.graphics.polygon("fill", tileVertices)
-        love.graphics.setColor({ 0, 0, 0 })
+        love.graphics.setColor({ 0, 0, 0, alpha })
         love.graphics.setLineWidth(1)
         love.graphics.polygon("line", tileVertices)
     end

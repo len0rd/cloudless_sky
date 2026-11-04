@@ -46,12 +46,16 @@ function love.load(args)
     love.graphics.setBackgroundColor(0.2, 0.2, 0.2)
 
     -- fonts
+    -- Ithaca is a pixel font drawn on a 16px grid
+    -- Only load it at integer multiples of 16 with "mono" hinting so every font pixel
+    -- maps to a whole number of screen pixels with no anti-aliasing/blur
     fonts.ithaca = {
-        ["12"] = love.graphics.newFont("assets/fonts/Ithaca.ttf", 18),
-        ["16"] = love.graphics.newFont("assets/fonts/Ithaca.ttf", 24),
+        ["16"] = love.graphics.newFont("assets/fonts/Ithaca.ttf", 16, "mono"),
+        ["32"] = love.graphics.newFont("assets/fonts/Ithaca.ttf", 32, "mono"),
     }
-    for size, _ in pairs(fonts.ithaca) do
-        fonts.ithaca[size]:setFilter("linear", "nearest")
+    fonts.ithacaBySize = { fonts.ithaca["32"], fonts.ithaca["16"] }
+    for _, font in pairs(fonts.ithaca) do
+        font:setFilter("nearest", "nearest")
     end
 
     -- GLOBAL CAMERA

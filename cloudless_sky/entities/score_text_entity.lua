@@ -26,7 +26,7 @@ function ScoreTextEntity.new(playerIdx, starIdx, slotIdx, scorePts)
 
     entity.textbox = Text.new("center", {
         color = { 1, 1, 1, 1 },
-        font = fonts.ithaca["16"],
+        font = fonts.ithaca["32"],
     })
     local pointText = "Points!"
     if scorePts == 1 then
@@ -46,8 +46,10 @@ function ScoreTextEntity:update(dt, gameState)
     self.ephemeral.done = self.textbox:is_finished()
 end
 
-function ScoreTextEntity:draw(gameState)
-    self.textbox:draw(self.worldPos.x, self.worldPos.y)
+--- drawn in screen space (see DrawSys) so the pixel font isn't scaled by camera zoom
+function ScoreTextEntity:drawScreen(gameState)
+    local x, y = camera:cameraCoords(self.worldPos.x, self.worldPos.y)
+    self.textbox:draw(math.floor(x + 0.5), math.floor(y + 0.5))
 end
 
 return ScoreTextEntity

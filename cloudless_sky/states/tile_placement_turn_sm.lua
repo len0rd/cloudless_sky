@@ -27,7 +27,8 @@ function TilePlacementTurnStateMachine:enter(fromState, playerIdx, gameState, gr
     self.playerIdx = playerIdx
     self.gameState = gameState
     self.graphicsState = graphicsState
-    self.spacePressed = false
+    self.endTurnRequested = false
+    self.graphicsState.hud.container:setDoneEnabled(false)
     Log.trace("entering PlacementTurnSM for " .. tostring(playerIdx))
 end
 
@@ -86,13 +87,21 @@ function TilePlacementTurnStateMachine:handleUserInput()
             elseif pressCtx.type == Components.mouseHandler.eventTypes.placeTileClicked then
                 -- time to place a tile!
                 self.state = self.STATES.SCORING
+                -- TODO: move once placement/scoring is fully wired so it's enabled after the placement completes
+                self.graphicsState.hud.container:setDoneEnabled(true)
+            elseif pressCtx.type == Components.mouseHandler.eventTypes.endTurnClicked then
+                self.endTurnRequested = true
+            elseif pressCtx.type == Components.mouseHandler.eventTypes.passClicked then
+                Log.debug("player " .. tostring(self.playerIdx) .. " passed for the round")
+                self.gameState.players[self.playerIdx].passedForPhase = true
+                self.endTurnRequested = true
             end
         end
     end
 end
 
 function TilePlacementTurnStateMachine:update(dt)
-    if self.spacePressed then
+    if self.endTurnRequested then
         GameStateMachineMgr.pop()
         return
     end
@@ -120,7 +129,7 @@ end
 
 function TilePlacementTurnStateMachine:keyreleased(key, code)
     if key == "space" then
-        self.spacePressed = true
+        self.endTurnRequested = true
     end
 end
 
@@ -131,6 +140,8 @@ end
 function TilePlacementTurnStateMachine:centerCamera()
     local currentPlayMat = self.graphicsState.matEntities[self.playerIdx]
     local matCenterX, matCenterY, matZoom = BoxedViewSys.worldFocus(currentPlayMat)
+    local hudBBox = self.graphicsState.hud.container.boundingBox
+    matCenterX = matCenterX - (hudBBox.w / 2)
 
     camera:zoomTo(matZoom)
     camera:lockPosition(matCenterX, matCenterY)
