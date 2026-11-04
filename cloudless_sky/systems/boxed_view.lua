@@ -41,6 +41,28 @@ function BoxedViewSys.worldCoordInEntity(e, worldX, worldY)
     )
 end
 
+--- Put entity \p e (sized in screen pixels) at the world point (worldX, worldY).
+--- worldX/Y is top-left corner of it. Becomes bottom-right corner if box would go off screen
+--- @param w number screen width
+--- @param h number screen height
+function BoxedViewSys.placeOnScreenNear(e, worldX, worldY, w, h)
+    e.worldPos.x = worldX
+    e.worldPos.y = worldY
+
+    -- is this point even in view right now
+    if camera:isWorldCoordsInFrame(worldX, worldY) then
+        local cameraX, cameraY = camera:cameraCoords(worldX, worldY)
+        -- entities placed this way are sized in screen pixels (they draw in screen space), so convert
+        -- their size to world units before shifting their world position
+        if cameraX + e.boundingBox.w > w then
+            e.worldPos.x = e.worldPos.x - e.boundingBox.w / camera.scale
+        end
+        if cameraY + e.boundingBox.h > h then
+            e.worldPos.y = e.worldPos.y - e.boundingBox.h / camera.scale
+        end
+    end
+end
+
 --- draw the bounding box of the provided entity
 function BoxedViewSys.drawBoundingBox(e)
     local origR, origG, origB, origA = love.graphics.getColor()

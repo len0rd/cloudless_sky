@@ -76,6 +76,8 @@ GameRules.DEFAULTS.BASE_GAME_RULES = {
         tilesPerDisplay = 4,
         -- Player can take at most this many wild tiles per turn
         maxWildPerTurn = 1,
+        -- taking first-player tile from the center applies a penalty equal to num tiles taken
+        centerFirstPickPenalty = true,
     },
     totalTiles = 132,
     playerMat = {

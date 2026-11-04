@@ -19,21 +19,6 @@ local transformScalerVertices = function(vertices, x, y, size)
     return scaledVertices
 end
 
--- Helper: checks if point (px, py) is on the left side of the edge (ax, ay) -> (bx, by)
-local function isLeft(ax, ay, bx, by, px, py)
-    return ((bx - ax) * (py - ay) - (by - ay) * (px - ax)) >= 0
-end
-
---- @param vertices table A table of alternating between the 4 x,y points that make up the quadrilateral
----     Should start with the minx,miny point (preference to minY), then rotate clockwise to the other points
---- @return boolean pointInQuad true if (px, py) is inside the convex quadrilateral
-local function isPointInConvexQuad(vertices, px, py)
-    return isLeft(vertices[1], vertices[2], vertices[3], vertices[4], px, py)
-        and isLeft(vertices[3], vertices[4], vertices[5], vertices[6], px, py)
-        and isLeft(vertices[5], vertices[6], vertices[7], vertices[8], px, py)
-        and isLeft(vertices[7], vertices[8], vertices[1], vertices[2], px, py)
-end
-
 -- RGB color for each star type when a tile is not in a slot
 StarView.UNPLACED_SLOT_COLOR = {
     [StarType.RED] = { 255, 179, 186 },
@@ -230,7 +215,7 @@ function StarView:coordSlotIndex(x, y)
         return 0
     end
     for ii, poly in ipairs(self.polys) do
-        if isPointInConvexQuad(poly.verticies, x, y) then
+        if ViewUtil.ptInConvexPoly(poly.verticies, x, y) then
             return ii
         end
     end

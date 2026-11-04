@@ -28,6 +28,29 @@ function ViewUtil.ptInCircle(x, y, centerX, centerY, radius)
     return (dx * dx + dy * dy) <= (radius * radius)
 end
 
+--- @param verticies table flat {x1,y1, x2,y2, ...} list of a convex polygon's corners, in either
+---     winding order
+--- @return boolean True if (px, py) is inside (or on the edge of) the polygon
+function ViewUtil.ptInConvexPoly(verticies, px, py)
+    local numPts = #verticies / 2
+    local sign = 0
+    for ii = 0, numPts - 1 do
+        local ax, ay = verticies[ii * 2 + 1], verticies[ii * 2 + 2]
+        local jj = (ii + 1) % numPts
+        local bx, by = verticies[jj * 2 + 1], verticies[jj * 2 + 2]
+        local cross = (bx - ax) * (py - ay) - (by - ay) * (px - ax)
+        if cross ~= 0 then
+            local crossSign = cross > 0 and 1 or -1
+            if sign == 0 then
+                sign = crossSign
+            elseif crossSign ~= sign then
+                return false
+            end
+        end
+    end
+    return true
+end
+
 -- calculate direct distance between 2 points
 function ViewUtil.euclidianDistance(x1, y1, x2, y2)
     local dx = x2 - x1
