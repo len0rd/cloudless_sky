@@ -15,6 +15,10 @@ local GameRules = {}
 
 GameRules.DEFAULTS = {}
 
+--- Hard upper limit on how many tiles a player may keep between rounds when passing.
+--- playerMat.maxTileCarryoverPerRound may not exceed this (it is clamped if it does)
+GameRules.MAX_TILE_CARRYOVER = 10
+
 -- the current game rules. access via
 local CurrentGameRules = nil
 

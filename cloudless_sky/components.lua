@@ -70,6 +70,8 @@ Components.mouseHandler = {
         endTurnClicked = 3,
         passClicked = 4,
         undoClicked = 5,
+        passConfirmed = 6,
+        passCancelled = 7,
     },
 }
 

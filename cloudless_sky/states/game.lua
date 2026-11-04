@@ -81,10 +81,15 @@ function game:resume(from)
 end
 
 function game:update(dt)
-    -- if spacePressed then
-    --     spacePressed = false
+    if gameState:allPlayersPassed() then
+        -- TODO: end the round (Phase 3: refill factory displays, clear passedForPhase, advance round)
+        if not self.loggedRoundOver then
+            Log.info("all players have passed. round end is not implemented yet")
+            self.loggedRoundOver = true
+        end
+        return
+    end
     GameStateMachineMgr.push(turnSm, gameState.currentTurnPlayer, gameState, graphicsState)
-    -- end
 end
 
 function game:draw() end

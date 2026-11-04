@@ -8,9 +8,16 @@ local TestUtil = {}
 -- fixed seed so tests are repeatable
 TestUtil.SEED = 0xdeadbeef
 
---- @return GameState a new 2 player game using the default rules
-function TestUtil.newGame()
-    return GameState(GameRules.currentRules(), { "p1", "p2" }, love.math.newRandomGenerator(TestUtil.SEED))
+--- @param rules table|nil rules to use. Defaults to the current rules. Use TestUtil.copyRules() to
+---     get a modifiable copy rather than changing the shared rules table
+--- @return GameState a new 2 player game
+function TestUtil.newGame(rules)
+    return GameState(rules or GameRules.currentRules(), { "p1", "p2" }, love.math.newRandomGenerator(TestUtil.SEED))
+end
+
+--- @return table a deep copy of the current rules that a test can modify freely
+function TestUtil.copyRules()
+    return table.copy(GameRules.currentRules())
 end
 
 --- @return string snapshot of the game state a player's actions may touch: their score, hand and

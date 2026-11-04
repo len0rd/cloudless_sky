@@ -3,6 +3,7 @@ local Object = require("cloudless_sky.extern.classic")
 local TileBag = require("cloudless_sky.model.tile_bag")
 local TileType = require("cloudless_sky.model.tile_type")
 local Player = require("cloudless_sky.model.player")
+local GameRules = require("cloudless_sky.model.game_rules")
 
 ---@class GameState : Object
 ---@field tileBag TileBag The bag of fresh tiles to draw from throughout the game
@@ -114,6 +115,37 @@ function GameState:getCurrentWildType()
     return self.rules.wildPerRound[self.round.idx]
 end
 
+--- @return TileType|nil wild The wild TileType for the next round, or nil if this is the final round
+function GameState:getNextRoundWildType()
+    return self.rules.wildPerRound[self.round.idx + 1]
+end
+
+--- @return boolean True if the current round is the last round of the game
+function GameState:isFinalRound()
+    return self.round.idx >= #self.rules.wildPerRound
+end
+
+--- @return integer limit How many tiles a player may keep when passing this round.
+---     Comes from the rules (clamped to GameRules.MAX_TILE_CARRYOVER). 0 in the final round as
+---     there is no next round to keep tiles for
+function GameState:tileCarryoverLimit()
+    if self:isFinalRound() then
+        return 0
+    end
+    local limit = self.rules.playerMat.maxTileCarryoverPerRound or 0
+    return math.max(0, math.min(limit, GameRules.MAX_TILE_CARRYOVER))
+end
+
+--- @return boolean True if every player has passed for the current phase
+function GameState:allPlayersPassed()
+    for _, player in ipairs(self.players) do
+        if not player.passedForPhase then
+            return false
+        end
+    end
+    return true
+end
+
 function GameState:getMatSlotCost(starIdx, slotIdx)
     return self.rules.playerMat.stars[starIdx].cost[slotIdx]
 end
@@ -186,8 +218,18 @@ end
 
 --- Advance to the next player's turn. The current turn's actions can no longer be undone
 -- TODO: should be moved into an action (its perform/undo would then update turnIdx/turnHistoryStart)
+--- Players who have passed this phase are skipped. If every player has passed, the next player
+--- in order is selected (ending the round is not implemented yet. see allPlayersPassed)
 function GameState:incrementTurn()
-    self.currentTurnPlayer = (self.currentTurnPlayer % #self.players) + 1
+    local numPlayers = #self.players
+    local nextPlayer = (self.currentTurnPlayer % numPlayers) + 1
+    for _ = 1, numPlayers do
+        if not self.players[nextPlayer].passedForPhase then
+            break
+        end
+        nextPlayer = (nextPlayer % numPlayers) + 1
+    end
+    self.currentTurnPlayer = nextPlayer
     self.turnIdx = self.turnIdx + 1
     self.turnHistoryStart = #self.actionHistory
 end

@@ -76,9 +76,11 @@ function DrawSys:draw(gameState)
         e:drawScreen(gameState)
     end
 
-    -- camera pool always has higher priority than world-entities
-    for _, e in ipairs(self.cameraPool) do
-        e:draw(gameState)
+    -- camera pool always has higher priority than world-entities.
+    -- pool is sorted by priority (smallest first) in update. Draw in reverse so higher
+    -- priority (smaller number) entities end up on top
+    for ii = #self.cameraPool, 1, -1 do
+        self.cameraPool[ii]:draw(gameState)
     end
 end
 

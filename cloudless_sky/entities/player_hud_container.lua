@@ -62,6 +62,7 @@ function PlayerHudContainerEntity.new()
     entity.ui = suit.new()
     entity.doneEnabled = false
     entity.undoEnabled = false
+    entity.passEnabled = true
     entity.buttons = {
         done = { scale = 1.0, hoverTween = nil },
         pass = { scale = 1.0, hoverTween = nil },
@@ -95,6 +96,15 @@ function PlayerHudContainerEntity:setDoneEnabled(enabled)
     end
 end
 
+--- Enable/disable the pass button. Controlled by the turn state machine
+function PlayerHudContainerEntity:setPassEnabled(enabled)
+    self.passEnabled = enabled
+    if not enabled then
+        self.buttons.pass.scale = 1.0
+        self.buttons.pass.hoverTween = nil
+    end
+end
+
 --- Enable/disable the undo button. Controlled by the turn state machine
 function PlayerHudContainerEntity:setUndoEnabled(enabled)
     self.undoEnabled = enabled
@@ -114,7 +124,7 @@ function PlayerHudContainerEntity:mousePressed(cameraX, cameraY, worldX, worldY,
         local done, pass, undo = self.doneRect, self.passRect, self.undoRect
         if self.doneEnabled and ViewUtil.ptInRect(cameraX, cameraY, done.x, done.y, done.w, done.h) then
             self.mouseHandler.clickEvent = { type = Components.mouseHandler.eventTypes.endTurnClicked }
-        elseif ViewUtil.ptInRect(cameraX, cameraY, pass.x, pass.y, pass.w, pass.h) then
+        elseif self.passEnabled and ViewUtil.ptInRect(cameraX, cameraY, pass.x, pass.y, pass.w, pass.h) then
             self.mouseHandler.clickEvent = { type = Components.mouseHandler.eventTypes.passClicked }
         elseif self.undoEnabled and ViewUtil.ptInRect(cameraX, cameraY, undo.x, undo.y, undo.w, undo.h) then
             self.mouseHandler.clickEvent = { type = Components.mouseHandler.eventTypes.undoClicked }
@@ -199,12 +209,12 @@ function PlayerHudContainerEntity:update(dt, gameState)
     local passBtn = self.ui:Button("Pass", {
         id = "hudPass",
         draw = ViewUtil.suitButtonDraw,
-        color = BUTTON_COLORS,
+        color = self.passEnabled and BUTTON_COLORS or DISABLED_BUTTON_COLORS,
         cornerRadius = cornerRadius,
         outline = 2,
         scale = self.buttons.pass.scale,
     }, self.passRect.x, self.passRect.y, self.passRect.w, self.passRect.h)
-    self:_animateButton(self.buttons.pass, passBtn, true, dt)
+    self:_animateButton(self.buttons.pass, passBtn, self.passEnabled, dt)
 
     local undoBtn = self.ui:Button("Undo", {
         id = "hudUndo",

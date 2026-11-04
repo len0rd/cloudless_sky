@@ -11,6 +11,11 @@ local PlaceTileLackingDialogEntity = require("cloudless_sky.entities.place_tile_
 local PlayerMatTileAnchorSys = require("cloudless_sky.systems.player_mat_tile_anchor")
 local PlaceTileAction = require("cloudless_sky.action.place_tile")
 local ScoreTextEntity = require("cloudless_sky.entities.score_text_entity")
+local PassAction = require("cloudless_sky.action.pass")
+local PassConfirmDialogEntity = require("cloudless_sky.entities.pass_confirm_dialog_entity")
+
+-- after passing, wait this long before ending the turn so the HUD score count-down can be seen
+local PASS_END_DELAY_S = 0.8
 
 TilePlacementTurnStateMachine.STATES = {
     -- waiting for current player to place a tile or pass
@@ -21,6 +26,10 @@ TilePlacementTurnStateMachine.STATES = {
     SCORING = 2,
     -- placement done. player may end their turn
     WAIT_FOR_END = 3,
+    -- pass confirmation dialog is open
+    CONFIRM_PASS = 4,
+    -- player has passed. waiting briefly before ending the turn
+    PASSING = 5,
 }
 
 function TilePlacementTurnStateMachine:new()
@@ -34,6 +43,8 @@ function TilePlacementTurnStateMachine:enter(fromState, playerIdx, gameState, gr
     self.gameState = gameState
     self.graphicsState = graphicsState
     self.endTurnRequested = false
+    self.passDialog = nil
+    self.passEndTimer = 0
     self:_setState(self.STATES.WAIT_FOR_PLACEMENT)
     Log.trace("entering PlacementTurnSM for " .. tostring(playerIdx))
 end
@@ -43,8 +54,44 @@ function TilePlacementTurnStateMachine:_setState(newState)
     self.state = newState
     local hud = self.graphicsState.hud.container
     hud:setDoneEnabled(newState == self.STATES.WAIT_FOR_END)
-    -- don't allow undo mid-animation
-    hud:setUndoEnabled(newState ~= self.STATES.SCORING and self.gameState:canUndoChoice())
+    -- passing replaces placing a tile, so it's only possible before placing
+    hud:setPassEnabled(newState == self.STATES.WAIT_FOR_PLACEMENT)
+    -- no undo mid-animation, while confirming a pass, or after passing (passing ends the turn)
+    local settled = newState == self.STATES.WAIT_FOR_PLACEMENT or newState == self.STATES.WAIT_FOR_END
+    hud:setUndoEnabled(settled and self.gameState:canUndoChoice())
+end
+
+--- Open the pass confirmation dialog, pre-filled with suggested tiles to keep
+function TilePlacementTurnStateMachine:_openPassDialog()
+    local player = self.gameState.players[self.playerIdx]
+    local limit = self.gameState:tileCarryoverLimit()
+    local suggested = PassAction.suggestKeep(player.hand, limit, self.gameState:getNextRoundWildType())
+    self.passDialog = PassConfirmDialogEntity.new(player.hand, limit, suggested, player.score)
+    self.graphicsState.world:addEntity(self.passDialog)
+    self:_setState(self.STATES.CONFIRM_PASS)
+end
+
+function TilePlacementTurnStateMachine:_closePassDialog()
+    if self.passDialog then
+        self.graphicsState.world:removeEntity(self.passDialog)
+        self.passDialog = nil
+    end
+end
+
+--- Perform the pass and end the turn shortly after (once the HUD shows the score change)
+--- @param keep table TileType -> count of tiles to keep
+function TilePlacementTurnStateMachine:_pass(keep)
+    self:_closePassDialog()
+    local performed, reason = self.gameState:performAction(PassAction(self.playerIdx, keep))
+    if not performed then
+        -- dialog should only allow valid choices, so this is a bug
+        Log.error("invalid pass from dialog: " .. tostring(reason))
+        self:_setState(self:_stateFromHistory())
+        return
+    end
+    Log.debug("player " .. tostring(self.playerIdx) .. " passed for the round")
+    self.passEndTimer = PASS_END_DELAY_S
+    self:_setState(self.STATES.PASSING)
 end
 
 --- @return integer state The turn state implied by the actions taken so far this turn.
@@ -175,16 +222,32 @@ function TilePlacementTurnStateMachine:handleUserInput()
                     self:_undo()
                 end
             elseif pressCtx.type == Components.mouseHandler.eventTypes.passClicked then
-                Log.debug("player " .. tostring(self.playerIdx) .. " passed for the round")
-                self.gameState.players[self.playerIdx].passedForPhase = true
-                self.endTurnRequested = true
+                if self.state == self.STATES.WAIT_FOR_PLACEMENT then
+                    self:_openPassDialog()
+                end
+            elseif pressCtx.type == Components.mouseHandler.eventTypes.passCancelled then
+                self:_closePassDialog()
+                self:_setState(self:_stateFromHistory())
+            elseif pressCtx.type == Components.mouseHandler.eventTypes.passConfirmed then
+                if self.state == self.STATES.CONFIRM_PASS then
+                    self:_pass(pressCtx.keep)
+                end
             end
         end
     end
 end
 
 function TilePlacementTurnStateMachine:update(dt)
+    if self.state == self.STATES.PASSING then
+        self.passEndTimer = self.passEndTimer - dt
+        if self.passEndTimer <= 0 then
+            self.endTurnRequested = true
+        end
+    end
+
     if self.endTurnRequested then
+        -- eg: debug key ended the turn while the dialog was open
+        self:_closePassDialog()
         GameStateMachineMgr.pop()
         return
     end
