@@ -7,6 +7,8 @@
 ---     - progress: something must happen every STALL_TIMEOUT_S (catches stuck state machines)
 --- At the start of every round and at the end of the game it checks the game saves and loads back
 --- exactly (SaveGame through json: replaying the history from the seed gives the same game)
+--- At the end of the game it waits for the game end sequence to reach the final scores, then checks
+--- every player's end-game bonuses were scored exactly once
 --- Exit codes: 0 = game finished, every check held. 1 = a check failed. 2 = timed out. 3 = Lua error.
 ---
 --- Runs are repeatable: the game's rng, the view's randomness and the bot's choices all follow the
@@ -14,6 +16,8 @@
 --- always give the same digest.
 local GameStateMachineMgr = require("cloudless_sky.extern.hump.gamestate")
 local Canonical = require("cloudless_sky.model.canonical")
+local EndGameBonus = require("cloudless_sky.model.end_game_bonus")
+local GameEndStateMachine = require("cloudless_sky.states.game_end_sm")
 local Invariants = require("cloudless_sky.model.invariants")
 local SaveGame = require("cloudless_sky.model.save_game")
 local TableAreaEntity = require("cloudless_sky.entities.table_area_entity")
@@ -261,6 +265,28 @@ function Bot:checkSaveRoundTrip()
     end
 end
 
+--- Fail the run unless every player's end-game bonuses were scored exactly once, for what their mat holds
+function Bot:checkEndGameScoring()
+    local scored = {}
+    for _, action in ipairs(gameState.actionHistory) do
+        if action.name == "ScoreEndGame" then
+            local idx = action.ctx.playerIdx
+            if scored[idx] then
+                self:fail("player " .. idx .. " was scored twice")
+                return
+            end
+            scored[idx] = action.ctx.total
+        end
+    end
+    for ii, player in ipairs(gameState.players) do
+        local expected = EndGameBonus.total(EndGameBonus.forPlayer(gameState.rules, player))
+        if scored[ii] ~= expected or player.endGameBonus ~= expected then
+            self:fail(string.format("player %d end-game bonus: scored %s, recorded %s, expected %d", ii, tostring(scored[ii]), tostring(player.endGameBonus), expected))
+            return
+        end
+    end
+end
+
 function Bot:fail(msg)
     if self.done then
         return
@@ -366,6 +392,14 @@ function Bot:update(realDt)
         return
     end
     if game.gameOver then
+        -- the game end sequence plays by itself: wait for the final scores
+        if game.gameEndSm.state ~= GameEndStateMachine.STATES.FINAL_SCORES then
+            return
+        end
+        self:checkEndGameScoring()
+        if self.done then
+            return
+        end
         self:checkSaveRoundTrip()
         if self.done then
             return

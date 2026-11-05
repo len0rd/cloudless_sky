@@ -50,14 +50,20 @@ function WorldStateMachine:focusEntity()
 end
 
 function WorldStateMachine:focusCamera()
-    -- fit and center the focused entity in the space right of the HUD
+    -- fit and center the focused entity in the space right of the HUD (and left of rightInset)
     local hudW = self.graphicsState.hud.container.boundingBox.w
-    local centerX, centerY, zoom = BoxedViewSys.worldFocus(self:focusEntity(), hudW)
+    local screenW = love.graphics.getPixelDimensions()
+    local centerX, centerY, zoom = BoxedViewSys.worldFocus(self:focusEntity(), hudW, screenW - self:rightInset())
 
     camera:zoomTo(zoom)
     camera:lockPosition(centerX, centerY)
     -- where the camera is heading (it eases there). Lets automation wait for it to settle
     self.graphicsState.cameraTarget = { x = centerX, y = centerY }
+end
+
+--- @return number screen pixels on the right the camera leaves free (eg: for a panel). 0 by default
+function WorldStateMachine:rightInset()
+    return 0
 end
 
 --- @return table|nil clickEvent, table|nil entity. The click event (and the entity that produced it)

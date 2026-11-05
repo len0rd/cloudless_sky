@@ -15,7 +15,7 @@ local PlayerMatEntity = require("cloudless_sky.entities.player_mat_entity")
 local PlayerHudContainerEntity = require("cloudless_sky.entities.player_hud_container")
 local TableAreaEntity = require("cloudless_sky.entities.table_area_entity")
 
-local GameOverStateMachine = require("cloudless_sky.states.game_over_sm")
+local GameEndStateMachine = require("cloudless_sky.states.game_end_sm")
 local GameRoundStateMachine = require("cloudless_sky.states.game_round_sm")
 local WorldStateMachine = require("cloudless_sky.states.world_sm")
 
@@ -65,16 +65,17 @@ function game:_setup(newGameState)
     end
 
     self.roundSm = GameRoundStateMachine()
-    self.gameOverSm = GameOverStateMachine()
+    self.gameEndSm = GameEndStateMachine()
     self.gameOver = false
     self:_checkGameOver()
 end
 
+--- @param seed integer|nil seed for the game's rng. Defaults to the time
 --- @return GameState a new game
-local function newGame()
+local function newGame(seed)
     local playerNames = { "lenord", "karoty" }
     local rules = GameRules.currentRules()
-    local seed = (launchOptions and launchOptions.seed) or os.time()
+    seed = seed or os.time()
     Log.info("game seed: " .. tostring(seed) .. " (replay with --seed " .. tostring(seed) .. ")")
     return GameState(rules, playerNames, love.math.newRandomGenerator(seed), seed)
 end
@@ -90,25 +91,35 @@ function game:init()
             Log.error("couldn't load " .. launchOptions.savePath .. ": " .. tostring(reason) .. ". starting a new game")
         end
     end
-    self:_setup(loaded or newGame())
+    self:_setup(loaded or newGame(launchOptions and launchOptions.seed))
 end
 
---- Replace the running game with \p loadedGameState (from SaveGame). Call from any state on top of
---- this one: they are all popped, then the game carries on from the loaded state
-function game:loadGame(loadedGameState)
+--- Replace the running game with \p newGameState. Call from any state on top of this one: they are all
+--- popped, then the game carries on from \p newGameState
+function game:_replaceGame(newGameState)
     -- the old round mustn't move its (discarded) game on as its turn is popped
     self.roundSm.abandoned = true
     while GameStateMachineMgr.current() ~= self do
         GameStateMachineMgr.pop()
     end
-    self:_setup(loadedGameState)
+    self:_setup(newGameState)
+end
+
+--- Replace the running game with \p loadedGameState (from SaveGame)
+function game:loadGame(loadedGameState)
+    self:_replaceGame(loadedGameState)
     Log.info("loaded game: round " .. gameState.round.idx .. ", player " .. gameState.currentTurnPlayer .. "'s turn")
+end
+
+--- Start a new game (fresh seed), replacing the running one
+function game:newGame()
+    self:_replaceGame(newGame())
 end
 
 function game:_checkGameOver()
     if gameState:isFinalRound() and gameState:allPlayersPassed() then
-        -- TODO: final scoring (star completion, number bonuses, leftover tile penalty)
-        Log.info("game over! final scoring is not implemented yet")
+        -- end-game bonuses and final scores (GameEndStateMachine)
+        Log.info("game over")
         self.gameOver = true
     end
 end
@@ -122,7 +133,7 @@ end
 
 function game:update(dt)
     if self.gameOver then
-        GameStateMachineMgr.push(self.gameOverSm, gameState, graphicsState)
+        GameStateMachineMgr.push(self.gameEndSm, gameState, graphicsState)
         return
     end
     GameStateMachineMgr.push(self.roundSm, gameState, graphicsState)

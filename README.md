@@ -47,6 +47,9 @@ Test saves in [test/saves](test/saves):
 - `refill_on_next_fill.json`: 4 players, at the start of round 4 with 24 tiles in the bag and 62 in the
     tower. Loading it starts the round's fill, which empties the bag and plays the refill (tower -> bag)
     animation
+- `final_round_last_pass.json`: 2 players, round 6 (the final round), placement phase. One player has passed;
+    the other is up and is the last to pass. Passing (or the bot: `love . --bot test/saves/final_round_last_pass.json`)
+    starts the game end sequence: end-game bonuses, then final scores
 
 ## TODO
 

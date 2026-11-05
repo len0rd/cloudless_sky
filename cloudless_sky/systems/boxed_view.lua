@@ -16,23 +16,26 @@ function BoxedViewSys.worldCenter(e)
 end
 
 --- Where to point the camera so entity \p e fills (with a margin) and is centered in the part of the
---- screen from \p areaLeft (screen pixels) to the right edge, full height. eg: the screen right of the HUD
---- @param areaLeft number|nil screen x where the area starts. Defaults to 0 (the whole screen)
+--- screen from \p areaLeft to \p areaRight (screen pixels), full height. eg: the screen right of the HUD
+--- @param areaLeft number|nil screen x where the area starts. Defaults to 0
+--- @param areaRight number|nil screen x where the area ends. Defaults to the screen's right edge
 --- @return number centerX, number centerY, number scale. World point for the camera's center, and the
 ---     camera scale
-function BoxedViewSys.worldFocus(e, areaLeft)
-    areaLeft = areaLeft or 0
+function BoxedViewSys.worldFocus(e, areaLeft, areaRight)
     local screenW, screenH = love.graphics.getPixelDimensions()
-    local areaW = math.max(1, screenW - areaLeft)
+    areaLeft = areaLeft or 0
+    areaRight = areaRight or screenW
+    local areaW = math.max(1, areaRight - areaLeft)
 
     local maxWidth = areaW * Constants.hudPadPercent
     local maxHeight = screenH * Constants.hudPadPercent
     local zoom = math.min(maxWidth / e.boundingBox.w, maxHeight / e.boundingBox.h)
 
-    -- the camera's center is drawn at the screen's center. The area's center is (areaLeft / 2) pixels
-    -- right of that, so the camera looks that far (in world units) left of the entity's center
+    -- the camera's center is drawn at the screen's center. Shift it so the entity's center lands on the
+    -- area's center instead (converting the screen offset to world units)
     local eCenterX, eCenterY = BoxedViewSys.worldCenter(e)
-    return eCenterX - (areaLeft / 2) / zoom, eCenterY, zoom
+    local offset = (areaLeft + areaRight) / 2 - screenW / 2
+    return eCenterX - offset / zoom, eCenterY, zoom
 end
 
 --- Return true if the provided worldX. worldY coordintate is within entity \p e's bounding box,
