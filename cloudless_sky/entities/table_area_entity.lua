@@ -1,5 +1,6 @@
---- The table: factory displays in a ring around the center of the table, plus the bag and tower, and
---- the round track (each round's wild tile, with a marker on the current round) in the top-left corner.
+--- The table: factory displays in a ring around the center of the table, plus the bag and tower, the
+--- round track (each round's wild tile, with a marker on the current round) in the top-left corner and
+--- the bonus pool (BonusPoolView) in the top-right corner.
 --- Lives in the world north of the player mats, centered between them.
 --- The bag and tower are hidden except while a refill (tower -> bag) animation plays.
 ---
@@ -11,6 +12,7 @@
 --- a future compact read-only factory bar) can draw the same thing.
 local Concord = require("cloudless_sky.extern.concord")
 local Anim = require("cloudless_sky.anim")
+local BonusPoolView = require("cloudless_sky.view.bonus_pool_view")
 local Components = require("cloudless_sky.components")
 local Constants = require("cloudless_sky.constants")
 local EUtil = require("cloudless_sky.entities.e_util")
@@ -30,6 +32,8 @@ local flux = require("cloudless_sky.extern.flux")
 ---@field tokenInCenter boolean start player token is shown in the center
 ---@field bagTowerAlpha number visibility of the bag and tower (0 = hidden). Only shown during a refill
 ---@field roundTrack RoundTrackView
+---@field bonusPool BonusPoolView tiles in the bonus pool
+---@field poolSmall table {x, y, scale} where the bonus pool sits in the corner, and its size there
 local TableAreaEntity = {}
 TableAreaEntity.__index = TableAreaEntity
 
@@ -58,6 +62,15 @@ local REFILL_MAX_GHOSTS = 12
 local REVEAL_S = 0.25
 local TAKE_S = 0.45
 local POP_IN_S = 0.25
+
+-- bonus pool, in world units: gap from the table's top-right corner, and its disc's radius there (its
+-- tiles are drawn small enough to fit, at most POOL_MAX_SMALL_SCALE of their normal size)
+local POOL_MARGIN = 30
+local POOL_SMALL_R = 64
+local POOL_MAX_SMALL_SCALE = 0.6
+-- "Bonus tiles" label under it
+local POOL_LABEL_GAP = 4
+local POOL_LABEL_H = 22
 
 local COLORS = {
     table = { 0.15, 0.21, 0.19, 1 },
@@ -112,7 +125,7 @@ function TableAreaEntity.new(gameState, matEntities)
     -- view-only randomness (tile positions, rotations). Seeded from the game so a run looks the same
     -- every time, but separate from the game's rng so visuals never affect game results
     entity.viewRng = love.math.newRandomGenerator(gameState.seed)
-    entity:_layout(gameState:numFactoryDisplays())
+    entity:_layout(gameState:numFactoryDisplays(), gameState.rules.bonusSurrounds.numBonusTiles)
     entity.roundTrack = RoundTrackView(x, y, #gameState.rules.wildPerRound, gameState.round.idx)
 
     entity.tweens = flux.group()
@@ -135,8 +148,9 @@ function TableAreaEntity.new(gameState, matEntities)
     return entity
 end
 
---- Position the displays, center, bag and tower
-function TableAreaEntity:_layout(numDisplays)
+--- Position the displays, center, bag, tower and bonus pool
+--- @param numPoolSlots integer how many tiles the bonus pool holds
+function TableAreaEntity:_layout(numDisplays, numPoolSlots)
     local cx = self.worldPos.x + TABLE_W / 2
     local cy = self.worldPos.y + TABLE_H / 2
     local ringR = TABLE_H * RING_RADIUS
@@ -154,6 +168,24 @@ function TableAreaEntity:_layout(numDisplays)
 
     self.bag = { x = self.worldPos.x + TABLE_W * 0.1, y = self.worldPos.y + TABLE_H * 0.8, w = 110, h = 120 }
     self.tower = { x = self.worldPos.x + TABLE_W * 0.9, y = self.worldPos.y + TABLE_H * 0.78, w = 90, h = 160 }
+
+    self.bonusPool = BonusPoolView(numPoolSlots, tileSize)
+    local poolScale = math.min(POOL_MAX_SMALL_SCALE, POOL_SMALL_R / self.bonusPool:radiusAt(1))
+    local poolR = self.bonusPool:radiusAt(poolScale)
+    self.poolSmall = {
+        x = self.worldPos.x + TABLE_W - POOL_MARGIN - poolR,
+        y = self.worldPos.y + POOL_MARGIN + poolR,
+        scale = poolScale,
+    }
+    self.bonusPool:setPlacement(self.poolSmall.x, self.poolSmall.y, self.poolSmall.scale)
+end
+
+--- @return number x, number y, number w, number h. World rect of the "Bonus tiles" label under the
+---     bonus pool (in the corner)
+function TableAreaEntity:poolLabelRect()
+    local small = self.poolSmall
+    local r = self.bonusPool:radiusAt(small.scale)
+    return small.x - r, small.y + r + POOL_LABEL_GAP, r * 2, POOL_LABEL_H
 end
 
 --- @return number x, number y world point tiles fly to/from for the bag
@@ -206,10 +238,14 @@ function TableAreaEntity:playFill(events, onComplete)
             end)
         elseif event.display then
             self:_queue(function(done)
-                self:_animateDisplayFill(event.display, event.tiles, done)
+                self:_animateFlyIn(self.groups[event.display], expandShuffled(event.tiles, self.viewRng), done)
+            end)
+        elseif event.pool then
+            self:_queue(function(done)
+                -- in color order, so colors sit together around the pool
+                self:_animateFlyIn(self.bonusPool, BonusPoolView.orderedList(event.pool), done)
             end)
         end
-        -- TODO: bonus pool events ({ pool = ... }) once the table shows the pool
     end
     self:_queue(function(done)
         if onComplete then
@@ -219,14 +255,14 @@ function TableAreaEntity:playFill(events, onComplete)
     end)
 end
 
---- Tiles fly from the bag to their spots on a display, one after another
-function TableAreaEntity:_animateDisplayFill(displayIdx, tiles, done)
-    local group = self.groups[displayIdx]
-    local list = expandShuffled(tiles, self.viewRng)
+--- Tiles fly from the bag to their spots in \p container (a display, or the bonus pool), one after another
+--- @param container TileGroupView|BonusPoolView
+--- @param list TileType[] the tiles, in the order they fly
+function TableAreaEntity:_animateFlyIn(container, list, done)
     local finish = Anim.join(#list, done)
     local bagX, bagY = self:bagMouth()
     for ii, tileType in ipairs(list) do
-        local tile = group:receiveTile({
+        local tile = container:receiveTile({
             tileType = tileType,
             x = bagX,
             y = bagY,
@@ -374,29 +410,35 @@ function TableAreaEntity:syncFromModel(gameState, instant)
     for source, group in pairs(self.groups) do
         local bag = gameState:tileSource(source)
         if bag then
-            local counts = group:counts()
-            for _, tileType in ipairs(TileType.ORDERED) do
-                local diff = bag:num(tileType) - counts[tileType]
-                if diff < 0 then
-                    group:removeTiles(tileType, -diff)
-                else
-                    for _ = 1, diff do
-                        local tile = group:addTile(tileType)
-                        if not instant then
-                            tile.scale = 0
-                            self.tweens:to(tile, Anim.time(POP_IN_S), { scale = 1 }):ease("backout")
-                        end
-                    end
-                end
-            end
+            self:_syncContainer(group, bag, instant)
         end
     end
+    self:_syncContainer(self.bonusPool, gameState.bonusPool, instant)
     self.bagCount = gameState.tileBag:total()
     self.towerCount = gameState.discard:total()
     self.tokenInCenter = gameState.startTokenHolder == nil
     -- how much of the action history the visual state reflects (lets checks skip frames where the
     -- view hasn't caught up yet)
     self.syncedHistoryLen = #gameState.actionHistory
+end
+
+--- Add (popping in) or remove tiles so \p container (TileGroupView or BonusPoolView) matches \p bag
+function TableAreaEntity:_syncContainer(container, bag, instant)
+    local counts = container:counts()
+    for _, tileType in ipairs(TileType.ORDERED) do
+        local diff = bag:num(tileType) - counts[tileType]
+        if diff < 0 then
+            container:removeTiles(tileType, -diff)
+        else
+            for _ = 1, diff do
+                local tile = container:addTile(tileType)
+                if not instant then
+                    tile.scale = 0
+                    self.tweens:to(tile, Anim.time(POP_IN_S), { scale = 1 }):ease("backout")
+                end
+            end
+        end
+    end
 end
 
 --------------------------------------------------------------------------------
@@ -481,6 +523,8 @@ function TableAreaEntity:update(dt, gameState)
     -- not held back by other table animations: the marker slides as soon as the round changes,
     -- while the new round's fill plays
     self.roundTrack:update(gameState.round.idx, self.tweens)
+    -- tiles that have landed in the pool follow their slot
+    self.bonusPool:setPlacement(self.poolSmall.x, self.poolSmall.y, self.poolSmall.scale)
     if not self.busy then
         self:syncFromModel(gameState)
     else
@@ -603,6 +647,9 @@ function TableAreaEntity:draw(gameState)
     end
     center:drawTiles(self.highlight)
 
+    self.bonusPool:drawBase()
+    self.bonusPool:drawTiles()
+
     for _, tile in ipairs(self.flying) do
         TileGroupView.drawTile(tile, self.tileSize)
     end
@@ -623,6 +670,7 @@ function TableAreaEntity:drawScreen(gameState)
         drawLabel("Tower: " .. math.floor(self.towerCount + 0.5), t.x - t.w, t.y + t.h * 0.55, t.w * 2, 40, labelColor)
     end
     self.roundTrack:drawScreen(gameState.rules.wildPerRound, gameState.round.idx)
+    drawLabel("Bonus tiles", self:poolLabelRect())
 
     if self.tokenInCenter then
         local x, y, size = self:_tokenRect()

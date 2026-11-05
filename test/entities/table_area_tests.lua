@@ -1,6 +1,7 @@
 local cute = require("cloudless_sky.extern.cute")
 local RoundTrackView = require("cloudless_sky.view.round_track_view")
 local TableAreaEntity = require("cloudless_sky.entities.table_area_entity")
+local ViewUtil = require("cloudless_sky.view.view_util")
 
 -- world size of the table (TableAreaEntity TABLE_W / TABLE_H)
 local TABLE_W, TABLE_H = 1200, 800
@@ -25,7 +26,7 @@ notion("TableAreaEntity round track fits on the table clear of every display (2-
     -- 2, 3 and 4 players have 5, 7 and 9 displays
     for _, numDisplays in ipairs({ 5, 7, 9 }) do
         local fake = { worldPos = { x = 0, y = 0 }, viewRng = love.math.newRandomGenerator(1) }
-        TableAreaEntity._layout(fake, numDisplays)
+        TableAreaEntity._layout(fake, numDisplays, 10)
         local slots = RoundTrackView.layout(0, 0, 6)
 
         -- the area the track can cover: every tile at its biggest, plus the label underneath
@@ -40,6 +41,36 @@ notion("TableAreaEntity round track fits on the table clear of every display (2-
         for source, group in pairs(fake.groups) do
             if rectHitsCircle(x, y, w, h, group.x, group.y, group.radius) then
                 error(numDisplays .. " displays: round track overlaps tile source " .. source)
+            end
+        end
+    end
+end)
+
+notion("TableAreaEntity bonus pool sits in the top-right corner clear of every display (2-4 players)", function()
+    for _, numDisplays in ipairs({ 5, 7, 9 }) do
+        for _, poolSize in ipairs({ 5, 10, 20 }) do
+            local fake = { worldPos = { x = 0, y = 0 }, viewRng = love.math.newRandomGenerator(1) }
+            TableAreaEntity._layout(fake, numDisplays, poolSize)
+            local pool = fake.bonusPool
+            local r = pool:radius()
+            local what = numDisplays .. " displays, " .. poolSize .. " tile pool: "
+
+            -- on the table, right of the round track
+            check(pool.x + r <= TABLE_W and pool.y - r >= 0).is(true)
+            local slots = RoundTrackView.layout(0, 0, 6)
+            check(pool.x - r > slots[6].x + slots[6].size).is(true)
+            -- its tiles are smaller than normal
+            check(pool.scale < 1).is(true)
+            -- the label under it
+            local lx, ly, lw, lh = TableAreaEntity.poolLabelRect(fake)
+            check(ly + lh <= TABLE_H).is(true)
+            for source, group in pairs(fake.groups) do
+                if ViewUtil.euclidianDistance(pool.x, pool.y, group.x, group.y) < r + group.radius then
+                    error(what .. "overlaps tile source " .. source)
+                end
+                if rectHitsCircle(lx, ly, lw, lh, group.x, group.y, group.radius) then
+                    error(what .. "its label overlaps tile source " .. source)
+                end
             end
         end
     end

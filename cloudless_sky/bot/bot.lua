@@ -76,6 +76,15 @@ local function tableViewFailures(tableEntity)
             end
         end
     end
+    local poolCounts = tableEntity.bonusPool:counts()
+    for _, tileType in ipairs(TileType.ORDERED) do
+        if poolCounts[tileType] ~= gameState.bonusPool:num(tileType) then
+            table.insert(
+                failures,
+                string.format("bonus pool shows %d %s, model has %d", poolCounts[tileType], tileType, gameState.bonusPool:num(tileType))
+            )
+        end
+    end
     if math.floor(tableEntity.bagCount + 0.5) ~= gameState.tileBag:total() then
         table.insert(failures, "bag shows " .. tableEntity.bagCount .. ", model has " .. gameState.tileBag:total())
     end
