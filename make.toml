@@ -1,4 +1,4 @@
 name = "CloudlessSky"
 build_directory = "build"
 
-love_files = ["::git-ls-tree::", "-*/.*"]
+love_files = ["::git-ls-tree::", "-*/.*", "-./docs/*", "-./test/*", "-./ios/*"]

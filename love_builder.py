@@ -26,7 +26,9 @@ def git_ls_tree(path=".", visited=None) -> List[Path]:
 
     ls_tree = (
         subprocess.check_output(
-            ["git", "ls-tree", "-r", "--name-only", "HEAD"], cwd=path
+            # ls-tree would list a submodule as a single entry and leave out its files
+            ["git", "ls-files", "--recurse-submodules"],
+            cwd=path,
         )
         .decode("utf-8")
         .splitlines()
