@@ -1,4 +1,5 @@
 local cute = require("cloudless_sky.extern.cute")
+local EndGameBonus = require("cloudless_sky.model.end_game_bonus")
 local GameEndStateMachine = require("cloudless_sky.states.game_end_sm")
 local SaveGame = require("cloudless_sky.model.save_game")
 local ScoreEndGameAction = require("cloudless_sky.action.score_end_game")
@@ -63,4 +64,14 @@ notion("test/saves/final_round_last_pass.json loads with one player left to pass
     end
     check(unpassed).is(1)
     check(gameState.players[gameState.currentTurnPlayer].passedForPhase).is(false)
+
+    -- exercises both kinds of end-game bonus: completed stars and number bonuses
+    local kinds = {}
+    for _, player in ipairs(gameState.players) do
+        for _, bonus in ipairs(EndGameBonus.forPlayer(gameState.rules, player)) do
+            kinds[bonus.kind] = true
+        end
+    end
+    check(kinds[EndGameBonus.KIND.STAR]).is(true)
+    check(kinds[EndGameBonus.KIND.NUMBER]).is(true)
 end)
