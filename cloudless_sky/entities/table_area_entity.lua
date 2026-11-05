@@ -1,5 +1,6 @@
 --- The table: factory displays in a ring around the center of the table, plus the bag and tower.
 --- Lives in the world north of the player mats, centered between them.
+--- The bag and tower are hidden except while a refill (tower -> bag) animation plays.
 ---
 --- Visual state (tile positions, bag/tower counts) is kept here, separate from the model. While idle
 --- it is kept in step with the model every update (syncFromModel), which also covers undo and round
@@ -25,6 +26,7 @@ local flux = require("cloudless_sky.extern.flux")
 ---@field bagCount number tiles shown in the bag
 ---@field towerCount number tiles shown in the tower
 ---@field tokenInCenter boolean start player token is shown in the center
+---@field bagTowerAlpha number visibility of the bag and tower (0 = hidden). Only shown during a refill
 local TableAreaEntity = {}
 TableAreaEntity.__index = TableAreaEntity
 
@@ -49,6 +51,8 @@ local FILL_STAGGER_S = 0.07
 local REFILL_ARC_S = 0.6
 local REFILL_STAGGER_S = 0.05
 local REFILL_MAX_GHOSTS = 12
+-- bag/tower fade in before a refill, and out after it
+local REVEAL_S = 0.25
 local TAKE_S = 0.45
 local POP_IN_S = 0.25
 
@@ -135,6 +139,7 @@ function TableAreaEntity.new(gameState, matEntities)
     entity.bagCount = gameState.tileBag:total()
     entity.towerCount = gameState.discard:total()
     entity.tokenInCenter = gameState.startTokenHolder == nil
+    entity.bagTowerAlpha = 0
     entity:syncFromModel(gameState, true)
 
     return entity
@@ -152,13 +157,8 @@ function TableAreaEntity:_layout(numDisplays)
     for ii = 1, numDisplays do
         -- first display at the top, then clockwise
         local angle = -math.pi / 2 + (ii - 1) * 2 * math.pi / numDisplays
-        self.groups[ii] = TileGroupView(
-            cx + ringR * math.cos(angle),
-            cy + ringR * math.sin(angle),
-            displayR,
-            tileSize,
-            self.viewRng
-        )
+        self.groups[ii] =
+            TileGroupView(cx + ringR * math.cos(angle), cy + ringR * math.sin(angle), displayR, tileSize, self.viewRng)
     end
     local centerR = ringR - displayR - TABLE_H * CENTER_MARGIN
     self.groups[CENTER] = TileGroupView(cx, cy, centerR, tileSize, self.viewRng)
@@ -261,6 +261,15 @@ end
 
 --- The bag ran out: the tower's tiles arc over into the bag
 function TableAreaEntity:_animateRefill(counts, done)
+    self.tweens:to(self, Anim.time(REVEAL_S), { bagTowerAlpha = 1 }):ease("quadout"):oncomplete(function()
+        self:_animateRefillArc(counts, function()
+            self.tweens:to(self, Anim.time(REVEAL_S), { bagTowerAlpha = 0 }):ease("quadin")
+            done()
+        end)
+    end)
+end
+
+function TableAreaEntity:_animateRefillArc(counts, done)
     local list = expandShuffled(counts, self.viewRng)
     local numTiles = #list
     local numGhosts = math.min(numTiles, REFILL_MAX_GHOSTS)
@@ -507,21 +516,38 @@ end
 -- drawing
 --------------------------------------------------------------------------------
 
+--- set \p color, with its alpha scaled by \p alpha
+local function setColorAlpha(color, alpha)
+    love.graphics.setColor(color[1], color[2], color[3], color[4] * alpha)
+end
+
 function TableAreaEntity:_drawBag()
     local b = self.bag
-    love.graphics.setColor(COLORS.bag)
+    local a = self.bagTowerAlpha
+    setColorAlpha(COLORS.bag, a)
     love.graphics.ellipse("fill", b.x, b.y + b.h * 0.1, b.w / 2, b.h * 0.4)
     -- gathered neck
-    love.graphics.polygon("fill", b.x - b.w * 0.18, b.y - b.h * 0.25, b.x + b.w * 0.18, b.y - b.h * 0.25, b.x + b.w * 0.3, b.y - b.h * 0.45, b.x - b.w * 0.3, b.y - b.h * 0.45)
-    love.graphics.setColor(COLORS.bagTie)
+    love.graphics.polygon(
+        "fill",
+        b.x - b.w * 0.18,
+        b.y - b.h * 0.25,
+        b.x + b.w * 0.18,
+        b.y - b.h * 0.25,
+        b.x + b.w * 0.3,
+        b.y - b.h * 0.45,
+        b.x - b.w * 0.3,
+        b.y - b.h * 0.45
+    )
+    setColorAlpha(COLORS.bagTie, a)
     love.graphics.setLineWidth(6)
     love.graphics.line(b.x - b.w * 0.2, b.y - b.h * 0.27, b.x + b.w * 0.2, b.y - b.h * 0.27)
 end
 
 function TableAreaEntity:_drawTower()
     local t = self.tower
+    local a = self.bagTowerAlpha
     local left, top = t.x - t.w / 2, t.y - t.h / 2
-    love.graphics.setColor(COLORS.tower)
+    setColorAlpha(COLORS.tower, a)
     love.graphics.rectangle("fill", left, top + t.h * 0.12, t.w, t.h * 0.88)
     -- battlements
     local merlonW = t.w / 5
@@ -529,7 +555,7 @@ function TableAreaEntity:_drawTower()
         love.graphics.rectangle("fill", left + ii * merlonW, top, merlonW, t.h * 0.14)
     end
     -- doorway
-    love.graphics.setColor(COLORS.towerDark)
+    setColorAlpha(COLORS.towerDark, a)
     love.graphics.rectangle("fill", t.x - t.w * 0.18, top + t.h * 0.65, t.w * 0.36, t.h * 0.35, t.w * 0.18, t.w * 0.18)
 end
 
@@ -581,8 +607,10 @@ function TableAreaEntity:draw(gameState)
         love.graphics.circle("line", group.x, group.y, group.radius)
     end
 
-    self:_drawBag()
-    self:_drawTower()
+    if self.bagTowerAlpha > 0 then
+        self:_drawBag()
+        self:_drawTower()
+    end
 
     if self.tokenInCenter then
         self:_drawToken()
@@ -610,10 +638,13 @@ function TableAreaEntity:drawScreen(gameState)
         ViewUtil.printPixelText(text, ViewUtil.largestFontThatFits(text, w, h), x, y, w, h)
     end
 
-    local b = self.bag
-    drawLabel("Bag: " .. math.floor(self.bagCount + 0.5), b.x - b.w, b.y + b.h * 0.55, b.w * 2, 40)
-    local t = self.tower
-    drawLabel("Tower: " .. math.floor(self.towerCount + 0.5), t.x - t.w, t.y + t.h * 0.55, t.w * 2, 40)
+    if self.bagTowerAlpha > 0 then
+        local labelColor = { COLORS.label[1], COLORS.label[2], COLORS.label[3], COLORS.label[4] * self.bagTowerAlpha }
+        local b = self.bag
+        drawLabel("Bag: " .. math.floor(self.bagCount + 0.5), b.x - b.w, b.y + b.h * 0.55, b.w * 2, 40, labelColor)
+        local t = self.tower
+        drawLabel("Tower: " .. math.floor(self.towerCount + 0.5), t.x - t.w, t.y + t.h * 0.55, t.w * 2, 40, labelColor)
+    end
     if self.tokenInCenter then
         -- fit the "1" inside the diamond's middle (the diamond spans 1/6..5/6 of the width)
         local x, y, size = self:_tokenRect()

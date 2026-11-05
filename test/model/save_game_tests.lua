@@ -194,3 +194,19 @@ notion("SaveGame rejects saves that don't replay exactly", function()
     check(restored).is(nil)
     check(type(reason)).is("string")
 end)
+
+notion("test/saves/refill_on_next_fill.json loads and its next fill refills the bag", function()
+    -- see README "Save / load". Regenerate the save if this fails after a rules/action change
+    local text = love.filesystem.read("test/saves/refill_on_next_fill.json")
+    check(text ~= nil).is(true)
+    local gameState, reason = SaveGame.decode(text)
+    check(reason).is(nil)
+
+    local fill = FillFactoryDisplaysAction()
+    perform(gameState, fill)
+    local refilled = false
+    for _, event in ipairs(fill.ctx.events) do
+        refilled = refilled or event.refill ~= nil
+    end
+    check(refilled).is(true)
+end)

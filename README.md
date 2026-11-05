@@ -42,6 +42,12 @@ Save location:
 
 Start from a save game at startup with: `love . path/to/savegame.json`
 
+Test saves in [test/saves](test/saves):
+
+- `refill_on_next_fill.json`: 4 players, at the start of round 4 with 24 tiles in the bag and 62 in the
+    tower. Loading it starts the round's fill, which empties the bag and plays the refill (tower -> bag)
+    animation
+
 ## TODO
 
 - Win32/64 binaries via python makelove package + Wine
