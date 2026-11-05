@@ -1,6 +1,6 @@
 --- Base class for a single player's turn (tile selection or tile placement).
 --- Handles what every turn does the same way:
----     - ending the turn (HUD Done, or space as a debug shortcut) pops back to the GameRound
+---     - ending the turn (HUD Done, or space as a shortcut for it) pops back to the GameRound
 ---     - Undo reverts the player's most recent choice this turn (GameState:undoLastChoice)
 ---     - the view toggle button
 ---     - keeping the HUD's Done/Pass/Undo buttons in sync with the turn state
@@ -91,7 +91,9 @@ end
 
 function TurnStateMachine:keyreleased(key, code)
     if key == "space" then
-        self.endTurnRequested = true
+        if self.graphicsState.hud.container.doneEnabled then
+            self.endTurnRequested = true
+        end
     else
         WorldStateMachine.keyreleased(self, key, code)
     end
