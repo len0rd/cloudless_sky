@@ -175,6 +175,16 @@ function GameState:allPlayersPassed()
     return true
 end
 
+--- @return boolean True once every player's end-game bonuses have been scored (ScoreEndGameAction)
+function GameState:isGameScored()
+    for _, player in ipairs(self.players) do
+        if player.endGameBonus == nil then
+            return false
+        end
+    end
+    return true
+end
+
 function GameState:numFactoryDisplays()
     return #self.factoryDisplays
 end
@@ -246,9 +256,21 @@ function GameState:turnStartIndex()
     return 0
 end
 
---- @return boolean True if the current turn has a player choice that can be undone
+--- @return Action|nil the most recent action that isn't a follow-up (a player choice or a barrier)
+function GameState:_lastTopLevelAction()
+    for ii = #self.actionHistory, 1, -1 do
+        if not self.actionHistory[ii].isFollowUp then
+            return self.actionHistory[ii]
+        end
+    end
+    return nil
+end
+
+--- @return boolean True if the current turn has a player choice that can be undone. Follow-ups belong
+---     to the action that caused them, so a barrier's follow-ups (eg: ScoreEndGame's AddScore) can't be
+---     undone either
 function GameState:canUndoChoice()
-    local last = self.actionHistory[#self.actionHistory]
+    local last = self:_lastTopLevelAction()
     return last ~= nil and not last.undoBarrier
 end
 
@@ -261,7 +283,7 @@ function GameState:undoLastChoice()
         return nil
     end
     local undone = {}
-    while self:canUndoChoice() do
+    while true do
         local action = self:undoLastAction()
         table.insert(undone, action)
         if not action.isFollowUp then

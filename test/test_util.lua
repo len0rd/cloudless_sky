@@ -66,4 +66,68 @@ function TestUtil.setBag(bag, counts)
     end
 end
 
+--- Play \p gameState (a new game) through every round the way the state machines do, until the final
+--- round's placement phase is over and every player has passed: the game is over, but end-game bonuses
+--- haven't been scored. Picks are the first legal take; placements the first slot that fits, else pass
+function TestUtil.playToGameEnd(gameState)
+    local EndRoundAction = require("cloudless_sky.action.end_round")
+    local FillFactoryDisplaysAction = require("cloudless_sky.action.fill_factory_displays")
+    local PassAction = require("cloudless_sky.action.pass")
+    local PlaceTileAction = require("cloudless_sky.action.place_tile")
+    local StartPlacementPhaseAction = require("cloudless_sky.action.start_placement_phase")
+    local TakeTilesAction = require("cloudless_sky.action.take_tiles")
+
+    local function perform(action)
+        local performed, reason = gameState:performAction(action)
+        assert(performed, tostring(action.name) .. " failed: " .. tostring(reason))
+    end
+    local function take()
+        for source = GameState.CENTER, gameState:numFactoryDisplays() do
+            for _, tileType in ipairs(TileType.ORDERED) do
+                if gameState:performAction(TakeTilesAction(gameState.currentTurnPlayer, source, tileType)) then
+                    return
+                end
+            end
+        end
+        error("no legal pick")
+    end
+    local function placeOrPass()
+        local playerIdx = gameState.currentTurnPlayer
+        local player = gameState.players[playerIdx]
+        for starIdx, star in ipairs(player.mat.stars) do
+            for slotIdx = 1, star:numSlots() do
+                if not star:isOccupied(slotIdx) then
+                    local options = player:generatePlacementPossibilities(starIdx, slotIdx, gameState:getCurrentWildType())
+                    if #options > 0 then
+                        perform(PlaceTileAction(playerIdx, starIdx, slotIdx, options[1]))
+                        return
+                    end
+                end
+            end
+        end
+        perform(PassAction(playerIdx, {}))
+    end
+
+    while true do
+        perform(FillFactoryDisplaysAction())
+        gameState:beginTurn(gameState.startPlayer)
+        while not gameState:allTileSourcesEmpty() do
+            take()
+            gameState:incrementTurn()
+        end
+        perform(StartPlacementPhaseAction())
+        gameState:beginTurn(gameState.startTokenHolder or gameState.startPlayer)
+        while not gameState:allPlayersPassed() do
+            placeOrPass()
+            if not gameState:allPlayersPassed() then
+                gameState:incrementTurn()
+            end
+        end
+        if gameState:isFinalRound() then
+            return gameState
+        end
+        perform(EndRoundAction())
+    end
+end
+
 return TestUtil

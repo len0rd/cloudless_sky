@@ -102,6 +102,14 @@ function Invariants.check(gameState)
         end
     end
 
+    -- end-game bonuses are only scored once the game is over
+    local gameOver = gameState:isFinalRound() and gameState:allPlayersPassed()
+    for ii, player in ipairs(gameState.players) do
+        if player.endGameBonus ~= nil and not gameOver then
+            fail("player " .. ii .. " has end-game bonuses scored before the game is over")
+        end
+    end
+
     -- phase rules
     if gameState.round.phase == gameState.RoundPhase.TILE_PLACEMENT then
         if not gameState:allTileSourcesEmpty() then

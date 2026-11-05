@@ -33,6 +33,8 @@ function Player:new(starConfigs, startScore, name)
     self.playerName = name
 
     self.passedForPhase = false
+    -- points from end-game bonuses (ScoreEndGameAction). nil until the player has been scored
+    self.endGameBonus = nil
 end
 
 function Player:starType(starIndex)
@@ -46,6 +48,7 @@ function Player:serialize()
         score = self.score,
         name = self.playerName,
         passedForPhase = self.passedForPhase,
+        endGameBonus = self.endGameBonus,
     }
 end
 
@@ -106,6 +109,7 @@ function Player:deserialize(data)
         self.playerName = data["name"]
     end
     self.score = data.score
+    self.endGameBonus = data.endGameBonus
     self.mat:deserialize(data.mat)
     self.hand:deserialize(data.hand)
 end
