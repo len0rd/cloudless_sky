@@ -15,6 +15,7 @@ local EUtil = require("cloudless_sky.entities.e_util")
 local TakeTilesAction = require("cloudless_sky.action.take_tiles")
 local TileGroupView = require("cloudless_sky.view.tile_group_view")
 local TileType = require("cloudless_sky.model.tile_type")
+local TileView = require("cloudless_sky.view.tile_view")
 local ViewUtil = require("cloudless_sky.view.view_util")
 
 local flux = require("cloudless_sky.extern.flux")
@@ -532,10 +533,24 @@ function TableAreaEntity:_drawTower()
     love.graphics.rectangle("fill", t.x - t.w * 0.18, top + t.h * 0.65, t.w * 0.36, t.h * 0.35, t.w * 0.18, t.w * 0.18)
 end
 
+--- @return number x, number y, number size. Top-left and size of the start player token, which is
+---     tile-shaped (an upright diamond) and the same size as a tile
 function TableAreaEntity:_tokenRect()
     local center = self.groups[CENTER]
-    local size = self.tileSize * 0.55
+    local size = self.tileSize
     return center.x - size / 2, center.y - center.radius * 0.75 - size / 2, size
+end
+
+function TableAreaEntity:_drawToken()
+    local x, y, size = self:_tokenRect()
+    local poly = TileView.betterPolyVerticies(size, 0, x, y)
+    love.graphics.setColor(COLORS.token)
+    love.graphics.polygon("fill", poly)
+    love.graphics.setColor(0, 0, 0, 1)
+    love.graphics.setLineJoin("bevel")
+    love.graphics.setLineWidth(2)
+    love.graphics.polygon("line", poly)
+    love.graphics.setLineJoin("miter")
 end
 
 function TableAreaEntity:draw(gameState)
@@ -570,9 +585,7 @@ function TableAreaEntity:draw(gameState)
     self:_drawTower()
 
     if self.tokenInCenter then
-        local x, y, size = self:_tokenRect()
-        love.graphics.setColor(COLORS.token)
-        ViewUtil.drawOutlinedRectangle(x, y, size, size, size * 0.2, 2)
+        self:_drawToken()
     end
 
     for _, group in ipairs(self.groups) do
@@ -602,8 +615,9 @@ function TableAreaEntity:drawScreen(gameState)
     local t = self.tower
     drawLabel("Tower: " .. math.floor(self.towerCount + 0.5), t.x - t.w, t.y + t.h * 0.55, t.w * 2, 40)
     if self.tokenInCenter then
+        -- fit the "1" inside the diamond's middle (the diamond spans 1/6..5/6 of the width)
         local x, y, size = self:_tokenRect()
-        drawLabel("1", x, y, size, size, { 0, 0, 0, 1 })
+        drawLabel("1", x + size * 0.3, y + size * 0.25, size * 0.4, size * 0.5, { 0, 0, 0, 1 })
     end
 
     love.graphics.setColor(origR, origG, origB, origA)
