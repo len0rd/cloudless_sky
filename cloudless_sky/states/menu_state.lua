@@ -1,10 +1,12 @@
---- In-game menu: a screen-centered dialog with Save, Load and Exit.
+--- In-game menu: a screen-centered dialog with Save, Load, End Game Bonus (a reference of the end-game
+--- bonuses, see BonusReferenceState) and Exit.
 ---
 --- Pushed on top of whatever state machine is running (the HUD Menu button or Escape). The game is
 --- paused while it's open: only the top state gets updates, so play, animations and tweens below it
 --- freeze. It draws the paused game underneath, dimmed.
 ---
 --- Closes on Escape or a click outside the dialog.
+local BonusReferenceState = require("cloudless_sky.states.bonus_reference_state")
 local GameStateMachineMgr = require("cloudless_sky.extern.hump.gamestate")
 local SaveGame = require("cloudless_sky.model.save_game")
 local UiStyle = require("cloudless_sky.view.ui_style")
@@ -23,6 +25,7 @@ local ROW_H = 0.07
 local BUTTONS = {
     { id = "save", label = "Save" },
     { id = "load", label = "Load" },
+    { id = "bonuses", label = "End Game Bonus" },
     { id = "exit", label = "Exit" },
 }
 
@@ -132,6 +135,8 @@ function MenuState:mousepressed(x, y, button)
                 self:_save()
             elseif b.id == "load" then
                 self:_load()
+            elseif b.id == "bonuses" then
+                GameStateMachineMgr.push(BonusReferenceState, self.gameState.rules)
             elseif b.id == "exit" then
                 love.event.quit(0)
             end
