@@ -23,6 +23,7 @@ local json = require("cloudless_sky.extern.json")
 require("cloudless_sky.action.add_score")
 require("cloudless_sky.action.begin_turn")
 require("cloudless_sky.action.end_round")
+require("cloudless_sky.action.fill_bonus_pool")
 require("cloudless_sky.action.fill_factory_displays")
 require("cloudless_sky.action.pass")
 require("cloudless_sky.action.place_tile")
@@ -32,7 +33,8 @@ require("cloudless_sky.action.take_tiles")
 
 local SaveGame = {}
 
-SaveGame.VERSION = 1
+-- 2: the bonus pool (GameState.bonusPool, FillBonusPoolAction)
+SaveGame.VERSION = 2
 --- file name in the LÖVE save directory (love.filesystem.getSaveDirectory())
 SaveGame.FILE = "savegame.json"
 

@@ -17,6 +17,8 @@ local BeginTurnAction = require("cloudless_sky.action.begin_turn")
 ---@field turnIdx integer Increments every turn and is never reused. Identifies the current turn
 ---@field factoryDisplays TileBag[] The factory displays tiles are picked from during tile selection
 ---@field center TileBag The center of the table. Tiles left on a display after a pick are moved here
+---@field bonusPool TileBag Tiles players pick from when they earn a placement bonus. Filled to
+---     GameRules.bonusSurrounds.numBonusTiles (FillBonusPoolAction)
 ---@field startTokenHolder integer|nil Index of the player holding the start player token.
 ---     nil while the token is in the center of the table
 ---@field seed integer Seed \p rng was created from. Saved so a game can be recreated exactly
@@ -83,6 +85,7 @@ function GameState:new(gameRules, playerNames, rng, seed)
         self.factoryDisplays[ii] = TileBag()
     end
     self.center = TileBag()
+    self.bonusPool = TileBag()
     self.startTokenHolder = nil
 
     self.round = {
@@ -108,6 +111,7 @@ function GameState:serialize()
         round = self.round,
         factoryDisplays = {},
         center = self.center:serialize(),
+        bonusPool = self.bonusPool:serialize(),
         startTokenHolder = self.startTokenHolder,
         startPlayer = self.startPlayer,
         currentTurnPlayer = self.currentTurnPlayer,

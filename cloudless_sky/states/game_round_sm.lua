@@ -1,5 +1,6 @@
 --- State machine for one round of the game (see docs/game_sm.drawio.svg):
----     1. FILLING:   fill the factory displays (animated one display at a time)
+---     1. FILLING:   fill the factory displays (animated one display at a time). At the start of the
+---                   game the bonus pool is filled first
 ---     2. SELECTION: players take TileSelection turns until the displays and center are empty
 ---     3. PLACEMENT: players take TilePlacement turns until everyone has passed
 ---     4. round end upkeep (EndRoundAction), then pop back to the Game. After the final round there
@@ -12,6 +13,7 @@ local WorldStateMachine = require("cloudless_sky.states.world_sm")
 local GameStateMachineMgr = require("cloudless_sky.extern.hump.gamestate")
 
 local EndRoundAction = require("cloudless_sky.action.end_round")
+local FillBonusPoolAction = require("cloudless_sky.action.fill_bonus_pool")
 local FillFactoryDisplaysAction = require("cloudless_sky.action.fill_factory_displays")
 local PassAction = require("cloudless_sky.action.pass")
 local StartPlacementPhaseAction = require("cloudless_sky.action.start_placement_phase")
@@ -56,6 +58,16 @@ local function roundFillIndex(gameState)
     return nil
 end
 
+--- @return boolean True once the bonus pool has been filled at the start of the game
+function GameRoundStateMachine.bonusPoolFilled(gameState)
+    for _, action in ipairs(gameState.actionHistory) do
+        if action.name == "FillBonusPool" then
+            return true
+        end
+    end
+    return false
+end
+
 function GameRoundStateMachine:enter(fromState, gameState, graphicsState)
     self:_bind(gameState, graphicsState)
 
@@ -75,6 +87,11 @@ function GameRoundStateMachine:enter(fromState, gameState, graphicsState)
     Log.info("starting round " .. gameState.round.idx .. " (wild: " .. tostring(gameState:getCurrentWildType()) .. ")")
     self.state = self.STATES.FILLING
     self.fillDone = false
+    if not GameRoundStateMachine.bonusPoolFilled(gameState) then
+        -- the start of the game. Performed with the displays' fill, so a save can't come between them
+        local poolFill = performGameAction(gameState, FillBonusPoolAction())
+        graphicsState.table:playFill(poolFill[1].ctx.events)
+    end
     local performed = performGameAction(gameState, FillFactoryDisplaysAction())
     graphicsState.table:playFill(performed[1].ctx.events, function()
         self.fillDone = true

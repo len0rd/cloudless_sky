@@ -47,6 +47,10 @@ notion("Invariants catch lost, duplicated and negative tiles", function()
     gameState = TestUtil.newGame()
     gameState.center:setCountForTileType(TileType.GREEN, -1)
     check(mentions(Invariants.check(gameState), "center has -1 GREEN")).is(true)
+
+    gameState = TestUtil.newGame()
+    gameState.bonusPool:setCountForTileType(TileType.RED, -2)
+    check(mentions(Invariants.check(gameState), "bonus pool has -2 RED")).is(true)
 end)
 
 notion("Invariants catch bad scores, players, rounds and phases", function()

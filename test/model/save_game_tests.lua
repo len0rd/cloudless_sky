@@ -210,3 +210,12 @@ notion("test/saves/refill_on_next_fill.json loads and its next fill refills the 
     end
     check(refilled).is(true)
 end)
+
+notion("test/saves/placement_phase.json loads at the start of a 2-player placement phase", function()
+    -- see README "Save / load". Regenerate the save if this fails after a rules/action change
+    local gameState, reason = SaveGame.decode((love.filesystem.read("test/saves/placement_phase.json")))
+    check(reason).is(nil)
+    check(#gameState.players).is(2)
+    check(gameState.round.phase).is(gameState.RoundPhase.TILE_PLACEMENT)
+    check(gameState.actionHistory[#gameState.actionHistory].name).is("BeginTurn")
+end)

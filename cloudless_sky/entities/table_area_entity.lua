@@ -196,7 +196,7 @@ end
 
 --- Animate FillFactoryDisplaysAction. Must be called the same update the action was performed, so
 --- the visual state still shows the tiles in the bag
---- @param events table FillFactoryDisplaysAction ctx.events
+--- @param events table FillFactoryDisplaysAction (or FillBonusPoolAction) ctx.events
 --- @param onComplete function|nil called once every display is filled
 function TableAreaEntity:playFill(events, onComplete)
     for _, event in ipairs(events) do
@@ -204,11 +204,12 @@ function TableAreaEntity:playFill(events, onComplete)
             self:_queue(function(done)
                 self:_animateRefill(event.refill, done)
             end)
-        else
+        elseif event.display then
             self:_queue(function(done)
                 self:_animateDisplayFill(event.display, event.tiles, done)
             end)
         end
+        -- TODO: bonus pool events ({ pool = ... }) once the table shows the pool
     end
     self:_queue(function(done)
         if onComplete then

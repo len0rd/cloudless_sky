@@ -108,6 +108,7 @@ function TestUtil.playToGameEnd(gameState)
         perform(PassAction(playerIdx, {}))
     end
 
+    perform(require("cloudless_sky.action.fill_bonus_pool")())
     while true do
         perform(FillFactoryDisplaysAction())
         gameState:beginTurn(gameState.startPlayer)

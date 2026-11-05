@@ -42,6 +42,7 @@ function Invariants.check(gameState)
         { "bag", gameState.tileBag },
         { "tower", gameState.discard },
         { "center", gameState.center },
+        { "bonus pool", gameState.bonusPool },
     }
     for ii, display in ipairs(gameState.factoryDisplays) do
         table.insert(bags, { "display " .. ii, display })
