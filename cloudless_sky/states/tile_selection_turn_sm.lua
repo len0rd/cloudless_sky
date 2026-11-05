@@ -22,6 +22,8 @@ TileSelectionTurnStateMachine.STATES = {
 }
 
 function TileSelectionTurnStateMachine:onEnter()
+    -- the open PickUpDialogEntity, if any
+    self.pickUpDialog = nil
     self:setViewFocus(WorldStateMachine.VIEW.TABLE)
     self:_setState(self:stateFromHistory())
     Log.trace("entering SelectionTurnSM for " .. tostring(self.playerIdx))
@@ -63,6 +65,7 @@ function TileSelectionTurnStateMachine:_openPickUpDialog(pressCtx)
     local dialog = PickUpDialogEntity.new(pressCtx.source, pressCtx.tileType, take, penalty)
     dialog:placeNear(pressCtx.worldX, pressCtx.worldY)
     self.graphicsState.world:addEntity(dialog)
+    self.pickUpDialog = dialog
 end
 
 --- Take the tiles and animate them off the table. Moves to PICKING, then WAIT_FOR_END

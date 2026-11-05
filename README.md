@@ -19,6 +19,19 @@ love . --cute-headless   # run all tests, print results, exit (non-zero exit cod
 love . --cute            # run all tests, then launch the game with a results overlay ([h] to hide)
 ```
 
+The bot plays a whole game through the UI (simulated clicks), checking every frame that the game state
+is consistent ([invariants](cloudless_sky/model/invariants.lua): no tiles lost or duplicated, scores
+never below 1, valid players/rounds/phases) and that the table shows what the model holds:
+
+```
+love . --bot --seed 1234                 # exit code 0 = finished cleanly, 1 = a check failed, 2 = timeout, 3 = Lua error
+love . --bot --seed 1234 --bot-speed 8   # play faster (default 4x)
+```
+
+Every game's seed is logged at startup and saved in the game state (`seed` in `GameState:serialize()`).
+Any game can be replayed with `love . --seed N`. The bot's run is fully repeatable: the same seed gives
+the same game and the same final `digest`.
+
 ## TODO
 
 - Win32/64 binaries via python makelove package + Wine

@@ -12,7 +12,7 @@ TestUtil.SEED = 0xdeadbeef
 ---     get a modifiable copy rather than changing the shared rules table
 --- @return GameState a new 2 player game
 function TestUtil.newGame(rules)
-    return GameState(rules or GameRules.currentRules(), { "p1", "p2" }, love.math.newRandomGenerator(TestUtil.SEED))
+    return GameState(rules or GameRules.currentRules(), { "p1", "p2" }, love.math.newRandomGenerator(TestUtil.SEED), TestUtil.SEED)
 end
 
 --- @return table a deep copy of the current rules that a test can modify freely

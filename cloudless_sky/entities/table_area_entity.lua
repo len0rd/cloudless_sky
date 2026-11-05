@@ -81,7 +81,7 @@ local function join(n, done)
 end
 
 --- @return TileType[] \p counts (TileType -> count) expanded into a shuffled list of tiles
-local function expandShuffled(counts)
+local function expandShuffled(counts, rng)
     local list = {}
     for _, tileType in ipairs(TileType.ORDERED) do
         for _ = 1, counts[tileType] or 0 do
@@ -89,7 +89,7 @@ local function expandShuffled(counts)
         end
     end
     for ii = #list, 2, -1 do
-        local jj = love.math.random(ii)
+        local jj = rng:random(1, ii)
         list[ii], list[jj] = list[jj], list[ii]
     end
     return list
@@ -114,6 +114,9 @@ function TableAreaEntity.new(gameState, matEntities)
 
     EUtil.extendEntity(entity, TableAreaEntity)
 
+    -- view-only randomness (tile positions, rotations). Seeded from the game so a run looks the same
+    -- every time, but separate from the game's rng so visuals never affect game results
+    entity.viewRng = love.math.newRandomGenerator(gameState.seed)
     entity:_layout(gameState:numFactoryDisplays())
 
     entity.tweens = flux.group()
@@ -147,10 +150,16 @@ function TableAreaEntity:_layout(numDisplays)
     for ii = 1, numDisplays do
         -- first display at the top, then clockwise
         local angle = -math.pi / 2 + (ii - 1) * 2 * math.pi / numDisplays
-        self.groups[ii] = TileGroupView(cx + ringR * math.cos(angle), cy + ringR * math.sin(angle), displayR, tileSize)
+        self.groups[ii] = TileGroupView(
+            cx + ringR * math.cos(angle),
+            cy + ringR * math.sin(angle),
+            displayR,
+            tileSize,
+            self.viewRng
+        )
     end
     local centerR = ringR - displayR - TABLE_H * CENTER_MARGIN
-    self.groups[CENTER] = TileGroupView(cx, cy, centerR, tileSize)
+    self.groups[CENTER] = TileGroupView(cx, cy, centerR, tileSize, self.viewRng)
     self.tileSize = tileSize
 
     self.bag = { x = self.worldPos.x + TABLE_W * 0.1, y = self.worldPos.y + TABLE_H * 0.8, w = 110, h = 120 }
@@ -222,7 +231,7 @@ end
 --- Tiles fly from the bag to their spots on a display, one after another
 function TableAreaEntity:_animateDisplayFill(displayIdx, tiles, done)
     local group = self.groups[displayIdx]
-    local list = expandShuffled(tiles)
+    local list = expandShuffled(tiles, self.viewRng)
     local finish = join(#list, done)
     local bagX, bagY = self:bagMouth()
     for ii, tileType in ipairs(list) do
@@ -230,7 +239,7 @@ function TableAreaEntity:_animateDisplayFill(displayIdx, tiles, done)
             tileType = tileType,
             x = bagX,
             y = bagY,
-            rot = love.math.random() * 2 * math.pi,
+            rot = self.viewRng:random() * 2 * math.pi,
             scale = 0.5,
             alpha = 0,
         })
@@ -250,7 +259,7 @@ end
 
 --- The bag ran out: the tower's tiles arc over into the bag
 function TableAreaEntity:_animateRefill(counts, done)
-    local list = expandShuffled(counts)
+    local list = expandShuffled(counts, self.viewRng)
     local numTiles = #list
     local numGhosts = math.min(numTiles, REFILL_MAX_GHOSTS)
     local fromX, fromY = self:towerTop()
@@ -266,7 +275,7 @@ function TableAreaEntity:_animateRefill(counts, done)
             tileType = list[math.floor((ii - 1) * numTiles / numGhosts) + 1],
             x = fromX,
             y = fromY,
-            rot = love.math.random() * 2 * math.pi,
+            rot = self.viewRng:random() * 2 * math.pi,
             scale = 0.8,
             alpha = 0,
             t = 0,
@@ -385,6 +394,9 @@ function TableAreaEntity:syncFromModel(gameState, instant)
     self.bagCount = gameState.tileBag:total()
     self.towerCount = gameState.discard:total()
     self.tokenInCenter = gameState.startTokenHolder == nil
+    -- how much of the action history the visual state reflects (lets checks skip frames where the
+    -- view hasn't caught up yet)
+    self.syncedHistoryLen = #gameState.actionHistory
 end
 
 --------------------------------------------------------------------------------
@@ -468,6 +480,10 @@ function TableAreaEntity:update(dt, gameState)
     self.tweens:update(dt)
     if not self.busy then
         self:syncFromModel(gameState)
+    else
+        -- the token isn't animated (except by animateTake, which sets it to match the model), so it
+        -- always follows the model. eg: it returns to the center while the next round's fill plays
+        self.tokenInCenter = gameState.startTokenHolder == nil
     end
 
     self.selectable = not self.busy and gameState.round.phase == gameState.RoundPhase.TILE_SELECTION

@@ -19,6 +19,7 @@ local GameRules = require("cloudless_sky.model.game_rules")
 ---@field center TileBag The center of the table. Tiles left on a display after a pick are moved here
 ---@field startTokenHolder integer|nil Index of the player holding the start player token.
 ---     nil while the token is in the center of the table
+---@field seed integer Seed \p rng was created from. Saved so a game can be recreated exactly
 ---@field rng GameRng The only source of randomness for game logic. Actions that draw from it
 ---     record its state (rng:getState()) before drawing so they can be undone/replayed exactly
 local GameState = Object:extend()
@@ -50,12 +51,14 @@ GameState.RoundPhaseOrdered = {
 --- Start a new game!
 --- @param gameRules GameRules ruleset for this game
 --- @param playerNames table[string] List of player names. Length of list is used to determine number of players
---- @param rng GameRng random generator for all game logic randomness. Should already be seeded
-function GameState:new(gameRules, playerNames, rng)
+--- @param rng GameRng random generator for all game logic randomness, already seeded with \p seed
+--- @param seed integer the seed \p rng was created from. Saved with the game so it can be recreated
+function GameState:new(gameRules, playerNames, rng, seed)
     assert(
         rng and rng.random and rng.getState and rng.setState,
         "GameState requires a random generator with random, getState and setState"
     )
+    assert(type(seed) == "number", "GameState requires the seed its random generator was created from")
     local tilesPerType = math.floor(gameRules.totalTiles / #TileType.ORDERED)
 
     self.rules = gameRules
@@ -94,6 +97,7 @@ function GameState:new(gameRules, playerNames, rng)
     self.turnHistoryStart = 0
 
     self.rng = rng
+    self.seed = seed
 end
 
 function GameState:serialize()
@@ -109,6 +113,7 @@ function GameState:serialize()
         startPlayer = self.startPlayer,
         currentTurnPlayer = self.currentTurnPlayer,
         -- TODO: restore with self.rng:setState(data.rngState) once GameState deserialization exists
+        seed = self.seed,
         rngState = self.rng:getState(),
     }
     for ii, player in ipairs(self.players) do

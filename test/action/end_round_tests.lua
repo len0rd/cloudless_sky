@@ -73,9 +73,9 @@ end)
 
 notion("GameState factory display count comes from the rules by player count", function()
     local rng = love.math.newRandomGenerator(TestUtil.SEED)
-    check(GameState(GameRules.currentRules(), { "a", "b" }, rng):numFactoryDisplays()).is(5)
-    check(GameState(GameRules.currentRules(), { "a", "b", "c" }, rng):numFactoryDisplays()).is(7)
-    check(GameState(GameRules.currentRules(), { "a", "b", "c", "d" }, rng):numFactoryDisplays()).is(9)
+    check(GameState(GameRules.currentRules(), { "a", "b" }, rng, TestUtil.SEED):numFactoryDisplays()).is(5)
+    check(GameState(GameRules.currentRules(), { "a", "b", "c" }, rng, TestUtil.SEED):numFactoryDisplays()).is(7)
+    check(GameState(GameRules.currentRules(), { "a", "b", "c", "d" }, rng, TestUtil.SEED):numFactoryDisplays()).is(9)
 end)
 
 notion("GameState tile sources and beginTurn", function()

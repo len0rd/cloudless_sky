@@ -55,6 +55,8 @@ function WorldStateMachine:focusCamera()
 
     camera:zoomTo(zoom)
     camera:lockPosition(centerX, centerY)
+    -- where the camera is heading (it eases there). Lets automation wait for it to settle
+    self.graphicsState.cameraTarget = { x = centerX, y = centerY }
 end
 
 --- @return table|nil clickEvent, table|nil entity. The click event (and the entity that produced it)

@@ -1,8 +1,8 @@
 --- A loose group of tiles scattered inside a circle. Used for each factory display and the center
 --- of the table.
 ---
---- This is visual state only: tile positions/rotations are random (view-only randomness from
---- love.math.random, never the game's rng). The owning entity keeps the group's tile counts in step
+--- This is visual state only: tile positions/rotations are random, from a view-only generator
+--- (never the game's rng, so visuals can't change game results). The owning entity keeps the group's tile counts in step
 --- with the model (see TableAreaEntity:syncFromModel)
 local Object = require("cloudless_sky.extern.classic")
 local TileType = require("cloudless_sky.model.tile_type")
@@ -35,7 +35,9 @@ local HIGHLIGHT_OUTLINE_COLOR = { 0, 0, 0, 1 }
 local HIGHLIGHT_WIDTH = 4
 local HIGHLIGHT_SCALE = 1.15
 
-function TileGroupView:new(x, y, radius, tileSize)
+--- @param rng table|nil view-only random generator (love RandomGenerator). Defaults to a new one
+function TileGroupView:new(x, y, radius, tileSize, rng)
+    self.rng = rng or love.math.newRandomGenerator()
     self.x = x
     self.y = y
     self.radius = radius
@@ -51,8 +53,8 @@ function TileGroupView:randomSpot()
     local bestX, bestY, bestDist = self.x, self.y, -1
     for _ = 1, PLACE_ATTEMPTS do
         -- sqrt for an even spread over the circle's area
-        local r = maxR * math.sqrt(love.math.random())
-        local angle = love.math.random() * 2 * math.pi
+        local r = maxR * math.sqrt(self.rng:random())
+        local angle = self.rng:random() * 2 * math.pi
         local x = self.x + r * math.cos(angle)
         local y = self.y + r * math.sin(angle)
         local nearest = math.huge
@@ -67,7 +69,7 @@ function TileGroupView:randomSpot()
             bestX, bestY, bestDist = x, y, nearest
         end
     end
-    return bestX, bestY, love.math.random() * 2 * math.pi
+    return bestX, bestY, self.rng:random() * 2 * math.pi
 end
 
 --- Add a tile at a random spot

@@ -34,6 +34,8 @@ TilePlacementTurnStateMachine.STATES = {
 
 function TilePlacementTurnStateMachine:onEnter()
     self.passDialog = nil
+    -- the open place (or "need more tiles") dialog, if any
+    self.placeDialog = nil
     self.passEndTimer = 0
     self:setViewFocus(WorldStateMachine.VIEW.MAT)
     self:_setState(self.STATES.WAIT_FOR_PLACEMENT)
@@ -156,6 +158,7 @@ function TilePlacementTurnStateMachine:_addPlaceDialogEntity(pressCtx)
         end
 
         self.graphicsState.world:addEntity(prompt)
+        self.placeDialog = prompt
         local w, h = love.graphics.getPixelDimensions()
         PlayerMatTileAnchorSys.ensureEntityFullyVisible(prompt, w, h, self.graphicsState.matEntities)
     end

@@ -31,6 +31,27 @@
             ]
         },
         {
+            "name": "Bot (full game, seed 1234)",
+            "type": "lua-local",
+            "request": "launch",
+            "program": {
+                "command": "love"
+            },
+            "windows": {
+                "program": {
+                    "command": "C:\\Program Files\\LOVE\\love.exe"
+                }
+            },
+            "args": [
+                ".",
+                "--bot",
+                "--seed",
+                "1234",
+                "--bot-speed",
+                "10"
+            ]
+        },
+        {
             "name": "Release",
             "type": "lua-local",
             "request": "launch",

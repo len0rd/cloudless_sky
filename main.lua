@@ -11,6 +11,29 @@ fonts = {}
 
 saveGame = nil
 
+-- options from the command line (see parseLaunchOptions)
+launchOptions = {}
+
+--- Command line options:
+---     --seed N        seed for the game's random generator. Defaults to the current time. The seed is
+---                     saved in the game state so a game can be recreated
+---     --bot           play the game automatically, checking invariants every frame, then exit
+---                     (exit code 0 = game finished with no problems). See cloudless_sky/bot/bot.lua
+---     --bot-speed N   game speed multiplier while the bot plays (default 4)
+local function parseLaunchOptions(args)
+    local options = { bot = false, botSpeed = 4 }
+    for ii, v in ipairs(args) do
+        if v == "--seed" then
+            options.seed = assert(tonumber(args[ii + 1]), "--seed requires a number")
+        elseif v == "--bot" then
+            options.bot = true
+        elseif v == "--bot-speed" then
+            options.botSpeed = assert(tonumber(args[ii + 1]), "--bot-speed requires a number")
+        end
+    end
+    return options
+end
+
 -- global X,Y of where we want the camera centered
 CameraXDesired, CameraYDesired = 400, 100
 
@@ -26,6 +49,8 @@ function love.load(args)
     local cute = require("cloudless_sky.extern.cute")
     cute.go(args)
     -- end unit testing
+
+    launchOptions = parseLaunchOptions(args)
 
     -- load save game if passed as an arg
     for _, v in ipairs(args) do
@@ -69,6 +94,10 @@ function love.load(args)
     game = require("cloudless_sky.states.game")
     GameStateMachineMgr.registerEvents()
     GameStateMachineMgr.switch(game)
+
+    if launchOptions.bot then
+        require("cloudless_sky.bot.bot").install(launchOptions)
+    end
 end
 
 function love.update(dt)

@@ -27,7 +27,9 @@ function game:init()
     local playerNames = { "lenord", "karoty" }
     local rules = GameRules.currentRules()
 
-    gameState = GameState(rules, playerNames, love.math.newRandomGenerator(os.time()))
+    local seed = (launchOptions and launchOptions.seed) or os.time()
+    Log.info("game seed: " .. tostring(seed) .. " (replay with --seed " .. tostring(seed) .. ")")
+    gameState = GameState(rules, playerNames, love.math.newRandomGenerator(seed), seed)
 
     graphicsState = {
         world = Concord.world(),
