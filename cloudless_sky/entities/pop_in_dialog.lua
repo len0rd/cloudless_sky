@@ -10,6 +10,7 @@
 ---     layoutContent(dt, w, h) lay out the dialog's suit widgets (layout already reset at the origin)
 ---     actionEvent()           (optional) clickEvent for the action button
 local Concord = require("cloudless_sky.extern.concord")
+local Anim = require("cloudless_sky.anim")
 local Components = require("cloudless_sky.components")
 local Constants = require("cloudless_sky.constants")
 local EUtil = require("cloudless_sky.entities.e_util")
@@ -56,7 +57,9 @@ function PopInDialog.create(child, w, h)
 
     entity.scale = 0.1
     entity.transitionTween = flux.group()
-    entity.transitionTween:to(entity, POP_IN_S, { scale = MAX_SCALE }):after(entity, POP_IN_S, { scale = 1.0 })
+    entity.transitionTween
+        :to(entity, Anim.time(POP_IN_S), { scale = MAX_SCALE })
+        :after(entity, Anim.time(POP_IN_S), { scale = 1.0 })
 
     entity.actionBtnScale = 1.0
     entity.actionHoverTween = nil
@@ -113,7 +116,7 @@ function PopInDialog:update(dt, gameState)
 end
 
 function PopInDialog:_actionHoverLoop(tween)
-    tween:to(self, 0.5, { actionBtnScale = 1.1 }):after(self, 0.5, { actionBtnScale = 1.0 }):oncomplete(function()
+    tween:to(self, Anim.time(0.5), { actionBtnScale = 1.1 }):after(self, Anim.time(0.5), { actionBtnScale = 1.0 }):oncomplete(function()
         self:_actionHoverLoop(tween)
     end)
 end
@@ -131,7 +134,8 @@ function PopInDialog:actionButtonCol(label, colors, w, h, dt)
         scale = self.actionBtnScale,
     }, self.ui.layout:col(w, h))
 
-    if self.actionButton.entered then
+    -- hover pulse is a looping idle animation: none when animations are off
+    if self.actionButton.entered and not Anim.isOff() then
         self.actionHoverTween = flux.group()
         self:_actionHoverLoop(self.actionHoverTween)
     end

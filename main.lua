@@ -20,6 +20,7 @@ launchOptions = {}
 ---     --bot           play the game automatically, checking invariants every frame, then exit
 ---                     (exit code 0 = game finished with no problems). See cloudless_sky/bot/bot.lua
 ---     --bot-speed N   game speed multiplier while the bot plays (default 4)
+---     --anim-speed N  animation speed multiplier (default 1, 0 = animations off). See cloudless_sky/anim.lua
 local function parseLaunchOptions(args)
     local options = { bot = false, botSpeed = 4 }
     for ii, v in ipairs(args) do
@@ -27,6 +28,8 @@ local function parseLaunchOptions(args)
             options.seed = assert(tonumber(args[ii + 1]), "--seed requires a number")
         elseif v == "--bot" then
             options.bot = true
+        elseif v == "--anim-speed" then
+            options.animSpeed = assert(tonumber(args[ii + 1]), "--anim-speed requires a number")
         elseif v == "--bot-speed" then
             options.botSpeed = assert(tonumber(args[ii + 1]), "--bot-speed requires a number")
         end
@@ -51,6 +54,8 @@ function love.load(args)
     -- end unit testing
 
     launchOptions = parseLaunchOptions(args)
+    -- TODO: load from user settings once they exist
+    require("cloudless_sky.anim").setSpeed(launchOptions.animSpeed or 1)
 
     -- load save game if passed as an arg
     for _, v in ipairs(args) do
@@ -88,7 +93,8 @@ function love.load(args)
     -- GLOBAL CAMERA
     local Camera = require("cloudless_sky.extern.hump.camera")
     camera = Camera(CameraXDesired, CameraYDesired)
-    camera.smoother = Camera.smooth.damped(5)
+    -- eases toward its target. Follows the animation speed (jumps straight there when it's 0)
+    camera.smoother = require("cloudless_sky.anim").cameraSmoother(5)
 
     -- GAMESTATE
     game = require("cloudless_sky.states.game")

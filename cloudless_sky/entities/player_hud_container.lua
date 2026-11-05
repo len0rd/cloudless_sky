@@ -1,6 +1,7 @@
 --- HUD container element that occupies full height and 15% width of screen
 --- Displays (top to bottom): player name, score, hand, done button, pass button
 local Concord = require("cloudless_sky.extern.concord")
+local Anim = require("cloudless_sky.anim")
 local Components = require("cloudless_sky.components")
 local Constants = require("cloudless_sky.constants")
 local EUtil = require("cloudless_sky.entities.e_util")
@@ -157,8 +158,8 @@ end
 
 function PlayerHudContainerEntity:_btnHoverTween(btnCtx)
     btnCtx.hoverTween
-        :to(btnCtx, 0.5, { scale = 1.05 })
-        :after(btnCtx, 0.5, { scale = 0.97 })
+        :to(btnCtx, Anim.time(0.5), { scale = 1.05 })
+        :after(btnCtx, Anim.time(0.5), { scale = 0.97 })
         :oncomplete(function()
             if btnCtx.hoverTween then
                 self:_btnHoverTween(btnCtx)
@@ -171,7 +172,8 @@ function PlayerHudContainerEntity:_animateButton(btnCtx, btnState, enabled, dt)
     if not enabled then
         return
     end
-    if btnState.entered then
+    -- hover pulse is a looping idle animation: none when animations are off
+    if btnState.entered and not Anim.isOff() then
         btnCtx.hoverTween = flux.group()
         self:_btnHoverTween(btnCtx)
     end
@@ -200,8 +202,8 @@ function PlayerHudContainerEntity:_updateScore(dt, previousPlayer)
         self.scoreTarget = score
         self.scoreFlash = 1
         self.scoreTween = flux.group()
-        self.scoreTween:to(self, SCORE_COUNT_TIME_S, { displayedScore = score }):ease("quadout")
-        self.scoreTween:to(self, SCORE_FLASH_TIME_S, { scoreFlash = 0 }):ease("quadin")
+        self.scoreTween:to(self, Anim.time(SCORE_COUNT_TIME_S), { displayedScore = score }):ease("quadout")
+        self.scoreTween:to(self, Anim.time(SCORE_FLASH_TIME_S), { scoreFlash = 0 }):ease("quadin")
     end
     self.scoreTween:update(dt)
 end

@@ -342,6 +342,15 @@ function Bot:act()
         return
     end
     local top = GameStateMachineMgr.current()
+    -- hump.gamestate drops input events for a newly entered state until it has been updated once.
+    -- Wait a few updates after any state/turn change so clicks aren't lost (a lost click makes the
+    -- bot decide again, using an extra random draw)
+    local topKey = tostring(top) .. "|" .. gameState.turnIdx
+    if topKey ~= self.lastTopKey then
+        self.lastTopKey = topKey
+        self.cooldown = CLICK_COOLDOWN_FRAMES
+        return
+    end
     if top == game.roundSm.selectionTurn then
         self:actSelection(top)
     elseif top == game.roundSm.placementTurn then

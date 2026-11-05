@@ -8,6 +8,7 @@
 --- The visual state (groups, bagCount, towerCount, tokenInCenter) is plain data so other views (eg:
 --- a future compact read-only factory bar) can draw the same thing.
 local Concord = require("cloudless_sky.extern.concord")
+local Anim = require("cloudless_sky.anim")
 local Components = require("cloudless_sky.components")
 local Constants = require("cloudless_sky.constants")
 local EUtil = require("cloudless_sky.entities.e_util")
@@ -41,7 +42,7 @@ local MAX_DISPLAY_RADIUS = 0.12
 local CENTER_MARGIN = 0.03
 local TILE_SIZE_OF_DISPLAY = 0.62
 
--- animation timing (seconds)
+-- animation timing (seconds at normal speed. See Anim)
 local FILL_FLY_S = 0.3
 local FILL_STAGGER_S = 0.07
 local REFILL_ARC_S = 0.6
@@ -244,9 +245,9 @@ function TableAreaEntity:_animateDisplayFill(displayIdx, tiles, done)
             alpha = 0,
         })
         self.tweens
-            :to(tile, FILL_FLY_S, { x = tile.targetX, y = tile.targetY, scale = 1, alpha = 1 })
+            :to(tile, Anim.time(FILL_FLY_S), { x = tile.targetX, y = tile.targetY, scale = 1, alpha = 1 })
             :ease("quadout")
-            :delay((ii - 1) * FILL_STAGGER_S)
+            :delay(Anim.time((ii - 1) * FILL_STAGGER_S))
             :onstart(function()
                 self.bagCount = self.bagCount - 1
             end)
@@ -267,7 +268,7 @@ function TableAreaEntity:_animateRefill(counts, done)
     -- control point for the arc: above the midpoint
     local ctrlX, ctrlY = (fromX + toX) / 2, math.min(fromY, toY) - TABLE_H * 0.35
 
-    local totalTime = REFILL_ARC_S + (numGhosts - 1) * REFILL_STAGGER_S
+    local totalTime = Anim.time(REFILL_ARC_S + (numGhosts - 1) * REFILL_STAGGER_S)
     local finish = join(numGhosts + 1, done)
     for ii = 1, numGhosts do
         -- spread the ghosts over the colors moved
@@ -282,9 +283,9 @@ function TableAreaEntity:_animateRefill(counts, done)
         }
         table.insert(self.flying, ghost)
         self.tweens
-            :to(ghost, REFILL_ARC_S, { t = 1, alpha = 1 })
+            :to(ghost, Anim.time(REFILL_ARC_S), { t = 1, alpha = 1 })
             :ease("linear")
-            :delay((ii - 1) * REFILL_STAGGER_S)
+            :delay(Anim.time((ii - 1) * REFILL_STAGGER_S))
             :onupdate(function()
                 -- quadratic bezier from the tower to the bag
                 local t = ghost.t
@@ -352,7 +353,7 @@ function TableAreaEntity:animateTake(ctx, onComplete)
             done()
         end)
         for _, move in ipairs(moving) do
-            self.tweens:to(move.tile, TAKE_S, move.vars):ease("quadinout"):oncomplete(function()
+            self.tweens:to(move.tile, Anim.time(TAKE_S), move.vars):ease("quadinout"):oncomplete(function()
                 move.tile.targetX, move.tile.targetY = nil, nil
                 if move.fly then
                     self:_removeFlying(move.tile)
@@ -384,7 +385,7 @@ function TableAreaEntity:syncFromModel(gameState, instant)
                         local tile = group:addTile(tileType)
                         if not instant then
                             tile.scale = 0
-                            self.tweens:to(tile, POP_IN_S, { scale = 1 }):ease("backout")
+                            self.tweens:to(tile, Anim.time(POP_IN_S), { scale = 1 }):ease("backout")
                         end
                     end
                 end

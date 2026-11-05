@@ -1,5 +1,6 @@
 -- Draw a tile star
 local Object = require("cloudless_sky.extern.classic")
+local Anim = require("cloudless_sky.anim")
 local StarView = Object:extend()
 local StarType = require("cloudless_sky.model.star_type")
 local ViewUtil = require("cloudless_sky.view.view_util")
@@ -103,7 +104,7 @@ StarView.HOVER_SELECT_OFFSETS = {
 -- stylua: ignore end
 
 function StarView:_runBreathTween(tween)
-    tween:to(self.polys[1], 0.5, { scale = 1.25 }):after(self.polys[1], 0.25, { scale = 1.0 }):oncomplete(function()
+    tween:to(self.polys[1], Anim.time(0.5), { scale = 1.25 }):after(self.polys[1], Anim.time(0.25), { scale = 1.0 }):oncomplete(function()
         self:_runBreathTween(tween)
     end)
 end
@@ -161,7 +162,7 @@ function StarView:playRemoveAnimation(slotIndex, tileType, onComplete)
     self.animatingSlots[slotIndex] = { removing = true, tileType = tileType }
     poly.scale = 1.0
     self.placeTween
-        :to(poly, REMOVE_DURATION_S, { scale = REMOVE_END_SCALE })
+        :to(poly, Anim.time(REMOVE_DURATION_S), { scale = REMOVE_END_SCALE })
         :ease("backin")
         :oncomplete(function()
             self.animatingSlots[slotIndex] = nil
@@ -185,7 +186,7 @@ function StarView:playPlaceAnimation(slotIndex, onComplete)
     self.animatingSlots[slotIndex] = { removing = false }
     poly.scale = PLACE_START_SCALE
     self.placeTween
-        :to(poly, PLACE_DURATION_S, { scale = 1.0 })
+        :to(poly, Anim.time(PLACE_DURATION_S), { scale = 1.0 })
         :ease("backout")
         :oncomplete(function()
             self.animatingSlots[slotIndex] = nil

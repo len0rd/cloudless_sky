@@ -2,6 +2,7 @@
 local TurnStateMachine = require("cloudless_sky.states.turn_sm_base")
 local WorldStateMachine = require("cloudless_sky.states.world_sm")
 
+local Anim = require("cloudless_sky.anim")
 local Components = require("cloudless_sky.components")
 local PlaceTileDialogEntity = require("cloudless_sky.entities.place_tile_dialog_entity")
 local PlaceTileLackingDialogEntity = require("cloudless_sky.entities.place_tile_lacking_dialog_entity")
@@ -120,7 +121,7 @@ function TilePlacementTurnStateMachine:_pass(keep)
         return
     end
     Log.debug("player " .. tostring(self.playerIdx) .. " passed for the round")
-    self.passEndTimer = PASS_END_DELAY_S
+    self.passEndTimer = Anim.time(PASS_END_DELAY_S)
     self:_setState(self.STATES.PASSING)
 end
 
@@ -190,6 +191,9 @@ function TilePlacementTurnStateMachine:_placeTile(pressCtx, dialogEntity)
     end)
 
     -- "+N Points!" popup at the slot. The HUD score tweens up on its own once it sees the new score
+    if Anim.isOff() then
+        return
+    end
     local scoreText = ScoreTextEntity.new(self.playerIdx, pressCtx.starIdx, pressCtx.slotIdx, action.score)
     self.graphicsState.world:addEntity(scoreText)
     local w, h = love.graphics.getPixelDimensions()

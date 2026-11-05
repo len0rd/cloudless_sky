@@ -1,5 +1,6 @@
 --- Animated text to display points earned when a tile is placed
 local Concord = require("cloudless_sky.extern.concord")
+local Anim = require("cloudless_sky.anim")
 local Text = require("cloudless_sky.extern.slog-text")
 local Components = require("cloudless_sky.components")
 local Constants = require("cloudless_sky.constants")
@@ -28,7 +29,8 @@ function ScoreTextEntity.new(playerIdx, starIdx, slotIdx, scorePts)
     entity.textbox = Text.new("center", {
         color = { 1, 1, 1, 1 },
         shadow_color = { 0, 0, 0, 1 },
-        print_speed = 0.04,
+        -- seconds per character
+        print_speed = Anim.time(0.04),
         font = fonts.ithaca["64"],
     })
     local pointText = "Points!"
@@ -39,6 +41,7 @@ function ScoreTextEntity.new(playerIdx, starIdx, slotIdx, scorePts)
         "[dropshadow=10][bounce]+" .. tostring(math.floor(scorePts)) .. " " .. pointText .. "[/bounce][/dropshadow]"
     )
     entity.elapsedSec = 0.0
+    entity.displayTimeSec = Anim.time(DISPLAY_TIME_SEC)
 
     EUtil.extendEntity(entity, ScoreTextEntity)
 
@@ -48,7 +51,7 @@ end
 function ScoreTextEntity:update(dt, gameState)
     self.textbox:update(dt)
     self.elapsedSec = self.elapsedSec + dt
-    self.ephemeral.done = self.textbox:is_finished() and self.elapsedSec >= DISPLAY_TIME_SEC
+    self.ephemeral.done = self.textbox:is_finished() and self.elapsedSec >= self.displayTimeSec
 end
 
 --- drawn in screen space (see DrawSys) so the pixel font isn't scaled by camera zoom

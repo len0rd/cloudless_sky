@@ -26,6 +26,7 @@ never below 1, valid players/rounds/phases) and that the table shows what the mo
 ```
 love . --bot --seed 1234                 # exit code 0 = finished cleanly, 1 = a check failed, 2 = timeout, 3 = Lua error
 love . --bot --seed 1234 --bot-speed 8   # play faster (default 4x)
+love . --bot --seed 1234 --anim-speed 0  # animations off
 ```
 
 Every game's seed is logged at startup and saved in the game state (`seed` in `GameState:serialize()`).
