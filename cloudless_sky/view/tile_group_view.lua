@@ -159,15 +159,8 @@ function TileGroupView.drawTile(tile, tileSize, highlighted)
     local left, top = tile.x - size / 2, tile.y - size / 2
     TileView.drawTileAt(tile.tileType, size, tile.rot, left, top, tile.alpha)
     if highlighted then
-        local poly = TileView.betterPolyVerticies(size, tile.rot, left, top)
-        love.graphics.setLineJoin("bevel")
-        love.graphics.setColor(HIGHLIGHT_OUTLINE_COLOR)
-        love.graphics.setLineWidth(HIGHLIGHT_WIDTH + 3)
-        love.graphics.polygon("line", poly)
-        love.graphics.setColor(HIGHLIGHT_COLOR)
-        love.graphics.setLineWidth(HIGHLIGHT_WIDTH)
-        love.graphics.polygon("line", poly)
-        love.graphics.setLineJoin("miter")
+        TileView.drawDiamond(left, top, size, tile.rot, nil, HIGHLIGHT_OUTLINE_COLOR, HIGHLIGHT_WIDTH + 3)
+        TileView.drawDiamond(left, top, size, tile.rot, nil, HIGHLIGHT_COLOR, HIGHLIGHT_WIDTH)
     end
 end
 

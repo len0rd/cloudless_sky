@@ -127,6 +127,21 @@ function TileBag:addTiles(tileType, count)
     TileType.emitBadTileTypeError(type)
 end
 
+--- Move every tile in this bag into \p other
+--- @return table TileType -> count of the tiles moved (only types that had tiles)
+function TileBag:moveAllTo(other)
+    local moved = {}
+    for _, tileType in ipairs(TileType.ORDERED) do
+        local count = self.tileCounts[tileType]
+        if count > 0 then
+            self:removeTiles(tileType, count)
+            other:addTiles(tileType, count)
+            moved[tileType] = count
+        end
+    end
+    return moved
+end
+
 --- Add the list of tileTypes to this bag
 function TileBag:addTileList(tileTypes)
     for _, tile in pairs(tileTypes) do

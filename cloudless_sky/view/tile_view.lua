@@ -56,22 +56,38 @@ function TileView.tilePolyVerticies(size, rot)
     return ViewUtil.rotateVerticies(verticies, centerX, centerY, rot)
 end
 
+local OUTLINE_COLOR = { 0, 0, 0, 1 }
+
+--- Draw a tile-shaped diamond (see betterPolyVerticies), top-left at (x, y)
+--- @param fillColor table|nil fill color. nil draws only the outline
+--- @param outlineColor table|nil outline color. nil for no outline
+--- @param lineWidth number|nil outline width. Default 1
+--- @param alpha number|nil opacity (0-1) applied to both colors. Default 1
+function TileView.drawDiamond(x, y, size, rot, fillColor, outlineColor, lineWidth, alpha)
+    alpha = alpha or 1
+    local vertices = TileView.betterPolyVerticies(size, rot, x, y)
+    if fillColor then
+        ViewUtil.setColorAlpha(fillColor, alpha)
+        love.graphics.polygon("fill", vertices)
+    end
+    if outlineColor then
+        ViewUtil.setColorAlpha(outlineColor, alpha)
+        love.graphics.setLineJoin("bevel")
+        love.graphics.setLineWidth(lineWidth or 1)
+        love.graphics.polygon("line", vertices)
+        love.graphics.setLineJoin("miter")
+    end
+end
+
+--- @return number x, number y, number w, number h. Where text (eg: a number) fits in the middle of
+---     an upright diamond with top-left (x, y) and \p size (the diamond spans 1/6..5/6 of the width)
+function TileView.labelRect(x, y, size)
+    return x + size * 0.3, y + size * 0.25, size * 0.4, size * 0.5
+end
+
 --- @param alpha number|nil optional opacity (0-1) for the tile. Defaults to fully opaque
 function TileView.drawTileAt(type, size, rot, x, y, alpha)
-    alpha = alpha or 1.0
-    local tileVertices = TileView.betterPolyVerticies(size, rot, x, y)
-    -- tileVertices = ViewUtil.shiftVerticies(tileVertices, x, y)
-    local color = TileView.TILE_COLOR[type]
-
-    love.graphics.push()
-    do
-        love.graphics.setColor(color[1], color[2], color[3], alpha)
-        love.graphics.polygon("fill", tileVertices)
-        love.graphics.setColor({ 0, 0, 0, alpha })
-        love.graphics.setLineWidth(1)
-        love.graphics.polygon("line", tileVertices)
-    end
-    love.graphics.pop()
+    TileView.drawDiamond(x, y, size, rot, TileView.TILE_COLOR[type], OUTLINE_COLOR, 1, alpha)
 end
 
 --- A draw tile method that can be integrated into SUIT layout management/widgets

@@ -14,6 +14,7 @@ local Anim = require("cloudless_sky.anim")
 local Components = require("cloudless_sky.components")
 local Constants = require("cloudless_sky.constants")
 local EUtil = require("cloudless_sky.entities.e_util")
+local RoundTrackView = require("cloudless_sky.view.round_track_view")
 local TakeTilesAction = require("cloudless_sky.action.take_tiles")
 local TileGroupView = require("cloudless_sky.view.tile_group_view")
 local TileType = require("cloudless_sky.model.tile_type")
@@ -28,8 +29,7 @@ local flux = require("cloudless_sky.extern.flux")
 ---@field towerCount number tiles shown in the tower
 ---@field tokenInCenter boolean start player token is shown in the center
 ---@field bagTowerAlpha number visibility of the bag and tower (0 = hidden). Only shown during a refill
----@field roundTrack table[] {x, y, size} world rect of each round's tile on the round track
----@field trackRound number round the round track's marker is on. Slides to the model's round
+---@field roundTrack RoundTrackView
 local TableAreaEntity = {}
 TableAreaEntity.__index = TableAreaEntity
 
@@ -58,21 +58,6 @@ local REFILL_MAX_GHOSTS = 12
 local REVEAL_S = 0.25
 local TAKE_S = 0.45
 local POP_IN_S = 0.25
-local TRACK_SLIDE_S = 0.6
-
--- round track, in world units from the table's top-left
-local TRACK_LEFT = 30
-local TRACK_CENTER_Y = 54
-local TRACK_TILE_SIZE = 56
-local TRACK_STEP = 52
--- the current round's tile is drawn this much bigger
-local TRACK_CURRENT_SCALE = 1.2
--- the marker behind the current round's tile, relative to that tile
-local TRACK_MARKER_SCALE = 1.15
-local TRACK_PAST_ALPHA = 0.35
--- "Round N of M" label under the track
-local TRACK_LABEL_TOP = 38
-local TRACK_LABEL_H = 24
 
 local COLORS = {
     table = { 0.15, 0.21, 0.19, 1 },
@@ -86,24 +71,9 @@ local COLORS = {
     tower = { 0.55, 0.55, 0.6, 1 },
     towerDark = { 0.38, 0.38, 0.42, 1 },
     token = { 0.97, 0.97, 0.92, 1 },
-    trackMarker = { 1, 0.84, 0.3, 1 },
+    tokenOutline = { 0, 0, 0, 1 },
     label = { 1, 1, 1, 1 },
 }
-
---- @return function callback that calls \p done once it has been called \p n times (or now if n == 0)
-local function join(n, done)
-    if n <= 0 then
-        done()
-        return function() end
-    end
-    local remaining = n
-    return function()
-        remaining = remaining - 1
-        if remaining == 0 then
-            done()
-        end
-    end
-end
 
 --- @return TileType[] \p counts (TileType -> count) expanded into a shuffled list of tiles
 local function expandShuffled(counts, rng)
@@ -142,7 +112,8 @@ function TableAreaEntity.new(gameState, matEntities)
     -- view-only randomness (tile positions, rotations). Seeded from the game so a run looks the same
     -- every time, but separate from the game's rng so visuals never affect game results
     entity.viewRng = love.math.newRandomGenerator(gameState.seed)
-    entity:_layout(gameState:numFactoryDisplays(), #gameState.rules.wildPerRound)
+    entity:_layout(gameState:numFactoryDisplays())
+    entity.roundTrack = RoundTrackView(x, y, #gameState.rules.wildPerRound, gameState.round.idx)
 
     entity.tweens = flux.group()
     -- queued animation steps. Each is a function(done)
@@ -159,29 +130,13 @@ function TableAreaEntity.new(gameState, matEntities)
     entity.towerCount = gameState.discard:total()
     entity.tokenInCenter = gameState.startTokenHolder == nil
     entity.bagTowerAlpha = 0
-    entity.trackRound = gameState.round.idx
-    entity.trackTarget = gameState.round.idx
     entity:syncFromModel(gameState, true)
 
     return entity
 end
 
---- @return table[] {x, y, size} world rect (top-left, size square) of each round's tile on the round
----     track, left to right, for a table with its top-left at (\p tableX, \p tableY)
-function TableAreaEntity.roundTrackLayout(tableX, tableY, numRounds)
-    local slots = {}
-    for ii = 1, numRounds do
-        slots[ii] = {
-            x = tableX + TRACK_LEFT + (ii - 1) * TRACK_STEP,
-            y = tableY + TRACK_CENTER_Y - TRACK_TILE_SIZE / 2,
-            size = TRACK_TILE_SIZE,
-        }
-    end
-    return slots
-end
-
---- Position the displays, center, bag, tower and round track
-function TableAreaEntity:_layout(numDisplays, numRounds)
+--- Position the displays, center, bag and tower
+function TableAreaEntity:_layout(numDisplays)
     local cx = self.worldPos.x + TABLE_W / 2
     local cy = self.worldPos.y + TABLE_H / 2
     local ringR = TABLE_H * RING_RADIUS
@@ -189,11 +144,9 @@ function TableAreaEntity:_layout(numDisplays, numRounds)
     local tileSize = displayR * TILE_SIZE_OF_DISPLAY
 
     self.groups = {}
-    for ii = 1, numDisplays do
-        -- first display at the top, then clockwise
-        local angle = -math.pi / 2 + (ii - 1) * 2 * math.pi / numDisplays
-        self.groups[ii] =
-            TileGroupView(cx + ringR * math.cos(angle), cy + ringR * math.sin(angle), displayR, tileSize, self.viewRng)
+    -- first display at the top, then clockwise
+    for ii, point in ipairs(ViewUtil.pointsOnCircle(cx, cy, ringR, numDisplays, -math.pi / 2)) do
+        self.groups[ii] = TileGroupView(point.x, point.y, displayR, tileSize, self.viewRng)
     end
     local centerR = ringR - displayR - TABLE_H * CENTER_MARGIN
     self.groups[CENTER] = TileGroupView(cx, cy, centerR, tileSize, self.viewRng)
@@ -201,7 +154,6 @@ function TableAreaEntity:_layout(numDisplays, numRounds)
 
     self.bag = { x = self.worldPos.x + TABLE_W * 0.1, y = self.worldPos.y + TABLE_H * 0.8, w = 110, h = 120 }
     self.tower = { x = self.worldPos.x + TABLE_W * 0.9, y = self.worldPos.y + TABLE_H * 0.78, w = 90, h = 160 }
-    self.roundTrack = TableAreaEntity.roundTrackLayout(self.worldPos.x, self.worldPos.y, numRounds)
 end
 
 --- @return number x, number y world point tiles fly to/from for the bag
@@ -270,7 +222,7 @@ end
 function TableAreaEntity:_animateDisplayFill(displayIdx, tiles, done)
     local group = self.groups[displayIdx]
     local list = expandShuffled(tiles, self.viewRng)
-    local finish = join(#list, done)
+    local finish = Anim.join(#list, done)
     local bagX, bagY = self:bagMouth()
     for ii, tileType in ipairs(list) do
         local tile = group:receiveTile({
@@ -315,7 +267,7 @@ function TableAreaEntity:_animateRefillArc(counts, done)
     local ctrlX, ctrlY = (fromX + toX) / 2, math.min(fromY, toY) - TABLE_H * 0.35
 
     local totalTime = Anim.time(REFILL_ARC_S + (numGhosts - 1) * REFILL_STAGGER_S)
-    local finish = join(numGhosts + 1, done)
+    local finish = Anim.join(numGhosts + 1, done)
     for ii = 1, numGhosts do
         -- spread the ghosts over the colors moved
         local ghost = {
@@ -392,7 +344,7 @@ function TableAreaEntity:animateTake(ctx, onComplete)
             self.tokenInCenter = false
         end
 
-        local finish = join(#moving, function()
+        local finish = Anim.join(#moving, function()
             if onComplete then
                 onComplete()
             end
@@ -523,19 +475,11 @@ function TableAreaEntity:mousePressed(cameraX, cameraY, worldX, worldY, button, 
     return true
 end
 
---- Slide the round track's marker to the model's round when it changes. Not held back by other table
---- animations: the marker moves as soon as the round changes, while the new round's fill plays
-function TableAreaEntity:_updateRoundTrack(gameState)
-    local round = gameState.round.idx
-    if self.trackTarget ~= round then
-        self.trackTarget = round
-        self.tweens:to(self, Anim.time(TRACK_SLIDE_S), { trackRound = round }):ease("quadinout")
-    end
-end
-
 function TableAreaEntity:update(dt, gameState)
     self.tweens:update(dt)
-    self:_updateRoundTrack(gameState)
+    -- not held back by other table animations: the marker slides as soon as the round changes,
+    -- while the new round's fill plays
+    self.roundTrack:update(gameState.round.idx, self.tweens)
     if not self.busy then
         self:syncFromModel(gameState)
     else
@@ -563,15 +507,10 @@ end
 -- drawing
 --------------------------------------------------------------------------------
 
---- set \p color, with its alpha scaled by \p alpha
-local function setColorAlpha(color, alpha)
-    love.graphics.setColor(color[1], color[2], color[3], color[4] * alpha)
-end
-
 function TableAreaEntity:_drawBag()
     local b = self.bag
     local a = self.bagTowerAlpha
-    setColorAlpha(COLORS.bag, a)
+    ViewUtil.setColorAlpha(COLORS.bag, a)
     love.graphics.ellipse("fill", b.x, b.y + b.h * 0.1, b.w / 2, b.h * 0.4)
     -- gathered neck
     love.graphics.polygon(
@@ -585,7 +524,7 @@ function TableAreaEntity:_drawBag()
         b.x - b.w * 0.3,
         b.y - b.h * 0.45
     )
-    setColorAlpha(COLORS.bagTie, a)
+    ViewUtil.setColorAlpha(COLORS.bagTie, a)
     love.graphics.setLineWidth(6)
     love.graphics.line(b.x - b.w * 0.2, b.y - b.h * 0.27, b.x + b.w * 0.2, b.y - b.h * 0.27)
 end
@@ -594,7 +533,7 @@ function TableAreaEntity:_drawTower()
     local t = self.tower
     local a = self.bagTowerAlpha
     local left, top = t.x - t.w / 2, t.y - t.h / 2
-    setColorAlpha(COLORS.tower, a)
+    ViewUtil.setColorAlpha(COLORS.tower, a)
     love.graphics.rectangle("fill", left, top + t.h * 0.12, t.w, t.h * 0.88)
     -- battlements
     local merlonW = t.w / 5
@@ -602,7 +541,7 @@ function TableAreaEntity:_drawTower()
         love.graphics.rectangle("fill", left + ii * merlonW, top, merlonW, t.h * 0.14)
     end
     -- doorway
-    setColorAlpha(COLORS.towerDark, a)
+    ViewUtil.setColorAlpha(COLORS.towerDark, a)
     love.graphics.rectangle("fill", t.x - t.w * 0.18, top + t.h * 0.65, t.w * 0.36, t.h * 0.35, t.w * 0.18, t.w * 0.18)
 end
 
@@ -616,56 +555,7 @@ end
 
 function TableAreaEntity:_drawToken()
     local x, y, size = self:_tokenRect()
-    local poly = TileView.betterPolyVerticies(size, 0, x, y)
-    love.graphics.setColor(COLORS.token)
-    love.graphics.polygon("fill", poly)
-    love.graphics.setColor(0, 0, 0, 1)
-    love.graphics.setLineJoin("bevel")
-    love.graphics.setLineWidth(2)
-    love.graphics.polygon("line", poly)
-    love.graphics.setLineJoin("miter")
-end
-
---- @return number scale how much bigger round \p idx's tile is drawn: TRACK_CURRENT_SCALE under the
----     marker, easing back to 1 as the marker moves away
-function TableAreaEntity:_trackScale(idx)
-    local closeness = math.max(0, 1 - math.abs(idx - self.trackRound))
-    return 1 + (TRACK_CURRENT_SCALE - 1) * closeness
-end
-
---- @return number x, number y, number size. Rect of round \p idx's tile as drawn (scaled about its center)
-function TableAreaEntity:_trackTileRect(idx)
-    local slot = self.roundTrack[idx]
-    local size = slot.size * self:_trackScale(idx)
-    return slot.x + (slot.size - size) / 2, slot.y + (slot.size - size) / 2, size
-end
-
-function TableAreaEntity:_drawRoundTrack(gameState)
-    local wilds = gameState.rules.wildPerRound
-    -- marker behind the current round's tile: a bigger gold diamond, sliding between rounds
-    local lower = math.max(1, math.min(#wilds, math.floor(self.trackRound)))
-    local upper = math.min(#wilds, lower + 1)
-    local frac = self.trackRound - lower
-    local a, b = self.roundTrack[lower], self.roundTrack[upper]
-    local markerSize = TRACK_TILE_SIZE * TRACK_CURRENT_SCALE * TRACK_MARKER_SCALE
-    local markerX = a.x + (b.x - a.x) * frac + (TRACK_TILE_SIZE - markerSize) / 2
-    local markerY = a.y + (TRACK_TILE_SIZE - markerSize) / 2
-    love.graphics.setColor(COLORS.trackMarker)
-    love.graphics.polygon("fill", TileView.betterPolyVerticies(markerSize, 0, markerX, markerY))
-
-    for idx, wild in ipairs(wilds) do
-        local x, y, size = self:_trackTileRect(idx)
-        local alpha = idx < self.trackRound - 0.5 and TRACK_PAST_ALPHA or 1
-        local poly = TileView.betterPolyVerticies(size, 0, x, y)
-        local color = TileView.TILE_COLOR[wild]
-        love.graphics.setColor(color[1], color[2], color[3], alpha)
-        love.graphics.polygon("fill", poly)
-        love.graphics.setColor(0, 0, 0, alpha)
-        love.graphics.setLineJoin("bevel")
-        love.graphics.setLineWidth(2)
-        love.graphics.polygon("line", poly)
-        love.graphics.setLineJoin("miter")
-    end
+    TileView.drawDiamond(x, y, size, 0, COLORS.token, COLORS.tokenOutline, 2)
 end
 
 function TableAreaEntity:draw(gameState)
@@ -696,7 +586,7 @@ function TableAreaEntity:draw(gameState)
         love.graphics.circle("line", group.x, group.y, group.radius)
     end
 
-    self:_drawRoundTrack(gameState)
+    self.roundTrack:draw(gameState.rules.wildPerRound)
 
     if self.bagTowerAlpha > 0 then
         self:_drawBag()
@@ -722,12 +612,7 @@ end
 function TableAreaEntity:drawScreen(gameState)
     local origR, origG, origB, origA = love.graphics.getColor()
 
-    local drawLabel = function(text, worldX, worldY, worldW, worldH, color)
-        local x, y = camera:cameraCoords(worldX, worldY)
-        local w, h = worldW * camera.scale, worldH * camera.scale
-        love.graphics.setColor(color or COLORS.label)
-        ViewUtil.printPixelText(text, ViewUtil.largestFontThatFits(text, w, h), x, y, w, h)
-    end
+    local drawLabel = ViewUtil.drawWorldLabel
 
     if self.bagTowerAlpha > 0 then
         local labelColor = { COLORS.label[1], COLORS.label[2], COLORS.label[3], COLORS.label[4] * self.bagTowerAlpha }
@@ -736,26 +621,12 @@ function TableAreaEntity:drawScreen(gameState)
         local t = self.tower
         drawLabel("Tower: " .. math.floor(self.towerCount + 0.5), t.x - t.w, t.y + t.h * 0.55, t.w * 2, 40, labelColor)
     end
-    -- round numbers in the round track's tiles, and which round it is under it
-    local wilds = gameState.rules.wildPerRound
-    for idx = 1, #wilds do
-        local x, y, size = self:_trackTileRect(idx)
-        local alpha = idx < self.trackRound - 0.5 and TRACK_PAST_ALPHA or 1
-        drawLabel(tostring(idx), x + size * 0.3, y + size * 0.25, size * 0.4, size * 0.5, { 0, 0, 0, alpha })
-    end
-    local first, last = self.roundTrack[1], self.roundTrack[#wilds]
-    drawLabel(
-        "Round " .. gameState.round.idx .. " of " .. #wilds,
-        first.x,
-        first.y + TRACK_TILE_SIZE / 2 + TRACK_LABEL_TOP,
-        last.x + last.size - first.x,
-        TRACK_LABEL_H
-    )
+    self.roundTrack:drawScreen(gameState.rules.wildPerRound, gameState.round.idx)
 
     if self.tokenInCenter then
-        -- fit the "1" inside the diamond's middle (the diamond spans 1/6..5/6 of the width)
         local x, y, size = self:_tokenRect()
-        drawLabel("1", x + size * 0.3, y + size * 0.25, size * 0.4, size * 0.5, { 0, 0, 0, 1 })
+        local textX, textY, textW, textH = TileView.labelRect(x, y, size)
+        drawLabel("1", textX, textY, textW, textH, { 0, 0, 0, 1 })
     end
 
     love.graphics.setColor(origR, origG, origB, origA)

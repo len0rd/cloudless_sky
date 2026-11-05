@@ -49,3 +49,21 @@ notion("Anim camera smoother jumps straight to the target when animations are of
         check(dx <= 100).is(true)
     end)
 end)
+
+notion("Anim join calls done once every callback has been called", function()
+    local calls = 0
+    local finish = Anim.join(3, function()
+        calls = calls + 1
+    end)
+    finish()
+    finish()
+    check(calls).is(0)
+    finish()
+    check(calls).is(1)
+
+    -- nothing to wait for: done right away
+    Anim.join(0, function()
+        calls = calls + 1
+    end)
+    check(calls).is(2)
+end)

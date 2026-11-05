@@ -17,6 +17,11 @@ function ViewUtil.normalizeColor(color)
     return { r, g, b }
 end
 
+--- Set \p color (r, g, b[, a]) with its alpha scaled by \p alpha
+function ViewUtil.setColorAlpha(color, alpha)
+    love.graphics.setColor(color[1], color[2], color[3], (color[4] or 1) * alpha)
+end
+
 function ViewUtil.ptInRect(x, y, rectX, rectY, w, h)
     return x >= rectX and x <= rectX + w and y >= rectY and y <= rectY + h
 end
@@ -166,6 +171,18 @@ function ViewUtil.pointFromDistanceAndAngle(x, y, distance, angle)
     return newX, newY
 end
 
+--- @return table[] \p n points {x, y, angle} evenly spaced around the circle at (cx, cy) of radius
+---     \p r, clockwise (screen coordinates) starting at \p startAngle (radians, default 0 = right)
+function ViewUtil.pointsOnCircle(cx, cy, r, n, startAngle)
+    startAngle = startAngle or 0
+    local points = {}
+    for ii = 1, n do
+        local angle = startAngle + (ii - 1) * 2 * math.pi / n
+        points[ii] = { x = cx + r * math.cos(angle), y = cy + r * math.sin(angle), angle = angle }
+    end
+    return points
+end
+
 --- multiply the points defined in vertexScalers by size and translate
 --- them to be relative to x,y
 function ViewUtil.transformVertexScalers(vertexScalers, size, x, y)
@@ -210,6 +227,16 @@ end
 function ViewUtil.printPixelText(text, font, x, y, w, h, align)
     local textY = y + (h - font:getHeight()) / 2
     love.graphics.printf(text, font, math.floor(x + 0.5), math.floor(textY + 0.5), math.floor(w), align or "center")
+end
+
+--- Print \p text fitted into the world rect (worldX, worldY, worldW, worldH), in screen space so the
+--- pixel font stays crisp (call from a drawScreen, see DrawSys). Uses the global camera
+--- @param color table|nil defaults to white
+function ViewUtil.drawWorldLabel(text, worldX, worldY, worldW, worldH, color)
+    local x, y = camera:cameraCoords(worldX, worldY)
+    local w, h = worldW * camera.scale, worldH * camera.scale
+    love.graphics.setColor(color or { 1, 1, 1, 1 })
+    ViewUtil.printPixelText(text, ViewUtil.largestFontThatFits(text, w, h), x, y, w, h)
 end
 
 --- suit draw function for Labels: vertically centered, pixel-snapped text.

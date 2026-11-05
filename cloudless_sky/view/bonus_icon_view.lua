@@ -91,18 +91,10 @@ end
 
 --- Draw a tile (upright diamond) with \p value in its middle, top-left at (x, y), \p size wide and tall
 function BonusIconView.drawNumberTile(value, x, y, size)
-    local vertices = TileView.betterPolyVerticies(size, 0, x, y)
-    love.graphics.setColor(NUMBER_TILE_COLOR)
-    love.graphics.polygon("fill", vertices)
-    love.graphics.setColor(OUTLINE_COLOR)
-    love.graphics.setLineJoin("bevel")
-    love.graphics.setLineWidth(math.max(1, size / 40))
-    love.graphics.polygon("line", vertices)
-    love.graphics.setLineJoin("miter")
+    TileView.drawDiamond(x, y, size, 0, NUMBER_TILE_COLOR, OUTLINE_COLOR, math.max(1, size / 40))
 
-    -- the diamond spans 1/6..5/6 of the width: fit the number inside its middle
     local text = tostring(value)
-    local textX, textY, textW, textH = x + size * 0.3, y + size * 0.25, size * 0.4, size * 0.5
+    local textX, textY, textW, textH = TileView.labelRect(x, y, size)
     love.graphics.setColor(NUMBER_COLOR)
     ViewUtil.printPixelText(text, ViewUtil.largestFontThatFits(text, textW, textH), textX, textY, textW, textH)
 end

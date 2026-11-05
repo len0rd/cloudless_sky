@@ -44,6 +44,22 @@ function Anim.time(seconds)
     return seconds / speed
 end
 
+--- @return function callback that calls \p done once it has been called \p n times (or calls \p done
+---     now if n <= 0). For waiting on several tweens at once
+function Anim.join(n, done)
+    if n <= 0 then
+        done()
+        return function() end
+    end
+    local remaining = n
+    return function()
+        remaining = remaining - 1
+        if remaining == 0 then
+            done()
+        end
+    end
+end
+
 --- A hump.camera smoother that eases the camera toward its target, faster or slower with the
 --- animation speed, and jumps straight there when animations are off.
 --- Like hump's Camera.smooth.damped(stiffness)

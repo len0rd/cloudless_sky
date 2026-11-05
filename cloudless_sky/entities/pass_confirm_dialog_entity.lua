@@ -238,12 +238,7 @@ local function drawTileInRect(tileType, rect, size)
     if tileType then
         TileView.drawTileAt(tileType, size, 0, x, y)
     else
-        local vertices = TileView.betterPolyVerticies(size, 0, x, y)
-        love.graphics.setColor(EMPTY_TILE_COLOR)
-        love.graphics.polygon("fill", vertices)
-        love.graphics.setColor(0, 0, 0)
-        love.graphics.setLineWidth(1)
-        love.graphics.polygon("line", vertices)
+        TileView.drawDiamond(x, y, size, 0, EMPTY_TILE_COLOR, { 0, 0, 0 }, 1)
     end
 end
 
