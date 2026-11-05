@@ -1,0 +1,19 @@
+diff --git a/platform/xcode/ios/love-ios.plist b/platform/xcode/ios/love-ios.plist
+index 21b2c64..88a81b2 100644
+--- a/platform/xcode/ios/love-ios.plist
++++ b/platform/xcode/ios/love-ios.plist
+@@ -57,14 +57,11 @@
+ 	<string>UIStatusBarStyleLightContent</string>
+ 	<key>UISupportedInterfaceOrientations</key>
+ 	<array>
+-		<string>UIInterfaceOrientationPortrait</string>
+ 		<string>UIInterfaceOrientationLandscapeLeft</string>
+ 		<string>UIInterfaceOrientationLandscapeRight</string>
+ 	</array>
+ 	<key>UISupportedInterfaceOrientations~ipad</key>
+ 	<array>
+-		<string>UIInterfaceOrientationPortrait</string>
+-		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+ 		<string>UIInterfaceOrientationLandscapeLeft</string>
+ 		<string>UIInterfaceOrientationLandscapeRight</string>
+ 	</array>
