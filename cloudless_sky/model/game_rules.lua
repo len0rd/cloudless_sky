@@ -50,6 +50,7 @@ GameRules.DEFAULTS.BASE_GAME_RULES = {
     startScore = 5,
     endGameBonus = {
         starCompletion = {
+            MULTI = 12,
             RED = 14,
             ORANGE = 17,
             YELLOW = 16,
