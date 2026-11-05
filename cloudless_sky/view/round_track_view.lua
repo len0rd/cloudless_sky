@@ -104,7 +104,9 @@ end
 
 --- Round numbers in the tiles, and "Round N of M" under them. Screen space (see DrawSys)
 --- @param round integer the current round
-function RoundTrackView:drawScreen(wilds, round)
+--- @param brightness number|nil 0..1, to match the track when something dims it. Default 1
+function RoundTrackView:drawScreen(wilds, round, brightness)
+    brightness = brightness or 1
     for idx = 1, #wilds do
         local x, y, size = self:_tileRect(idx)
         local textX, textY, textW, textH = TileView.labelRect(x, y, size)
@@ -117,7 +119,7 @@ function RoundTrackView:drawScreen(wilds, round)
         first.y + TILE_SIZE / 2 + LABEL_TOP,
         last.x + last.size - first.x,
         LABEL_H,
-        LABEL_COLOR
+        { LABEL_COLOR[1] * brightness, LABEL_COLOR[2] * brightness, LABEL_COLOR[3] * brightness, LABEL_COLOR[4] }
     )
 end
 

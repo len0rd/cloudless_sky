@@ -1,6 +1,7 @@
 --- The table: factory displays in a ring around the center of the table, plus the bag and tower, the
 --- round track (each round's wild tile, with a marker on the current round) in the top-left corner and
---- the bonus pool (BonusPoolView) in the top-right corner.
+--- the bonus pool (BonusPoolView) in the top-right corner. Clicking the pool expands it over the table
+--- so its tiles are full size; any click while it's expanded shrinks it back.
 --- Lives in the world north of the player mats, centered between them.
 --- The bag and tower are hidden except while a refill (tower -> bag) animation plays.
 ---
@@ -34,6 +35,9 @@ local flux = require("cloudless_sky.extern.flux")
 ---@field roundTrack RoundTrackView
 ---@field bonusPool BonusPoolView tiles in the bonus pool
 ---@field poolSmall table {x, y, scale} where the bonus pool sits in the corner, and its size there
+---@field poolBig table {x, y, scale} where the bonus pool is when expanded (scale 1: full size tiles)
+---@field poolOpen boolean the bonus pool is expanded (or expanding)
+---@field poolExpand number how far the bonus pool is expanded, 0 (small) to 1 (big). Tweened
 local TableAreaEntity = {}
 TableAreaEntity.__index = TableAreaEntity
 
@@ -71,6 +75,9 @@ local POOL_MAX_SMALL_SCALE = 0.6
 -- "Bonus tiles" label under it
 local POOL_LABEL_GAP = 4
 local POOL_LABEL_H = 22
+local POOL_EXPAND_S = 0.3
+-- the table behind the expanded pool is dimmed this much
+local POOL_DIM_ALPHA = 0.55
 
 local COLORS = {
     table = { 0.15, 0.21, 0.19, 1 },
@@ -143,6 +150,8 @@ function TableAreaEntity.new(gameState, matEntities)
     entity.towerCount = gameState.discard:total()
     entity.tokenInCenter = gameState.startTokenHolder == nil
     entity.bagTowerAlpha = 0
+    entity.poolOpen = false
+    entity.poolExpand = 0
     entity:syncFromModel(gameState, true)
 
     return entity
@@ -177,7 +186,37 @@ function TableAreaEntity:_layout(numDisplays, numPoolSlots)
         y = self.worldPos.y + POOL_MARGIN + poolR,
         scale = poolScale,
     }
+    -- expanded: full size tiles, still tucked into the top-right corner
+    local bigR = self.bonusPool:radiusAt(1)
+    self.poolBig = {
+        x = self.worldPos.x + TABLE_W - POOL_MARGIN - bigR,
+        y = self.worldPos.y + POOL_MARGIN + bigR,
+        scale = 1,
+    }
     self.bonusPool:setPlacement(self.poolSmall.x, self.poolSmall.y, self.poolSmall.scale)
+end
+
+--- @return number x, number y, number scale. The bonus pool's placement \p t of the way (0..1) from
+---     \p small to \p big. Past 1 (an overshooting ease) the scale keeps growing a little
+function TableAreaEntity.poolPlacementAt(small, big, t)
+    local function lerp(a, b)
+        return a + (b - a) * t
+    end
+    return lerp(small.x, big.x), lerp(small.y, big.y), lerp(small.scale, big.scale)
+end
+
+--- Expand (\p open) or shrink the bonus pool
+function TableAreaEntity:setPoolOpen(open)
+    if self.poolOpen == open then
+        return
+    end
+    self.poolOpen = open
+    if self.poolTween then
+        self.poolTween:stop()
+    end
+    self.poolTween = self.tweens
+        :to(self, Anim.time(POOL_EXPAND_S), { poolExpand = open and 1 or 0 })
+        :ease(open and "backout" or "quadout")
 end
 
 --- @return number x, number y, number w, number h. World rect of the "Bonus tiles" label under the
@@ -500,7 +539,19 @@ function TableAreaEntity.takeFor(gameState, source, tileType)
 end
 
 function TableAreaEntity:mousePressed(cameraX, cameraY, worldX, worldY, button, istouch)
-    if button ~= 1 or not self.selectable then
+    if button ~= 1 then
+        return false
+    end
+    -- the bonus pool works in any phase: it's only for looking at
+    if self.poolOpen then
+        -- any click shrinks it back (and does nothing else)
+        self:setPoolOpen(false)
+        return true
+    elseif self.bonusPool:contains(worldX, worldY) then
+        self:setPoolOpen(true)
+        return true
+    end
+    if not self.selectable then
         return false
     end
     local source, tile = self:tileAt(worldX, worldY)
@@ -524,7 +575,7 @@ function TableAreaEntity:update(dt, gameState)
     -- while the new round's fill plays
     self.roundTrack:update(gameState.round.idx, self.tweens)
     -- tiles that have landed in the pool follow their slot
-    self.bonusPool:setPlacement(self.poolSmall.x, self.poolSmall.y, self.poolSmall.scale)
+    self.bonusPool:setPlacement(TableAreaEntity.poolPlacementAt(self.poolSmall, self.poolBig, self.poolExpand))
     if not self.busy then
         self:syncFromModel(gameState)
     else
@@ -533,7 +584,11 @@ function TableAreaEntity:update(dt, gameState)
         self.tokenInCenter = gameState.startTokenHolder == nil
     end
 
-    self.selectable = not self.busy and gameState.round.phase == gameState.RoundPhase.TILE_SELECTION
+    -- not while the bonus pool covers the table
+    self.selectable = not self.busy
+        and gameState.round.phase == gameState.RoundPhase.TILE_SELECTION
+        and not self.poolOpen
+        and self.poolExpand <= 0
     self.hovered = nil
     self.highlight = nil
     if self.selectable then
@@ -647,6 +702,11 @@ function TableAreaEntity:draw(gameState)
     end
     center:drawTiles(self.highlight)
 
+    if self.poolExpand > 0 then
+        -- dim the table behind the expanded pool
+        love.graphics.setColor(0, 0, 0, POOL_DIM_ALPHA * math.min(1, self.poolExpand))
+        love.graphics.rectangle("fill", self.worldPos.x, self.worldPos.y, TABLE_W, TABLE_H, TABLE_H * 0.05, TABLE_H * 0.05)
+    end
     self.bonusPool:drawBase()
     self.bonusPool:drawTiles()
 
@@ -669,8 +729,15 @@ function TableAreaEntity:drawScreen(gameState)
         local t = self.tower
         drawLabel("Tower: " .. math.floor(self.towerCount + 0.5), t.x - t.w, t.y + t.h * 0.55, t.w * 2, 40, labelColor)
     end
-    self.roundTrack:drawScreen(gameState.rules.wildPerRound, gameState.round.idx)
-    drawLabel("Bonus tiles", self:poolLabelRect())
+    -- dimmed with the rest of the table behind the expanded bonus pool
+    local brightness = 1 - POOL_DIM_ALPHA * math.min(1, self.poolExpand)
+    self.roundTrack:drawScreen(gameState.rules.wildPerRound, gameState.round.idx, brightness)
+    -- the label belongs to the small pool: it fades as the pool expands over it
+    local labelAlpha = 1 - math.min(1, self.poolExpand)
+    if labelAlpha > 0 then
+        local lx, ly, lw, lh = self:poolLabelRect()
+        drawLabel("Bonus tiles", lx, ly, lw, lh, { 1, 1, 1, labelAlpha })
+    end
 
     if self.tokenInCenter then
         local x, y, size = self:_tokenRect()

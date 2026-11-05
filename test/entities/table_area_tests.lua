@@ -75,3 +75,57 @@ notion("TableAreaEntity bonus pool sits in the top-right corner clear of every d
         end
     end
 end)
+
+notion("TableAreaEntity expanded bonus pool is full size and fits on the table (2-4 players)", function()
+    for _, numDisplays in ipairs({ 5, 7, 9 }) do
+        for _, poolSize in ipairs({ 5, 10, 20 }) do
+            local fake = { worldPos = { x = 0, y = 0 }, viewRng = love.math.newRandomGenerator(1) }
+            TableAreaEntity._layout(fake, numDisplays, poolSize)
+            local small, big = fake.poolSmall, fake.poolBig
+            check(big.scale).is(1)
+            local r = fake.bonusPool:radiusAt(1)
+            check(big.x - r >= 0 and big.x + r <= TABLE_W and big.y - r >= 0 and big.y + r <= TABLE_H).is(true)
+
+            -- expanding moves smoothly from the corner to the big placement
+            local x0, y0, s0 = TableAreaEntity.poolPlacementAt(small, big, 0)
+            local x1, y1, s1 = TableAreaEntity.poolPlacementAt(small, big, 1)
+            check(x0 == small.x and y0 == small.y and s0 == small.scale).is(true)
+            check(x1 == big.x and y1 == big.y and s1 == 1).is(true)
+            local _, _, sMid = TableAreaEntity.poolPlacementAt(small, big, 0.5)
+            check(sMid > small.scale and sMid < 1).is(true)
+        end
+    end
+end)
+
+notion("BonusPoolView contains points on its disc at its current placement", function()
+    local fake = { worldPos = { x = 0, y = 0 }, viewRng = love.math.newRandomGenerator(1) }
+    TableAreaEntity._layout(fake, 5, 10)
+    local pool, small, big = fake.bonusPool, fake.poolSmall, fake.poolBig
+    pool:setPlacement(small.x, small.y, small.scale)
+    check(pool:contains(small.x, small.y)).is(true)
+    -- a point just outside the small disc, but inside the big one
+    local outside = small.x - pool:radiusAt(small.scale) - 5
+    check(pool:contains(outside, small.y)).is(false)
+    pool:setPlacement(big.x, big.y, big.scale)
+    check(pool:contains(outside, small.y)).is(true)
+end)
+
+notion("BonusPoolView keeps tiles in their slots as it moves, and frees slots when tiles leave", function()
+    local fake = { worldPos = { x = 0, y = 0 }, viewRng = love.math.newRandomGenerator(1) }
+    TableAreaEntity._layout(fake, 5, 10)
+    local pool = fake.bonusPool
+    local red = pool:addTile("RED")
+    local blue = pool:addTile("BLUE")
+    check(red.slot).is(1)
+    check(blue.slot).is(2)
+    pool:setPlacement(500, 300, 1)
+    local x, y = pool:slotPosition(2)
+    check(blue.x).is(x)
+    check(blue.y).is(y)
+    check(pool:tileAt(blue.x, blue.y) == blue).is(true)
+
+    pool:removeTiles("RED", 1)
+    check(pool:counts().RED).is(0)
+    -- the freed slot is reused
+    check(pool:addTile("GREEN").slot).is(1)
+end)
