@@ -14,9 +14,14 @@ Anim.DEFAULT_SPEED = 1
 
 local speed = Anim.DEFAULT_SPEED
 
+--- @return boolean True if \p value can be used as an animation speed (a number >= 0)
+function Anim.isValidSpeed(value)
+    return type(value) == "number" and value >= 0
+end
+
 --- @param newSpeed number animation speed multiplier. 0 turns animations off
 function Anim.setSpeed(newSpeed)
-    assert(type(newSpeed) == "number" and newSpeed >= 0, "animation speed must be a number >= 0")
+    assert(Anim.isValidSpeed(newSpeed), "animation speed must be a number >= 0")
     speed = newSpeed
 end
 
