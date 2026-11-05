@@ -14,6 +14,9 @@ local Object = require("cloudless_sky.extern.classic")
 ---     GameState:undoLastChoice undoes history up to and including the most recent non-follow-up action
 local Action = Object:extend()
 
+--- True for game actions that cannot be undone by a player
+Action.undoBarrier = false
+
 --- List of all known actions. Action implementations add their name to this list
 Action.known = {}
 

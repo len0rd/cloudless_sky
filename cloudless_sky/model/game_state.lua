@@ -4,6 +4,7 @@ local TileBag = require("cloudless_sky.model.tile_bag")
 local TileType = require("cloudless_sky.model.tile_type")
 local Player = require("cloudless_sky.model.player")
 local GameRules = require("cloudless_sky.model.game_rules")
+local BeginTurnAction = require("cloudless_sky.action.begin_turn")
 
 ---@class GameState : Object
 ---@field tileBag TileBag The bag of fresh tiles to draw from throughout the game
@@ -14,7 +15,6 @@ local GameRules = require("cloudless_sky.model.game_rules")
 ---@field players table[Player] Array containing each player in the game
 ---@field actionHistory Action[] Every action performed, oldest first
 ---@field turnIdx integer Increments every turn and is never reused. Identifies the current turn
----@field turnHistoryStart integer #actionHistory when the current turn started
 ---@field factoryDisplays TileBag[] The factory displays tiles are picked from during tile selection
 ---@field center TileBag The center of the table. Tiles left on a display after a pick are moved here
 ---@field startTokenHolder integer|nil Index of the player holding the start player token.
@@ -94,7 +94,6 @@ function GameState:new(gameRules, playerNames, rng, seed)
     self.actionHistory = {}
 
     self.turnIdx = 1
-    self.turnHistoryStart = 0
 
     self.rng = rng
     self.seed = seed
@@ -112,7 +111,7 @@ function GameState:serialize()
         startTokenHolder = self.startTokenHolder,
         startPlayer = self.startPlayer,
         currentTurnPlayer = self.currentTurnPlayer,
-        -- TODO: restore with self.rng:setState(data.rngState) once GameState deserialization exists
+        turnIdx = self.turnIdx,
         seed = self.seed,
         rngState = self.rng:getState(),
     }
@@ -236,21 +235,33 @@ function GameState:performAction(action)
     return performed
 end
 
+--- @return integer index Index in actionHistory of the most recent undo barrier (see
+---     Action.undoBarrier), or 0 if there isn't one. The current turn's choices come after it
+function GameState:turnStartIndex()
+    for ii = #self.actionHistory, 1, -1 do
+        if self.actionHistory[ii].undoBarrier then
+            return ii
+        end
+    end
+    return 0
+end
+
 --- @return boolean True if the current turn has a player choice that can be undone
 function GameState:canUndoChoice()
-    return #self.actionHistory > self.turnHistoryStart
+    local last = self.actionHistory[#self.actionHistory]
+    return last ~= nil and not last.undoBarrier
 end
 
 --- Undo the most recent player choice made this turn: its follow-up actions (newest first), then
 --- the choice itself (the most recent action with isFollowUp == false).
---- Never undoes actions from before the current turn (see turnHistoryStart)
+--- Never undoes an undo barrier (Action.undoBarrier), so actions from before the current turn are safe
 --- @return Action[]|nil undone. The actions undone, newest first. nil if there is nothing to undo this turn
 function GameState:undoLastChoice()
     if not self:canUndoChoice() then
         return nil
     end
     local undone = {}
-    while #self.actionHistory > self.turnHistoryStart do
+    while self:canUndoChoice() do
         local action = self:undoLastAction()
         table.insert(undone, action)
         if not action.isFollowUp then
@@ -272,10 +283,10 @@ function GameState:undoLastAction()
     return action
 end
 
---- Advance to the next player's turn. The current turn's actions can no longer be undone
--- TODO: should be moved into an action (its perform/undo would then update turnIdx/turnHistoryStart)
+--- Advance to the next player's turn (performs a BeginTurnAction). The current turn's actions can
+--- no longer be undone.
 --- Players who have passed this phase are skipped. If every player has passed, the next player
---- in order is selected (ending the round is not implemented yet. see allPlayersPassed)
+--- in order is selected
 function GameState:incrementTurn()
     local numPlayers = #self.players
     local nextPlayer = (self.currentTurnPlayer % numPlayers) + 1
@@ -288,14 +299,11 @@ function GameState:incrementTurn()
     self:beginTurn(nextPlayer)
 end
 
---- Start a new turn for \p playerIdx. Nothing performed before this can be undone by the player
---- (see undoLastChoice)
--- TODO: should be moved into an action (see incrementTurn)
+--- Start a new turn for \p playerIdx (performs a BeginTurnAction). Nothing performed before this can
+--- be undone by the player (see undoLastChoice)
 function GameState:beginTurn(playerIdx)
-    assert(self.players[playerIdx], "invalid playerIdx " .. tostring(playerIdx))
-    self.currentTurnPlayer = playerIdx
-    self.turnIdx = self.turnIdx + 1
-    self.turnHistoryStart = #self.actionHistory
+    local performed, reason = self:performAction(BeginTurnAction(playerIdx))
+    assert(performed, "can't begin a turn: " .. tostring(reason))
 end
 
 return GameState

@@ -12,6 +12,9 @@ local ACTION_NAME = "EndRound"
 
 Action.register(ACTION_NAME, EndRoundAction)
 
+-- happens between turns: players can't undo it
+EndRoundAction.undoBarrier = true
+
 function EndRoundAction:new()
     EndRoundAction.super.new(self, ACTION_NAME, {
         -- set by perform (values before this action, for undo):

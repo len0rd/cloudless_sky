@@ -31,7 +31,16 @@ love . --bot --seed 1234 --anim-speed 0  # animations off
 
 Every game's seed is logged at startup and saved in the game state (`seed` in `GameState:serialize()`).
 Any game can be replayed with `love . --seed N`. The bot's run is fully repeatable: the same seed gives
-the same game and the same final `digest`.
+the same game and the same final `digest`. At the start of every round and at the end of the game the
+bot also checks that the game saves and loads back exactly.
+
+## Save / load
+
+Save location:
+
+- On Windows: `%APPDATA%/LOVE/cloudless_sky`
+
+Start from a save game at startup with: `love . path/to/savegame.json`
 
 ## TODO
 

@@ -7,6 +7,9 @@ local ACTION_NAME = "StartPlacementPhase"
 
 Action.register(ACTION_NAME, StartPlacementPhaseAction)
 
+-- happens between turns: players can't undo it
+StartPlacementPhaseAction.undoBarrier = true
+
 function StartPlacementPhaseAction:new()
     StartPlacementPhaseAction.super.new(self, ACTION_NAME, {
         -- set by perform:

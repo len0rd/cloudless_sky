@@ -19,6 +19,9 @@ local ACTION_NAME = "FillFactoryDisplays"
 
 Action.register(ACTION_NAME, FillFactoryDisplaysAction)
 
+-- happens between turns: players can't undo it
+FillFactoryDisplaysAction.undoBarrier = true
+
 function FillFactoryDisplaysAction:new()
     FillFactoryDisplaysAction.super.new(self, ACTION_NAME, {
         -- set by perform:
