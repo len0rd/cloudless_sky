@@ -135,6 +135,8 @@ function StarView:new(starType, x, y, size)
 
     -- tween for tile being placed
     self.placeTween = flux.group()
+    -- tween for slots pulsing to draw attention to them (pulseSlots)
+    self.pulseTween = flux.group()
     -- which star-slots are being animated. slotIdx -> { removing = bool, tileType = TileType|nil }
     -- tileType is only set when removing (model may no longer know removed tile color)
     self.animatingSlots = {}
@@ -196,6 +198,41 @@ function StarView:playPlaceAnimation(slotIndex, onComplete)
         end)
 end
 
+-- pulse (pulseSlots) settings
+local PULSE_SCALE = 1.25
+local PULSE_GROW_S = 0.2
+local PULSE_SHRINK_S = 0.3
+
+--- Briefly enlarge the slots in \p slotIdxs, then shrink them back. Draws attention to them (eg: the
+--- slots that earned an end-game bonus). Nothing happens when animations are off
+--- @param slotIdxs integer[] slot indices of this star
+--- @param onComplete function|nil called once every slot is back to normal size
+function StarView:pulseSlots(slotIdxs, onComplete)
+    local remaining = 0
+    local function finished()
+        remaining = remaining - 1
+        if remaining == 0 and onComplete then
+            onComplete()
+        end
+    end
+    for _, slotIdx in ipairs(slotIdxs) do
+        local poly = self.polys[slotIdx]
+        if poly and not Anim.isOff() then
+            remaining = remaining + 1
+            poly.scale = 1.0
+            self.pulseTween
+                :to(poly, Anim.time(PULSE_GROW_S), { scale = PULSE_SCALE })
+                :ease("quadout")
+                :after(poly, Anim.time(PULSE_SHRINK_S), { scale = 1.0 })
+                :ease("quadin")
+                :oncomplete(finished)
+        end
+    end
+    if remaining == 0 and onComplete then
+        onComplete()
+    end
+end
+
 --- @return table boundingBox. Bounding box of the star in world coords. Formatted x1,y1, x2,y2
 ---     Where x1,y1 is the top left of the star and x2,y2 is the bottom right
 function StarView:boundingBox()
@@ -254,6 +291,7 @@ function StarView:update(dt, focusSlotIdx)
     self.hovered_slot = focusSlotIdx
     self.breathTween:update(dt)
     self.placeTween:update(dt)
+    self.pulseTween:update(dt)
 end
 
 local drawPoly = function(vertices, color)
