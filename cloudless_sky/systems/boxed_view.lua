@@ -15,19 +15,24 @@ function BoxedViewSys.worldCenter(e)
     return centerX, centerY
 end
 
---- @return number CenterX, number CenterY, number Scale. The center X,Y of the provided
----     entity in world coordintates. Scale is the max camera scale so the entity \p e
----     occupies the entire screen. Takes hud margin into account
-function BoxedViewSys.worldFocus(e)
+--- Where to point the camera so entity \p e fills (with a margin) and is centered in the part of the
+--- screen from \p areaLeft (screen pixels) to the right edge, full height. eg: the screen right of the HUD
+--- @param areaLeft number|nil screen x where the area starts. Defaults to 0 (the whole screen)
+--- @return number centerX, number centerY, number scale. World point for the camera's center, and the
+---     camera scale
+function BoxedViewSys.worldFocus(e, areaLeft)
+    areaLeft = areaLeft or 0
     local screenW, screenH = love.graphics.getPixelDimensions()
+    local areaW = math.max(1, screenW - areaLeft)
 
-    local maxWidth = screenW * Constants.hudPadPercent
+    local maxWidth = areaW * Constants.hudPadPercent
     local maxHeight = screenH * Constants.hudPadPercent
-    local widthZoomFactor = maxWidth / e.boundingBox.w
-    local heightZoomFactor = maxHeight / e.boundingBox.h
+    local zoom = math.min(maxWidth / e.boundingBox.w, maxHeight / e.boundingBox.h)
 
+    -- the camera's center is drawn at the screen's center. The area's center is (areaLeft / 2) pixels
+    -- right of that, so the camera looks that far (in world units) left of the entity's center
     local eCenterX, eCenterY = BoxedViewSys.worldCenter(e)
-    return eCenterX, eCenterY, math.min(widthZoomFactor, heightZoomFactor)
+    return eCenterX - (areaLeft / 2) / zoom, eCenterY, zoom
 end
 
 --- Return true if the provided worldX. worldY coordintate is within entity \p e's bounding box,

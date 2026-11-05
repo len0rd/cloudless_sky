@@ -50,10 +50,9 @@ function WorldStateMachine:focusEntity()
 end
 
 function WorldStateMachine:focusCamera()
-    local centerX, centerY, zoom = BoxedViewSys.worldFocus(self:focusEntity())
-    -- shift so the focused entity is centered in the space right of the HUD
-    local hudBBox = self.graphicsState.hud.container.boundingBox
-    centerX = centerX - (hudBBox.w / 2)
+    -- fit and center the focused entity in the space right of the HUD
+    local hudW = self.graphicsState.hud.container.boundingBox.w
+    local centerX, centerY, zoom = BoxedViewSys.worldFocus(self:focusEntity(), hudW)
 
     camera:zoomTo(zoom)
     camera:lockPosition(centerX, centerY)
