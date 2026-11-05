@@ -1,5 +1,5 @@
 --- HUD container element that occupies full height and 15% width of screen
---- Displays (top to bottom): player name, score, hand, done button, pass button
+--- Displays (top to bottom): player name, score, hand, then buttons: done, pass, undo + view toggle, menu
 local Concord = require("cloudless_sky.extern.concord")
 local Anim = require("cloudless_sky.anim")
 local Components = require("cloudless_sky.components")
@@ -7,6 +7,7 @@ local Constants = require("cloudless_sky.constants")
 local EUtil = require("cloudless_sky.entities.e_util")
 local TileType = require("cloudless_sky.model.tile_type")
 local TileView = require("cloudless_sky.view.tile_view")
+local UiStyle = require("cloudless_sky.view.ui_style")
 local ViewUtil = require("cloudless_sky.view.view_util")
 
 local suit = require("cloudless_sky.extern.suit")
@@ -24,8 +25,8 @@ local SCORE_ROW_H = 0.05
 local MAX_HAND_CELL_H = 0.10
 local BUTTON_ROW_H = 0.07
 local HAND_COLS = 2
--- rows of buttons at the bottom: done, pass, undo + view toggle
-local NUM_BUTTON_ROWS = 3
+-- rows of buttons at the bottom: done, pass, undo + view toggle, menu
+local NUM_BUTTON_ROWS = 4
 local EMPTY_SLOT_ALPHA = 0.35
 
 local BG_COLOR = { 0.12, 0.12, 0.18, 0.85 }
@@ -37,19 +38,8 @@ local SCORE_DECREASE_FLASH_COLOR = { 0.85, 0.35, 0.35, 1 }
 local SCORE_COUNT_TIME_S = 1.0
 local SCORE_FLASH_TIME_S = 2.0
 
-local BUTTON_COLORS = {
-    normal = { bg = { 0.25, 0.25, 0.25 }, fg = { 1, 1, 1 } },
-    hovered = { bg = { 0.19, 0.6, 0.73 }, fg = { 1, 1, 1 } },
-    active = { bg = { 1, 0.6, 0 }, fg = { 1, 1, 1 } },
-}
-BUTTON_COLORS.hit = BUTTON_COLORS.active
-
-local DISABLED_BUTTON_COLORS = {
-    normal = { bg = { 0.2, 0.2, 0.2, 0.6 }, fg = { 0.5, 0.5, 0.5, 0.8 } },
-}
-DISABLED_BUTTON_COLORS.hovered = DISABLED_BUTTON_COLORS.normal
-DISABLED_BUTTON_COLORS.active = DISABLED_BUTTON_COLORS.normal
-DISABLED_BUTTON_COLORS.hit = DISABLED_BUTTON_COLORS.normal
+local BUTTON_COLORS = UiStyle.BUTTON_COLORS
+local DISABLED_BUTTON_COLORS = UiStyle.DISABLED_BUTTON_COLORS
 
 function PlayerHudContainerEntity.new()
     local entity = Concord.entity()
@@ -73,6 +63,7 @@ function PlayerHudContainerEntity.new()
         pass = { scale = 1.0, hoverTween = nil },
         undo = { scale = 1.0, hoverTween = nil },
         viewToggle = { scale = 1.0, hoverTween = nil },
+        menu = { scale = 1.0, hoverTween = nil },
     }
 
     -- data cached from gameState during update for use in draw
@@ -149,6 +140,9 @@ function PlayerHudContainerEntity:mousePressed(cameraX, cameraY, worldX, worldY,
             self.viewToggleEnabled and ViewUtil.ptInRect(cameraX, cameraY, toggle.x, toggle.y, toggle.w, toggle.h)
         then
             self.mouseHandler.clickEvent = { type = Components.mouseHandler.eventTypes.toggleViewClicked }
+        elseif ViewUtil.ptInRect(cameraX, cameraY, self.menuRect.x, self.menuRect.y, self.menuRect.w, self.menuRect.h) then
+            -- always enabled
+            self.mouseHandler.clickEvent = { type = Components.mouseHandler.eventTypes.menuClicked }
         end
     end
 
@@ -258,6 +252,17 @@ function PlayerHudContainerEntity:update(dt, gameState)
         scale = self.buttons.viewToggle.scale,
     }, r.x, r.y, r.w, r.h)
     self:_animateButton(self.buttons.viewToggle, toggleBtn, self.viewToggleEnabled, dt)
+
+    r = self.menuRect
+    local menuBtn = self.ui:Button("Menu", {
+        id = "hudMenu",
+        draw = ViewUtil.suitButtonDraw,
+        color = BUTTON_COLORS,
+        cornerRadius = cornerRadius,
+        outline = 2,
+        scale = self.buttons.menu.scale,
+    }, r.x, r.y, r.w, r.h)
+    self:_animateButton(self.buttons.menu, menuBtn, true, dt)
 end
 
 function PlayerHudContainerEntity:_drawHandCell(cell, count, isWild)
@@ -400,6 +405,9 @@ function PlayerHudContainerEntity:resize(w, h, _)
     local halfW = math.floor((innerW - pad) / 2)
     self.undoRect = { x = pad, y = y, w = halfW, h = btnH }
     self.secondaryRect = { x = pad + halfW + pad, y = y, w = halfW, h = btnH }
+    y = y + btnH + pad
+
+    self.menuRect = { x = pad, y = y, w = innerW, h = btnH }
 end
 
 return PlayerHudContainerEntity

@@ -1,8 +1,7 @@
 -- Game state (game is being actively played)
--- local PlayerController = require("cloudless_sky.control.player_controller")
-local json = require("cloudless_sky.extern.json")
 local GameRules = require("cloudless_sky.model.game_rules")
 local GameState = require("cloudless_sky.model.game_state")
+local SaveGame = require("cloudless_sky.model.save_game")
 
 local Concord = require("cloudless_sky.extern.concord")
 local Components = require("cloudless_sky.components")
@@ -16,6 +15,7 @@ local PlayerMatEntity = require("cloudless_sky.entities.player_mat_entity")
 local PlayerHudContainerEntity = require("cloudless_sky.entities.player_hud_container")
 local TableAreaEntity = require("cloudless_sky.entities.table_area_entity")
 
+local GameOverStateMachine = require("cloudless_sky.states.game_over_sm")
 local GameRoundStateMachine = require("cloudless_sky.states.game_round_sm")
 local WorldStateMachine = require("cloudless_sky.states.world_sm")
 
@@ -23,13 +23,10 @@ local GameStateMachineMgr = require("cloudless_sky.extern.hump.gamestate")
 
 local game = {}
 
-function game:init()
-    local playerNames = { "lenord", "karoty" }
-    local rules = GameRules.currentRules()
-
-    local seed = (launchOptions and launchOptions.seed) or os.time()
-    Log.info("game seed: " .. tostring(seed) .. " (replay with --seed " .. tostring(seed) .. ")")
-    gameState = GameState(rules, playerNames, love.math.newRandomGenerator(seed), seed)
+--- Build everything for playing \p newGameState: the ECS world and its entities (all drawn from the
+--- model, so this works for a game part way through) and a fresh GameRound state machine
+function game:_setup(newGameState)
+    gameState = newGameState
 
     graphicsState = {
         world = Concord.world(),
@@ -43,8 +40,9 @@ function game:init()
         -- what the camera is looking at (WorldStateMachine.VIEW)
         viewFocus = WorldStateMachine.VIEW.TABLE,
     }
-    for ii = 1, #playerNames do
-        graphicsState.matEntities[ii] = PlayerMatEntity.new(ii, 600, GameRules.matStarTypes(rules))
+    local starTypes = GameRules.matStarTypes(gameState.rules)
+    for ii = 1, gameState:numPlayers() do
+        graphicsState.matEntities[ii] = PlayerMatEntity.new(ii, 600, starTypes)
         graphicsState.world:addEntity(graphicsState.matEntities[ii])
     end
     graphicsState.table = TableAreaEntity.new(gameState, graphicsState.matEntities)
@@ -67,20 +65,47 @@ function game:init()
     end
 
     self.roundSm = GameRoundStateMachine()
+    self.gameOverSm = GameOverStateMachine()
     self.gameOver = false
+    self:_checkGameOver()
 end
 
--- runs every time the state is entered
-function game:enter(from)
-    -- turn finished
-
-    -- if saveGame ~= nil then
-    --     playerControl:deserialize(saveGame["players"][1])
-    -- end
+--- @return GameState a new game
+local function newGame()
+    local playerNames = { "lenord", "karoty" }
+    local rules = GameRules.currentRules()
+    local seed = (launchOptions and launchOptions.seed) or os.time()
+    Log.info("game seed: " .. tostring(seed) .. " (replay with --seed " .. tostring(seed) .. ")")
+    return GameState(rules, playerNames, love.math.newRandomGenerator(seed), seed)
 end
 
-function game:resume(from)
-    -- a round just ended
+function game:init()
+    local loaded = nil
+    if launchOptions and launchOptions.savePath then
+        local reason
+        loaded, reason = SaveGame.readFile(launchOptions.savePath)
+        if loaded then
+            Log.info("loaded " .. launchOptions.savePath)
+        else
+            Log.error("couldn't load " .. launchOptions.savePath .. ": " .. tostring(reason) .. ". starting a new game")
+        end
+    end
+    self:_setup(loaded or newGame())
+end
+
+--- Replace the running game with \p loadedGameState (from SaveGame). Call from any state on top of
+--- this one: they are all popped, then the game carries on from the loaded state
+function game:loadGame(loadedGameState)
+    -- the old round mustn't move its (discarded) game on as its turn is popped
+    self.roundSm.abandoned = true
+    while GameStateMachineMgr.current() ~= self do
+        GameStateMachineMgr.pop()
+    end
+    self:_setup(loadedGameState)
+    Log.info("loaded game: round " .. gameState.round.idx .. ", player " .. gameState.currentTurnPlayer .. "'s turn")
+end
+
+function game:_checkGameOver()
     if gameState:isFinalRound() and gameState:allPlayersPassed() then
         -- TODO: final scoring (star completion, number bonuses, leftover tile penalty)
         Log.info("game over! final scoring is not implemented yet")
@@ -88,10 +113,16 @@ function game:resume(from)
     end
 end
 
+function game:resume(from)
+    if from == self.roundSm then
+        -- a round just ended
+        self:_checkGameOver()
+    end
+end
+
 function game:update(dt)
     if self.gameOver then
-        -- keep the world running (animations, hover) so the final state can be looked at
-        graphicsState.world:emit("update", dt, gameState)
+        GameStateMachineMgr.push(self.gameOverSm, gameState, graphicsState)
         return
     end
     GameStateMachineMgr.push(self.roundSm, gameState, graphicsState)
@@ -99,39 +130,6 @@ end
 
 function game:draw()
     graphicsState.world:emit("draw", gameState)
-end
-
--- events
-
-function game:onSave()
-    local serialized = gameState:serialize()
-    local encoded = json.encode(serialized)
-    local file = io.open("savegamelatest.json", "w")
-    if file then
-        file:write(encoded)
-        file:close()
-        print("Game saved to savegame.json")
-    else
-        print("Failed to save game!")
-    end
-end
-
-function game:mousepressed(x, y, button, istouch)
-    local clickX, clickY = camera:worldCoords(x, y)
-    -- playerControl:mousePressed(clickX, clickY, button, istouch)
-end
-
-function game:keyreleased(key, code)
-    if key == "escape" then
-        self:onSave()
-        love.event.quit(0)
-    elseif key == "space" then
-        spacePressed = true
-    end
-end
-
-function game:resize(w, h)
-    -- playerControl:resize(w, h)
 end
 
 return game

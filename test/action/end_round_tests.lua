@@ -94,7 +94,10 @@ notion("GameState tile sources and beginTurn", function()
     gameState:beginTurn(P2)
     check(gameState.currentTurnPlayer).is(P2)
     check(gameState.turnIdx).is(turnIdx + 1)
-    check(gameState.turnHistoryStart).is(2)
+    -- the BeginTurn is the new turn's undo barrier
+    check(#gameState.actionHistory).is(3)
+    check(gameState.actionHistory[3].name).is("BeginTurn")
+    check(gameState:turnStartIndex()).is(3)
     -- actions from before the turn began can't be undone
     check(gameState:canUndoChoice()).is(false)
 end)

@@ -45,6 +45,7 @@ function Player:serialize()
         hand = self.hand:serialize(),
         score = self.score,
         name = self.playerName,
+        passedForPhase = self.passedForPhase,
     }
 end
 

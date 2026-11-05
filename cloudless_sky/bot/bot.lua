@@ -5,13 +5,17 @@
 ---     - the model invariants (cloudless_sky/model/invariants.lua)
 ---     - when the table isn't animating: the table's visual state matches the model
 ---     - progress: something must happen every STALL_TIMEOUT_S (catches stuck state machines)
+--- At the start of every round and at the end of the game it checks the game saves and loads back
+--- exactly (SaveGame through json: replaying the history from the seed gives the same game)
 --- Exit codes: 0 = game finished, every check held. 1 = a check failed. 2 = timed out. 3 = Lua error.
 ---
 --- Runs are repeatable: the game's rng, the view's randomness and the bot's choices all follow the
 --- seed. The final line prints the seed and a digest of the final game state; the same seed should
 --- always give the same digest.
 local GameStateMachineMgr = require("cloudless_sky.extern.hump.gamestate")
+local Canonical = require("cloudless_sky.model.canonical")
 local Invariants = require("cloudless_sky.model.invariants")
+local SaveGame = require("cloudless_sky.model.save_game")
 local TableAreaEntity = require("cloudless_sky.entities.table_area_entity")
 local TileType = require("cloudless_sky.model.tile_type")
 
@@ -40,41 +44,13 @@ end
 -- digest: a canonical (key-sorted) string of the serialized game state, hashed
 --------------------------------------------------------------------------------
 
-local function canonical(value, parts)
-    local kind = type(value)
-    if kind ~= "table" then
-        table.insert(parts, kind:sub(1, 1) .. tostring(value))
-        return
-    end
-    local keys = {}
-    for k in pairs(value) do
-        table.insert(keys, k)
-    end
-    table.sort(keys, function(a, b)
-        return tostring(a) < tostring(b)
-    end)
-    table.insert(parts, "{")
-    for _, k in ipairs(keys) do
-        table.insert(parts, tostring(k) .. "=")
-        canonical(value[k], parts)
-        table.insert(parts, ",")
-    end
-    table.insert(parts, "}")
-end
-
 --- @return string hex digest of everything serialized for \p gameState, plus its action history
 function Bot.digest(gameState)
-    local parts = {}
-    canonical(gameState:serialize(), parts)
+    local parts = { Canonical.encode(gameState:serialize()) }
     for _, action in ipairs(gameState.actionHistory) do
-        canonical(action:serialize(), parts)
+        table.insert(parts, Canonical.encode(action:serialize()))
     end
-    local str = table.concat(parts)
-    local hash = 5381
-    for ii = 1, #str do
-        hash = (hash * 33 + str:byte(ii)) % 4294967296
-    end
-    return string.format("%08x", hash)
+    return Canonical.hash(table.concat(parts))
 end
 
 --------------------------------------------------------------------------------
@@ -272,6 +248,19 @@ end
 -- driver
 --------------------------------------------------------------------------------
 
+--- Fail the run unless the game survives a save + load unchanged
+function Bot:checkSaveRoundTrip()
+    local restored, reason = SaveGame.decode(SaveGame.encode(gameState))
+    if not restored then
+        self:fail("save/load: " .. tostring(reason))
+        return
+    end
+    local expected, actual = Bot.digest(gameState), Bot.digest(restored)
+    if actual ~= expected then
+        self:fail("save/load: restored game digest " .. actual .. " ~= " .. expected)
+    end
+end
+
 function Bot:fail(msg)
     if self.done then
         return
@@ -366,6 +355,10 @@ function Bot:update(realDt)
     if gameState.round.idx ~= self.round then
         self.round = gameState.round.idx
         out("round " .. self.round .. " (wild " .. tostring(gameState:getCurrentWildType()) .. ")")
+        self:checkSaveRoundTrip()
+        if self.done then
+            return
+        end
     end
 
     self:check()
@@ -373,6 +366,10 @@ function Bot:update(realDt)
         return
     end
     if game.gameOver then
+        self:checkSaveRoundTrip()
+        if self.done then
+            return
+        end
         self:finish()
         return
     end

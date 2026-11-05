@@ -39,7 +39,8 @@ function TilePlacementTurnStateMachine:onEnter()
     self.placeDialog = nil
     self.passEndTimer = 0
     self:setViewFocus(WorldStateMachine.VIEW.MAT)
-    self:_setState(self.STATES.WAIT_FOR_PLACEMENT)
+    -- usually WAIT_FOR_PLACEMENT. Not when resuming a turn from a loaded save game
+    self:_setState(self:stateFromHistory())
     Log.trace("entering PlacementTurnSM for " .. tostring(self.playerIdx))
 end
 
@@ -53,15 +54,21 @@ function TilePlacementTurnStateMachine:hudButtons(state)
 end
 
 --- @return integer state The turn state implied by the actions taken so far this turn.
----     Used after an undo so the state machine doesn't need to know what was undone
+---     Used after an undo so the state machine doesn't need to know what was undone, and when
+---     resuming a turn from a loaded save game
 function TilePlacementTurnStateMachine:stateFromHistory()
     -- TODO: once bonuses exist, return CLAIM_BONUS while the player has pending bonus picks
-    for ii = self.gameState.turnHistoryStart + 1, #self.gameState.actionHistory do
-        if self.gameState.actionHistory[ii].name == "PlaceTile" then
-            return self.STATES.WAIT_FOR_END
+    local placed = false
+    for ii = self.gameState:turnStartIndex() + 1, #self.gameState.actionHistory do
+        local name = self.gameState.actionHistory[ii].name
+        if name == "Pass" then
+            -- passing ends the turn (passEndTimer is 0 unless _pass just set it)
+            return self.STATES.PASSING
+        elseif name == "PlaceTile" then
+            placed = true
         end
     end
-    return self.STATES.WAIT_FOR_PLACEMENT
+    return placed and self.STATES.WAIT_FOR_END or self.STATES.WAIT_FOR_PLACEMENT
 end
 
 function TilePlacementTurnStateMachine:onUpdate(dt)

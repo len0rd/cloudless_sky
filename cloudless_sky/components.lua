@@ -75,6 +75,7 @@ Components.mouseHandler = {
         tableTileClicked = 8,
         pickUpClicked = 9,
         toggleViewClicked = 10,
+        menuClicked = 11,
     },
 }
 

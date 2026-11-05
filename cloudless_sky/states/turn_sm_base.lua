@@ -92,6 +92,8 @@ end
 function TurnStateMachine:keyreleased(key, code)
     if key == "space" then
         self.endTurnRequested = true
+    else
+        WorldStateMachine.keyreleased(self, key, code)
     end
 end
 

@@ -37,7 +37,7 @@ function TileSelectionTurnStateMachine:hudButtons(state)
 end
 
 function TileSelectionTurnStateMachine:stateFromHistory()
-    for ii = self.gameState.turnHistoryStart + 1, #self.gameState.actionHistory do
+    for ii = self.gameState:turnStartIndex() + 1, #self.gameState.actionHistory do
         if self.gameState.actionHistory[ii].name == "TakeTiles" then
             return self.STATES.WAIT_FOR_END
         end

@@ -9,6 +9,11 @@
         "love",
     ],
     "[lua]": {
+        "editor.quickSuggestions": {
+            "comments": "off",
+            "other": "on",
+            "strings": "on"
+        },
         "editor.defaultFormatter": "JohnnyMorganz.stylua"
     },
     "[python]": {

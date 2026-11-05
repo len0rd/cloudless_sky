@@ -5,6 +5,9 @@
 ---     4. round end upkeep (EndRoundAction), then pop back to the Game. After the final round there
 ---        is no upkeep: the game is over
 --- Turns are pushed on top of this state machine. When one pops, resume moves to the next player.
+---
+--- Entering also resumes a round part way through (a loaded save game): where the round is comes from
+--- the model and its history, so nothing is performed twice.
 local WorldStateMachine = require("cloudless_sky.states.world_sm")
 local GameStateMachineMgr = require("cloudless_sky.extern.hump.gamestate")
 
@@ -38,9 +41,23 @@ local function performGameAction(gameState, action)
     return performed
 end
 
+--- @return integer|nil index in the action history of this round's FillFactoryDisplays. nil if the
+---     displays haven't been filled yet this round
+local function roundFillIndex(gameState)
+    local history = gameState.actionHistory
+    for ii = #history, 1, -1 do
+        local name = history[ii].name
+        if name == "FillFactoryDisplays" then
+            return ii
+        elseif name == "EndRound" then
+            return nil
+        end
+    end
+    return nil
+end
+
 function GameRoundStateMachine:enter(fromState, gameState, graphicsState)
     self:_bind(gameState, graphicsState)
-    Log.info("starting round " .. gameState.round.idx .. " (wild: " .. tostring(gameState:getCurrentWildType()) .. ")")
 
     -- no turn yet: nothing for the HUD buttons to do
     local hud = graphicsState.hud.container
@@ -49,6 +66,13 @@ function GameRoundStateMachine:enter(fromState, gameState, graphicsState)
     hud:setUndoEnabled(false)
     self:setViewFocus(WorldStateMachine.VIEW.TABLE)
 
+    local fillIdx = roundFillIndex(gameState)
+    if fillIdx then
+        self:_resumeRound(fillIdx)
+        return
+    end
+
+    Log.info("starting round " .. gameState.round.idx .. " (wild: " .. tostring(gameState:getCurrentWildType()) .. ")")
     self.state = self.STATES.FILLING
     self.fillDone = false
     local performed = performGameAction(gameState, FillFactoryDisplaysAction())
@@ -57,8 +81,28 @@ function GameRoundStateMachine:enter(fromState, gameState, graphicsState)
     end)
 end
 
+--- Pick a round back up part way through (a loaded save game). The view was built from the model,
+--- so only the state machine needs to catch up
+--- @param fillIdx integer history index of this round's FillFactoryDisplays
+function GameRoundStateMachine:_resumeRound(fillIdx)
+    local gameState = self.gameState
+    Log.info("resuming round " .. gameState.round.idx .. " (wild: " .. tostring(gameState:getCurrentWildType()) .. ")")
+    if gameState.round.phase == gameState.RoundPhase.TILE_PLACEMENT then
+        self.state = self.STATES.PLACEMENT
+        return
+    end
+    self.state = self.STATES.SELECTION
+    if gameState:turnStartIndex() == fillIdx then
+        -- saved while the fill was animating: the first turn hadn't begun yet (see FILLING in update)
+        gameState:beginTurn(gameState.startPlayer)
+    end
+end
+
 function GameRoundStateMachine:resume(fromState)
-    -- a turn just ended
+    -- only a turn ending moves the game on. Not eg: the menu closing, or a load replacing this game
+    if self.abandoned or (fromState ~= self.selectionTurn and fromState ~= self.placementTurn) then
+        return
+    end
     self.gameState:incrementTurn()
 end
 

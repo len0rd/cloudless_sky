@@ -95,8 +95,11 @@ function Invariants.check(gameState)
     if gameState.round.idx < 1 or gameState.round.idx > numRounds then
         fail("round " .. tostring(gameState.round.idx) .. " is outside 1.." .. numRounds)
     end
-    if gameState.turnHistoryStart < 0 or gameState.turnHistoryStart > #gameState.actionHistory then
-        fail("turnHistoryStart " .. gameState.turnHistoryStart .. " is outside the action history")
+    -- undo stops at barriers, so one performed as a follow-up could be undone with its parent choice
+    for ii, action in ipairs(gameState.actionHistory) do
+        if action.undoBarrier and action.isFollowUp then
+            fail("undo barrier " .. action.name .. " (history " .. ii .. ") was performed as a follow-up")
+        end
     end
 
     -- phase rules

@@ -9,8 +9,6 @@ local GameStateMachineMgr = require("cloudless_sky.extern.hump.gamestate")
 -- TODO: better storage/access method?
 fonts = {}
 
-saveGame = nil
-
 -- options from the command line (see parseLaunchOptions)
 launchOptions = {}
 
@@ -21,6 +19,7 @@ launchOptions = {}
 ---                     (exit code 0 = game finished with no problems). See cloudless_sky/bot/bot.lua
 ---     --bot-speed N   game speed multiplier while the bot plays (default 4)
 ---     --anim-speed N  animation speed multiplier (default 1, 0 = animations off). See cloudless_sky/anim.lua
+---     <path>.json     load a save game (see cloudless_sky/model/save_game.lua) instead of starting a new game
 local function parseLaunchOptions(args)
     local options = { bot = false, botSpeed = 4 }
     for ii, v in ipairs(args) do
@@ -32,6 +31,8 @@ local function parseLaunchOptions(args)
             options.animSpeed = assert(tonumber(args[ii + 1]), "--anim-speed requires a number")
         elseif v == "--bot-speed" then
             options.botSpeed = assert(tonumber(args[ii + 1]), "--bot-speed requires a number")
+        elseif v:find("%.json$") and not options.savePath then
+            options.savePath = v
         end
     end
     return options
@@ -56,22 +57,6 @@ function love.load(args)
     launchOptions = parseLaunchOptions(args)
     -- TODO: load from user settings once they exist
     require("cloudless_sky.anim").setSpeed(launchOptions.animSpeed or 1)
-
-    -- load save game if passed as an arg
-    for _, v in ipairs(args) do
-        if string.find(v, "%.json") then
-            local json = require("cloudless_sky.extern.json")
-            local file = io.open(v, "r")
-            if file then
-                local contents = file:read("*a")
-                file:close()
-                saveGame = json.decode(contents)
-            else
-                Log.error("Could not open JSON file:", v)
-            end
-            break
-        end
-    end
 
     love.graphics.setBackgroundColor(0.2, 0.2, 0.2)
 

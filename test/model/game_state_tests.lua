@@ -99,11 +99,11 @@ notion("undoLastChoice can't undo previous turns", function()
 
     gameState:incrementTurn()
     check(gameState.turnIdx).is(2)
-    check(gameState.turnHistoryStart).is(#gameState.actionHistory)
+    check(gameState:turnStartIndex()).is(#gameState.actionHistory)
     check(gameState:canUndoChoice()).is(false)
     check(gameState:undoLastChoice()).is(nil)
-    -- previous turn's placement is untouched
-    check(#gameState.actionHistory).is(2)
+    -- previous turn's placement (PlaceTile, AddScore) is untouched, followed by the BeginTurn
+    check(#gameState.actionHistory).is(3)
     check(gameState.players[P1]:isSlotOccupied(PURPLE_STAR, 1)).is(true)
 end)
 

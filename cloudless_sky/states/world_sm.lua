@@ -6,6 +6,8 @@ local Object = require("cloudless_sky.extern.classic")
 local Components = require("cloudless_sky.components")
 local BoxedViewSys = require("cloudless_sky.systems.boxed_view")
 local MousePressedSys = require("cloudless_sky.systems.mouse_pressed")
+local GameStateMachineMgr = require("cloudless_sky.extern.hump.gamestate")
+local MenuState = require("cloudless_sky.states.menu_state")
 
 ---@class WorldStateMachine : Object
 ---@field gameState GameState
@@ -73,11 +75,20 @@ function WorldStateMachine:pendingClick()
     return entity.mouseHandler.clickEvent, entity
 end
 
+--- Open the in-game menu on top of this state machine (pausing it)
+function WorldStateMachine:openMenu()
+    GameStateMachineMgr.push(MenuState, self.gameState)
+end
+
 --- Handle click events every world state machine treats the same way
 --- @return boolean handled
 function WorldStateMachine:handleCommonClick(pressCtx)
-    if pressCtx.type == Components.mouseHandler.eventTypes.toggleViewClicked then
+    local eventTypes = Components.mouseHandler.eventTypes
+    if pressCtx.type == eventTypes.toggleViewClicked then
         self:toggleViewFocus()
+        return true
+    elseif pressCtx.type == eventTypes.menuClicked then
+        self:openMenu()
         return true
     end
     return false
@@ -100,6 +111,12 @@ end
 function WorldStateMachine:mousepressed(x, y, button, istouch)
     self.graphicsState.world:emit("mousepressed", x, y, button, istouch)
     self.mouseClicked = true
+end
+
+function WorldStateMachine:keyreleased(key, code)
+    if key == "escape" then
+        self:openMenu()
+    end
 end
 
 function WorldStateMachine:resize(w, h)
