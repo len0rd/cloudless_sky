@@ -59,11 +59,12 @@ function PlayerHudContainerEntity.new()
     entity.viewToggleEnabled = false
     entity.viewToggleLabel = "Table"
     entity.buttons = {
-        done = { scale = 1.0, hoverTween = nil },
-        pass = { scale = 1.0, hoverTween = nil },
-        undo = { scale = 1.0, hoverTween = nil },
-        viewToggle = { scale = 1.0, hoverTween = nil },
-        menu = { scale = 1.0, hoverTween = nil },
+        -- pulse: run the hover pulse even when the button isn't hovered
+        done = { scale = 1.0, hoverTween = nil, pulse = false },
+        pass = { scale = 1.0, hoverTween = nil, pulse = false },
+        undo = { scale = 1.0, hoverTween = nil, pulse = false },
+        viewToggle = { scale = 1.0, hoverTween = nil, pulse = false },
+        menu = { scale = 1.0, hoverTween = nil, pulse = false },
     }
 
     -- data cached from gameState during update for use in draw
@@ -87,6 +88,8 @@ end
 --- Enable/disable the done button. Controlled by the turn state machine
 function PlayerHudContainerEntity:setDoneEnabled(enabled)
     self.doneEnabled = enabled
+    -- pulse the done button so its obvious when its enabled
+    self.buttons.done.pulse = enabled
     if not enabled then
         self.buttons.done.scale = 1.0
         self.buttons.done.hoverTween = nil
@@ -140,7 +143,9 @@ function PlayerHudContainerEntity:mousePressed(cameraX, cameraY, worldX, worldY,
             self.viewToggleEnabled and ViewUtil.ptInRect(cameraX, cameraY, toggle.x, toggle.y, toggle.w, toggle.h)
         then
             self.mouseHandler.clickEvent = { type = Components.mouseHandler.eventTypes.toggleViewClicked }
-        elseif ViewUtil.ptInRect(cameraX, cameraY, self.menuRect.x, self.menuRect.y, self.menuRect.w, self.menuRect.h) then
+        elseif
+            ViewUtil.ptInRect(cameraX, cameraY, self.menuRect.x, self.menuRect.y, self.menuRect.w, self.menuRect.h)
+        then
             -- always enabled
             self.mouseHandler.clickEvent = { type = Components.mouseHandler.eventTypes.menuClicked }
         end
@@ -161,21 +166,21 @@ function PlayerHudContainerEntity:_btnHoverTween(btnCtx)
         end)
 end
 
---- Handle hover-pulse animation for a button
+--- Handle the pulse animation for a button
 function PlayerHudContainerEntity:_animateButton(btnCtx, btnState, enabled, dt)
     if not enabled then
         return
     end
-    -- hover pulse is a looping idle animation: none when animations are off
-    if btnState.entered and not Anim.isOff() then
-        btnCtx.hoverTween = flux.group()
-        self:_btnHoverTween(btnCtx)
-    end
-    if btnState.hovered then
+    if btnState.hovered or btnCtx.pulse then
+        -- the pulse is a looping idle animation: none when animations are off
+        if not btnCtx.hoverTween and not Anim.isOff() then
+            btnCtx.hoverTween = flux.group()
+            self:_btnHoverTween(btnCtx)
+        end
         if btnCtx.hoverTween then
             btnCtx.hoverTween:update(dt)
         end
-    elseif btnState.left then
+    elseif btnCtx.hoverTween then
         btnCtx.scale = 1.0
         btnCtx.hoverTween = nil
     end
@@ -390,8 +395,7 @@ function PlayerHudContainerEntity:resize(w, h, _)
     y = y + numRows * cellH + numRows * halfPad
 
     self.buttonDividerY = y + 0.5
-    local handGridBtm  = y + pad
-    
+
     -- UI buttons: aligned to bottom
     local btnH = math.floor(h * BUTTON_ROW_H)
     y = self.boundingBox.h - ((btnH + pad) * NUM_BUTTON_ROWS)
