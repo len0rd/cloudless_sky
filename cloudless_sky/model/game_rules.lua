@@ -148,6 +148,22 @@ GameRules.DEFAULTS.BASE_GAME_MONO_RULES.playerMat.stars = {
     },
 }
 
+--- Rule sets a new game can be started with (the New Game menu), in display order
+GameRules.PRESETS = {
+    { id = "base", label = "Base", rules = GameRules.DEFAULTS.BASE_GAME_RULES },
+    { id = "mono", label = "Mono Stars", rules = GameRules.DEFAULTS.BASE_GAME_MONO_RULES },
+}
+
+--- @return table|nil preset the entry of GameRules.PRESETS with id \p id
+function GameRules.preset(id)
+    for _, preset in ipairs(GameRules.PRESETS) do
+        if preset.id == id then
+            return preset
+        end
+    end
+    return nil
+end
+
 function GameRules.currentRules()
     if not CurrentGameRules then
         CurrentGameRules = GameRules.DEFAULTS.BASE_GAME_RULES

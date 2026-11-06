@@ -42,6 +42,9 @@ Save location:
 
 Start from a save game at startup with: `love . path/to/savegame.json`
 
+A plain `love .` opens on the main menu (Continue loads the save above). `--seed`, `--bot` or a save
+path skip the menu and go straight into a game.
+
 Test saves in [test/saves](test/saves):
 
 - `refill_on_next_fill.json`: 4 players, at the start of round 4 with 14 tiles in the bag and 64 in the

@@ -12,7 +12,8 @@ fonts = {}
 -- options from the command line (see parseLaunchOptions)
 launchOptions = {}
 
---- Command line options:
+--- Command line options. With none of --seed, --bot or a save path the app opens on the main menu;
+--- with any of them it goes straight into a game:
 ---     --seed N        seed for the game's random generator. Defaults to the current time. The seed is
 ---                     saved in the game state so a game can be recreated
 ---     --bot           play the game automatically, checking invariants every frame, then exit
@@ -36,6 +37,29 @@ local function parseLaunchOptions(args)
         end
     end
     return options
+end
+
+--- The game to go straight into, skipping the main menu, when the command line asks for one (--bot,
+--- --seed or a save path)
+--- @return GameState|nil gameState nil: show the main menu
+local function launchGameState(options)
+    if not (options.bot or options.seed or options.savePath) then
+        return nil
+    end
+    if options.savePath then
+        local SaveGame = require("cloudless_sky.model.save_game")
+        local loaded, reason = SaveGame.readFile(options.savePath)
+        if loaded then
+            Log.info("loaded " .. options.savePath)
+            return loaded
+        end
+        Log.error("couldn't load " .. options.savePath .. ": " .. tostring(reason) .. ". starting a new game")
+    end
+    -- the bot's digests depend on these names (they're in the game state)
+    return require("cloudless_sky.model.game_setup").newGameState({
+        playerNames = { "lenord", "karoty" },
+        seed = options.seed,
+    })
 end
 
 -- global X,Y of where we want the camera centered
@@ -84,7 +108,12 @@ function love.load(args)
     -- GAMESTATE
     game = require("cloudless_sky.states.game")
     GameStateMachineMgr.registerEvents()
-    GameStateMachineMgr.switch(game)
+    local launchGame = launchGameState(launchOptions)
+    if launchGame then
+        GameStateMachineMgr.switch(game, launchGame)
+    else
+        GameStateMachineMgr.switch(require("cloudless_sky.states.main_menu_state"))
+    end
 
     if launchOptions.bot then
         require("cloudless_sky.bot.bot").install(launchOptions)

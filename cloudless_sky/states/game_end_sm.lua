@@ -272,17 +272,9 @@ function GameEndStateMachine:_drawTitle()
 
     -- centered in the space right of the HUD
     local left = self.graphicsState.hud.container.boundingBox.w
-    local text = "Game Over"
     local boxW, boxH = (w - left) * TITLE_W, h * 0.3
-    -- larger than the biggest pixel font: scale it up by a whole number so it stays crisp (fonts use
-    -- nearest filtering)
-    local font = fonts.ithacaBySize[1]
-    local scale = math.max(1, math.floor(math.min(boxW / font:getWidth(text), boxH / font:getHeight())))
-    local textW, textH = font:getWidth(text) * scale, font:getHeight() * scale
-    local x = math.floor(left + ((w - left) - textW) / 2)
-    local y = math.floor((h - textH) / 2)
     love.graphics.setColor(TITLE_COLOR[1], TITLE_COLOR[2], TITLE_COLOR[3], alpha)
-    love.graphics.print(text, font, x, y, 0, scale, scale)
+    ViewUtil.printScaledPixelText("Game Over", left + ((w - left) - boxW) / 2, (h - boxH) / 2, boxW, boxH)
 end
 
 function GameEndStateMachine:_drawBonusPanel()
@@ -440,10 +432,13 @@ function GameEndStateMachine:mousepressed(x, y, button, istouch)
     if self.state == self.STATES.FINAL_SCORES and button == 1 and self.final then
         local f = self.final
         if ViewUtil.ptInRect(x, y, f.newGame.x, f.newGame.y, f.newGame.w, f.newGame.h) then
-            game:newGame()
+            -- TODO: the New Game menu
+            local GameSetup = require("cloudless_sky.model.game_setup")
+            game:_replaceGame(GameSetup.newGameState({ playerNames = GameSetup.defaultNames(2) }))
             return
         elseif ViewUtil.ptInRect(x, y, f.exit.x, f.exit.y, f.exit.w, f.exit.h) then
-            love.event.quit(0)
+            -- required here, not at the top: the menus lead back into the game (require cycle)
+            game:leaveTo(require("cloudless_sky.states.main_menu_state"))
             return
         end
     end

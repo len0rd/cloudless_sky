@@ -1,7 +1,8 @@
--- Game state (game is being actively played)
+-- Game state (game is being actively played). Entered with the game to play:
+--     GameStateMachineMgr.switch(game, gameState)
+-- (from main.lua at launch, the main menu's Continue or the New Game menu). game:leaveTo goes back
+-- to the menus
 local GameRules = require("cloudless_sky.model.game_rules")
-local GameState = require("cloudless_sky.model.game_state")
-local SaveGame = require("cloudless_sky.model.save_game")
 
 local Concord = require("cloudless_sky.extern.concord")
 local Components = require("cloudless_sky.components")
@@ -70,50 +71,39 @@ function game:_setup(newGameState)
     self:_checkGameOver()
 end
 
---- @param seed integer|nil seed for the game's rng. Defaults to the time
---- @return GameState a new game
-local function newGame(seed)
-    local playerNames = { "lenord", "karoty" }
-    local rules = GameRules.currentRules()
-    seed = seed or os.time()
-    Log.info("game seed: " .. tostring(seed) .. " (replay with --seed " .. tostring(seed) .. ")")
-    return GameState(rules, playerNames, love.math.newRandomGenerator(seed), seed)
+--- @param newGameState GameState the game to play (new, or part way through: a loaded save)
+function game:enter(from, newGameState)
+    assert(newGameState, "the game state needs a game to play")
+    self:_setup(newGameState)
 end
 
-function game:init()
-    local loaded = nil
-    if launchOptions and launchOptions.savePath then
-        local reason
-        loaded, reason = SaveGame.readFile(launchOptions.savePath)
-        if loaded then
-            Log.info("loaded " .. launchOptions.savePath)
-        else
-            Log.error("couldn't load " .. launchOptions.savePath .. ": " .. tostring(reason) .. ". starting a new game")
-        end
-    end
-    self:_setup(loaded or newGame(launchOptions and launchOptions.seed))
-end
-
---- Replace the running game with \p newGameState. Call from any state on top of this one: they are all
---- popped, then the game carries on from \p newGameState
-function game:_replaceGame(newGameState)
+--- Pop every state machine above this one (from any of them), abandoning the running game's round
+function game:_popToGame()
     -- the old round mustn't move its (discarded) game on as its turn is popped
     self.roundSm.abandoned = true
     while GameStateMachineMgr.current() ~= self do
         GameStateMachineMgr.pop()
     end
+end
+
+--- Replace the running game with \p newGameState. Call from any state on top of this one: they are all
+--- popped, then the game carries on from \p newGameState
+function game:_replaceGame(newGameState)
+    self:_popToGame()
     self:_setup(newGameState)
+end
+
+--- Leave the game for \p state (eg: the main menu). Call from any state on top of this one: they are
+--- all popped first. Extra arguments go to \p state's enter
+function game:leaveTo(state, ...)
+    self:_popToGame()
+    GameStateMachineMgr.switch(state, ...)
 end
 
 --- Replace the running game with \p loadedGameState (from SaveGame)
 function game:loadGame(loadedGameState)
     self:_replaceGame(loadedGameState)
     Log.info("loaded game: round " .. gameState.round.idx .. ", player " .. gameState.currentTurnPlayer .. "'s turn")
-end
-
---- Start a new game (fresh seed), replacing the running one
-function game:newGame()
-    self:_replaceGame(newGame())
 end
 
 function game:_checkGameOver()

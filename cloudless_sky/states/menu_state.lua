@@ -1,5 +1,5 @@
 --- In-game menu: a screen-centered dialog with Save, Load, End Game Bonus (a reference of the end-game
---- bonuses, see BonusReferenceState) and Exit.
+--- bonuses, see BonusReferenceState) and Exit (saves the game, then goes to the main menu).
 ---
 --- Pushed on top of whatever state machine is running (the HUD Menu button or Escape). The game is
 --- paused while it's open: only the top state gets updates, so play, animations and tweens below it
@@ -73,6 +73,19 @@ function MenuState:_load()
     game:loadGame(gameState)
 end
 
+--- Save the game (so the main menu's Continue picks it back up), then go to the main menu. If the
+--- save fails, stay: the game would be lost
+function MenuState:_exit()
+    local saved, reason = SaveGame.writeFile(self.gameState)
+    if not saved then
+        Log.error("save on exit failed: " .. tostring(reason))
+        self:_setStatus("Couldn't save, not exiting: " .. tostring(reason), true)
+        return
+    end
+    -- required here, not at the top: the menus lead back into the game (require cycle)
+    game:leaveTo(require("cloudless_sky.states.main_menu_state"))
+end
+
 function MenuState:_enabled(id)
     return id ~= "load" or self.canLoad
 end
@@ -138,7 +151,7 @@ function MenuState:mousepressed(x, y, button)
             elseif b.id == "bonuses" then
                 GameStateMachineMgr.push(BonusReferenceState, self.gameState.rules)
             elseif b.id == "exit" then
-                love.event.quit(0)
+                self:_exit()
             end
             return
         end
@@ -167,12 +180,12 @@ function MenuState:resize(w, h)
     self.rowH = rowH
     self.panel = { x = x, y = y, w = panelW, h = panelH }
     self.titleRect = { x = x + pad, y = y + pad, w = innerW, h = rowH }
-    local rowY = y + pad + rowH + pad
+    local column = ViewUtil.buttonColumn(x + pad, y + pad + rowH + pad, innerW, rowH, pad, #BUTTONS)
     self.buttonRects = {}
-    for _, button in ipairs(BUTTONS) do
-        self.buttonRects[button.id] = { x = x + pad, y = rowY, w = innerW, h = rowH }
-        rowY = rowY + rowH + pad
+    for ii, button in ipairs(BUTTONS) do
+        self.buttonRects[button.id] = column[ii]
     end
+    local rowY = column[#column].y + rowH + pad
     self.statusRect = { x = x + pad, y = rowY, w = innerW, h = 2 * rowH - pad }
 end
 

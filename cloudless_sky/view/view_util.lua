@@ -229,6 +229,26 @@ function ViewUtil.printPixelText(text, font, x, y, w, h, align)
     love.graphics.printf(text, font, math.floor(x + 0.5), math.floor(textY + 0.5), math.floor(w), align or "center")
 end
 
+--- Print \p text as large as fits centered in the rect (x, y, w, h), bigger than the biggest pixel
+--- font if there's room: scaled up by a whole number so it stays crisp (fonts use nearest filtering).
+--- Color must be set by the caller
+function ViewUtil.printScaledPixelText(text, x, y, w, h)
+    local font = fonts.ithacaBySize[1]
+    local scale = math.max(1, math.floor(math.min(w / font:getWidth(text), h / font:getHeight())))
+    local textW, textH = font:getWidth(text) * scale, font:getHeight() * scale
+    love.graphics.print(text, font, math.floor(x + (w - textW) / 2), math.floor(y + (h - textH) / 2), 0, scale, scale)
+end
+
+--- @return table[] \p n rects {x, y, w, h} of a column of buttons \p w wide and \p rowH tall, from
+---     (x, y) down, \p pad apart
+function ViewUtil.buttonColumn(x, y, w, rowH, pad, n)
+    local rects = {}
+    for ii = 1, n do
+        rects[ii] = { x = x, y = y + (ii - 1) * (rowH + pad), w = w, h = rowH }
+    end
+    return rects
+end
+
 --- Print \p text fitted into the world rect (worldX, worldY, worldW, worldH), in screen space so the
 --- pixel font stays crisp (call from a drawScreen, see DrawSys). Uses the global camera
 --- @param color table|nil defaults to white
