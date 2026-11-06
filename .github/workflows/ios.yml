@@ -38,6 +38,11 @@ jobs:
           python ios/make_icons.py
           unzip -l build/love/CloudlessSky.love | grep -q cloudless_sky/extern/suit/init.lua
 
+      # love-actions-ios runs an unpinned `npm i plist xcode ...` then require()s them, but plist 5 is
+      # ESM only. npm keeps these versions as they're already in package.json by then
+      - name: Pin npm packages for love-actions-ios
+        run: npm i --save-exact plist@3.1.1 xcode@4.0.0
+
       # pinned to the commit of v1.1.3, as this third party action receives the signing secrets
       - name: Build and upload to TestFlight
         uses: love-actions/love-actions-ios@5828881a1f03277e78cb856376ea533bb9689dbc
