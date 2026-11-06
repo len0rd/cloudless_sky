@@ -1,8 +1,8 @@
 --- The main menu, shown when the app opens (see main.lua) and after leaving a game: "Cloudless Sky"
 --- on a sky gradient, with Continue (only if there's a save), New Game and Quit.
 local GameStateMachineMgr = require("cloudless_sky.extern.hump.gamestate")
-local GameSetup = require("cloudless_sky.model.game_setup")
 local MenuBackground = require("cloudless_sky.view.menu_background")
+local NewGameState = require("cloudless_sky.states.new_game_state")
 local SaveGame = require("cloudless_sky.model.save_game")
 local UiStyle = require("cloudless_sky.view.ui_style")
 local ViewUtil = require("cloudless_sky.view.view_util")
@@ -51,8 +51,7 @@ function MainMenuState:_continue()
 end
 
 function MainMenuState:_newGame()
-    -- TODO: the New Game menu
-    GameStateMachineMgr.switch(game, GameSetup.newGameState({ playerNames = GameSetup.defaultNames(2) }))
+    GameStateMachineMgr.switch(NewGameState)
 end
 
 function MainMenuState:update(dt)

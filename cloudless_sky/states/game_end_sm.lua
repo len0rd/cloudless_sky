@@ -6,7 +6,8 @@
 ---                       the stars/slots that earned each one pulse
 ---     4. PLAYER_TOTAL:  the total is scored (ScoreEndGameAction): the HUD score counts up. Then the
 ---                       next player, or:
----     5. FINAL_SCORES:  a table of every player's scores, the winner(s), and New Game / Exit buttons
+---     5. FINAL_SCORES:  a table of every player's scores, the winner(s), and New Game (the New Game
+---                       menu) / Exit (the main menu) buttons
 --- The HUD's turn buttons are disabled throughout. The menu and the view toggle still work.
 ---
 --- Where to start comes from the model, so a loaded save resumes where it was: players already scored
@@ -432,9 +433,8 @@ function GameEndStateMachine:mousepressed(x, y, button, istouch)
     if self.state == self.STATES.FINAL_SCORES and button == 1 and self.final then
         local f = self.final
         if ViewUtil.ptInRect(x, y, f.newGame.x, f.newGame.y, f.newGame.w, f.newGame.h) then
-            -- TODO: the New Game menu
-            local GameSetup = require("cloudless_sky.model.game_setup")
-            game:_replaceGame(GameSetup.newGameState({ playerNames = GameSetup.defaultNames(2) }))
+            -- required here, not at the top: the menus lead back into the game (require cycle)
+            game:leaveTo(require("cloudless_sky.states.new_game_state"))
             return
         elseif ViewUtil.ptInRect(x, y, f.exit.x, f.exit.y, f.exit.w, f.exit.h) then
             -- required here, not at the top: the menus lead back into the game (require cycle)
