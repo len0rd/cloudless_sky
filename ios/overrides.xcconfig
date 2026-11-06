@@ -1,0 +1,3 @@
+// Applied to every target through XCODE_XCCONFIG_FILE in .github/workflows/ios.yml
+// love-actions-ios hardcodes iOS 12.0, which App Store Connect rejects. It requires 15.0+ from April 2027
+IPHONEOS_DEPLOYMENT_TARGET = 15.0

@@ -18,6 +18,8 @@ jobs:
     # they fail to launch, and LÖVE 11.5 predates it
     runs-on: macos-26
     timeout-minutes: 60
+    env:
+      XCODE_XCCONFIG_FILE: ${{ github.workspace }}/ios/overrides.xcconfig
     steps:
       - uses: actions/checkout@v5
         with:
