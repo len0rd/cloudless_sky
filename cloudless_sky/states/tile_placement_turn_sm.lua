@@ -3,6 +3,10 @@ local TurnStateMachine = require("cloudless_sky.states.turn_sm_base")
 local WorldStateMachine = require("cloudless_sky.states.world_sm")
 
 local Anim = require("cloudless_sky.anim")
+local BonusPickup = require("cloudless_sky.model.bonus_pickup")
+local BonusPickupEntity = require("cloudless_sky.entities.bonus_pickup_entity")
+local MatBonus = require("cloudless_sky.model.mat_bonus")
+local TakeBonusTilesAction = require("cloudless_sky.action.take_bonus_tiles")
 local Components = require("cloudless_sky.components")
 local PlaceTileDialogEntity = require("cloudless_sky.entities.place_tile_dialog_entity")
 local PlaceTileLackingDialogEntity = require("cloudless_sky.entities.place_tile_lacking_dialog_entity")
@@ -22,8 +26,6 @@ TilePlacementTurnStateMachine.STATES = {
     -- waiting for current player to place a tile or pass
     WAIT_FOR_PLACEMENT = 1,
     -- a tile has been placed and its animations are playing
-    -- TODO: placement bonuses (surrounding pillars/statues/windows) need a state between
-    --  SCORING and WAIT_FOR_END where the player picks their bonus tiles
     SCORING = 2,
     -- placement done. player may end their turn
     WAIT_FOR_END = 3,
@@ -31,6 +33,8 @@ TilePlacementTurnStateMachine.STATES = {
     CONFIRM_PASS = 4,
     -- player has passed. waiting briefly before ending the turn
     PASSING = 5,
+    -- the placement completed bonus spaces: the player picks up their bonus tiles (BonusPickupEntity)
+    PICK_BONUS = 6,
 }
 
 function TilePlacementTurnStateMachine:onEnter()
@@ -38,6 +42,8 @@ function TilePlacementTurnStateMachine:onEnter()
     -- the open place (or "need more tiles") dialog, if any
     self.placeDialog = nil
     self.passEndTimer = 0
+    -- the bonus pickup overlay while in PICK_BONUS
+    self.bonusPickup = nil
     self:setViewFocus(WorldStateMachine.VIEW.MAT)
     -- usually WAIT_FOR_PLACEMENT. Not when resuming a turn from a loaded save game
     self:_setState(self:stateFromHistory())
@@ -49,7 +55,9 @@ function TilePlacementTurnStateMachine:hudButtons(state)
     -- passing replaces placing a tile, so it's only possible before placing
     local pass = state == self.STATES.WAIT_FOR_PLACEMENT
     -- no undo mid-animation, while confirming a pass, or after passing (passing ends the turn)
-    local settled = state == self.STATES.WAIT_FOR_PLACEMENT or state == self.STATES.WAIT_FOR_END
+    local settled = state == self.STATES.WAIT_FOR_PLACEMENT
+        or state == self.STATES.WAIT_FOR_END
+        or state == self.STATES.PICK_BONUS
     return done, pass, settled and self.gameState:canUndoChoice()
 end
 
@@ -57,7 +65,6 @@ end
 ---     Used after an undo so the state machine doesn't need to know what was undone, and when
 ---     resuming a turn from a loaded save game
 function TilePlacementTurnStateMachine:stateFromHistory()
-    -- TODO: once bonuses exist, return CLAIM_BONUS while the player has pending bonus picks
     local placed = false
     for ii = self.gameState:turnStartIndex() + 1, #self.gameState.actionHistory do
         local name = self.gameState.actionHistory[ii].name
@@ -68,7 +75,96 @@ function TilePlacementTurnStateMachine:stateFromHistory()
             placed = true
         end
     end
-    return placed and self.STATES.WAIT_FOR_END or self.STATES.WAIT_FOR_PLACEMENT
+    if not placed then
+        return self.STATES.WAIT_FOR_PLACEMENT
+    end
+    return BonusPickup.owed(self.gameState) and self.STATES.PICK_BONUS or self.STATES.WAIT_FOR_END
+end
+
+--- Set the turn state, opening the bonus pickup overlay on entering PICK_BONUS and closing it on leaving
+function TilePlacementTurnStateMachine:_setState(newState)
+    TurnStateMachine._setState(self, newState)
+    if newState == self.STATES.PICK_BONUS then
+        if not self.bonusPickup then
+            self:_openBonusPickup()
+        end
+    else
+        self:_closeBonusPickup()
+    end
+end
+
+--- @return string eg: "Pillar + Statue bonus" for the bonus space indices \p bonuses on \p mat
+function TilePlacementTurnStateMachine.bonusTitle(mat, bonuses)
+    local labels = {}
+    for _, bonusIdx in ipairs(bonuses or {}) do
+        table.insert(labels, MatBonus.LABEL[mat:bonusAt(bonusIdx).kind])
+    end
+    return table.concat(labels, " + ") .. (#labels > 1 and " bonuses" or " bonus")
+end
+
+function TilePlacementTurnStateMachine:_openBonusPickup()
+    local owed = BonusPickup.owed(self.gameState)
+    local pool = self.gameState.bonusPool
+    local mat = self.gameState.players[self.playerIdx].mat
+
+    -- the pool as the table shows it (same slots), unless the table hasn't caught up with the model
+    local tiles = {}
+    local tableTiles = self.graphicsState.table.bonusPool.tiles
+    local shown = self.graphicsState.table.bonusPool:counts()
+    local matches = #tableTiles == pool:total()
+    for tileType, count in pairs(shown) do
+        matches = matches and pool:num(tileType) == count
+    end
+    if matches then
+        for _, tile in ipairs(tableTiles) do
+            table.insert(tiles, { tileType = tile.tileType, slot = tile.slot })
+        end
+    else
+        local BonusPoolView = require("cloudless_sky.view.bonus_pool_view")
+        for _, tileType in ipairs(BonusPoolView.orderedList(pool:serialize())) do
+            table.insert(tiles, { tileType = tileType })
+        end
+    end
+
+    self.bonusPickup = BonusPickupEntity.new({
+        tiles = tiles,
+        numSlots = self.gameState.rules.bonusSurrounds.numBonusTiles,
+        count = owed.count,
+        title = TilePlacementTurnStateMachine.bonusTitle(mat, owed.bonuses),
+        short = owed.count < owed.bonusTiles,
+    })
+    self.graphicsState.world:addEntity(self.bonusPickup)
+
+    -- pulse the slots around each completed bonus space
+    local matEntity = self.graphicsState.matEntities[self.playerIdx]
+    local perStar = {}
+    for _, bonusIdx in ipairs(owed.bonuses or {}) do
+        for _, slot in ipairs(mat:bonusAt(bonusIdx).slots) do
+            perStar[slot[1]] = perStar[slot[1]] or {}
+            table.insert(perStar[slot[1]], slot[2])
+        end
+    end
+    for starIdx, slotIdxs in pairs(perStar) do
+        matEntity.stars[starIdx]:pulseSlots(slotIdxs)
+    end
+end
+
+function TilePlacementTurnStateMachine:_closeBonusPickup()
+    if self.bonusPickup then
+        self.graphicsState.world:removeEntity(self.bonusPickup)
+        self.bonusPickup = nil
+    end
+end
+
+--- Pick up \p tiles (TileType -> count) from the bonus pool
+function TilePlacementTurnStateMachine:_takeBonusTiles(tiles)
+    local performed, reason = self.gameState:performAction(TakeBonusTilesAction(self.playerIdx, tiles))
+    if not performed then
+        -- the overlay only allows the owed count of tiles in the pool, so this is a bug
+        Log.error("invalid bonus pickup: " .. tostring(reason))
+        return
+    end
+    self:_setState(self:stateFromHistory())
 end
 
 function TilePlacementTurnStateMachine:onUpdate(dt)
@@ -83,6 +179,7 @@ end
 function TilePlacementTurnStateMachine:onLeave()
     -- eg: debug key ended the turn while the dialog was open
     self:_closePassDialog()
+    self:_closeBonusPickup()
 end
 
 --- animate undone placements being removed from the mat
@@ -228,6 +325,10 @@ function TilePlacementTurnStateMachine:onClickEvent(pressCtx, entity)
     elseif pressCtx.type == eventTypes.passConfirmed then
         if self.state == self.STATES.CONFIRM_PASS then
             self:_pass(pressCtx.keep)
+        end
+    elseif pressCtx.type == eventTypes.bonusTilesTaken then
+        if self.state == self.STATES.PICK_BONUS then
+            self:_takeBonusTiles(pressCtx.tiles)
         end
     end
 end

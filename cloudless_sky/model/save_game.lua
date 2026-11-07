@@ -35,7 +35,9 @@ require("cloudless_sky.action.take_tiles")
 local SaveGame = {}
 
 -- 2: the bonus pool (GameState.bonusPool, FillBonusPoolAction)
-SaveGame.VERSION = 2
+-- 3: mat bonuses (rules bonusSurrounds.spaces, PlaceTile bonus record, TakeBonusTilesAction, the pool
+--    topped up after placement turns)
+SaveGame.VERSION = 3
 --- file name in the LÖVE save directory (love.filesystem.getSaveDirectory())
 SaveGame.FILE = "savegame.json"
 

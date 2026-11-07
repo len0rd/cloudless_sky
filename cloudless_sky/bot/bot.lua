@@ -219,6 +219,24 @@ function Bot:actPlacement(sm)
         if sm.passDialog and sm.passDialog.confirmRect then
             self:clickRect(sm.passDialog.confirmRect)
         end
+    elseif sm.state == states.PICK_BONUS then
+        -- select random tiles one click at a time, then Take
+        local overlay = sm.bonusPickup
+        if not (overlay and overlay:settled()) then
+            return
+        end
+        if overlay:canTake() then
+            self:clickRect(overlay.takeRect)
+            return
+        end
+        local unselected = {}
+        for _, tile in ipairs(overlay.pool.tiles) do
+            if not overlay.selected[tile] then
+                table.insert(unselected, tile)
+            end
+        end
+        local tile = self:pick(unselected)
+        self:click(tile.x, tile.y)
     elseif sm.state == states.WAIT_FOR_PLACEMENT then
         if dialogOpen(sm.placeDialog) then
             if dialogSettled(sm.placeDialog) then

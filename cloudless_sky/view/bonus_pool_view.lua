@@ -96,6 +96,23 @@ function BonusPoolView:addTile(tileType)
     return tile
 end
 
+--- Add a tile in slot \p slot (eg: to match another view of the same pool). Falls back to the first
+--- free slot when \p slot is nil or taken
+--- @return VisualTile tile the tile added
+function BonusPoolView:addTileAt(tileType, slot)
+    local taken = slot == nil or slot > #self.slots
+    for _, tile in ipairs(self.tiles) do
+        taken = taken or tile.slot == slot
+    end
+    if taken then
+        return self:addTile(tileType)
+    end
+    local tile = { tileType = tileType, slot = slot, scale = 1, alpha = 1 }
+    self:_moveToSlot(tile)
+    table.insert(self.tiles, tile)
+    return tile
+end
+
 --- Add an existing tile (eg: one flying in from the bag). It is given the first free slot as its
 --- target (tile.targetX, tile.targetY) and that slot's rotation, but its position is left alone so
 --- the caller can tween it. Once it lands (targetX cleared) it follows its slot

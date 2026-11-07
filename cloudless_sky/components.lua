@@ -76,6 +76,7 @@ Components.mouseHandler = {
         pickUpClicked = 9,
         toggleViewClicked = 10,
         menuClicked = 11,
+        bonusTilesTaken = 12,
     },
 }
 
