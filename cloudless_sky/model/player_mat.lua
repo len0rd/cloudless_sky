@@ -10,11 +10,18 @@
 ---        *     *
 ---       *5*   *4*
 ---        *     *
+---
+--- Bonus spaces (MatBonus: pillars, statues, windows, fountains) sit between the slots. They're
+--- indexed in the order the rules list them (GameRules bonusSurrounds.spaces). Whether one is achieved
+--- comes from which slots hold tiles, so it needs no state of its own
 local Object = require("cloudless_sky.extern.classic")
+local MatBonus = require("cloudless_sky.model.mat_bonus")
 local StarType = require("cloudless_sky.model.star_type")
 local Star = require("cloudless_sky.model.star")
 
 ---@class PlayerMat : Object
+---@field stars Star[]
+---@field bonuses MatBonus[] the mat's bonus spaces, by index
 local PlayerMat = Object:extend()
 
 --- The stars of the first/default map used in the base game
@@ -31,11 +38,44 @@ PlayerMat.BASE_GAME_DEFAULT_MAT = {
 --- @param starConfigs table. List of starConfigs of the format described in
 ---     @ref Star:new. Indicies of the table should correspond to the Mat index
 ---     of the star
-function PlayerMat:new(starConfigs)
+--- @param bonusSpaces table|nil the bonus spaces (GameRules bonusSurrounds.spaces). nil: none
+function PlayerMat:new(starConfigs, bonusSpaces)
     self.stars = {}
     for ii, sConf in ipairs(starConfigs) do
         self.stars[ii] = Star(sConf)
     end
+    self.bonuses = {}
+    for ii, space in ipairs(bonusSpaces or {}) do
+        self.bonuses[ii] = MatBonus(ii, space)
+    end
+end
+
+--- @return MatBonus|nil the bonus space at \p bonusIdx
+function PlayerMat:bonusAt(bonusIdx)
+    return self.bonuses[bonusIdx]
+end
+
+--- @return integer[] indices of every achieved bonus space, in order
+function PlayerMat:achievedBonuses()
+    local achieved = {}
+    for ii, bonus in ipairs(self.bonuses) do
+        if bonus:isAchieved(self) then
+            table.insert(achieved, ii)
+        end
+    end
+    return achieved
+end
+
+--- @return integer[] indices of the bonus spaces around (\p starIdx, \p slotIdx) that are achieved:
+---     after placing a tile there, the bonuses that placement completed
+function PlayerMat:bonusesCompletedBy(starIdx, slotIdx)
+    local completed = {}
+    for ii, bonus in ipairs(self.bonuses) do
+        if bonus:surrounds(starIdx, slotIdx) and bonus:isAchieved(self) then
+            table.insert(completed, ii)
+        end
+    end
+    return completed
 end
 
 function PlayerMat:getStar(starIdx)
@@ -94,12 +134,20 @@ function PlayerMat:possibleEventsForPlacement(starIndex, slotIndex)
         return {}
     end
 
-    -- TODO: placement bonus calculation!
-    return { score }
+    local events = { score }
+    if not star:isOccupied(slotIndex) then
+        for ii, bonus in ipairs(self.bonuses) do
+            if bonus:completedByFilling(self, starIndex, slotIndex) then
+                table.insert(events, ii)
+            end
+        end
+    end
+    return events
 end
 
 --- @return table events. Table of events that occurred when the tile was placed.
----         First element is the points the tile scored within its star.
+---         First element is the points the tile scored within its star. The rest are the indices
+---         of the bonus spaces the placement completed (see bonusesCompletedBy).
 ---         If either index is invalid, an empty table is returned
 function PlayerMat:placeTile(tileType, starIndex, slotIndex)
     local star = self.stars[starIndex]
@@ -114,8 +162,11 @@ function PlayerMat:placeTile(tileType, starIndex, slotIndex)
         return {}
     end
 
-    -- TODO: placement bonus calculation!
-    return { score }
+    local events = { score }
+    for _, bonusIdx in ipairs(self:bonusesCompletedBy(starIndex, slotIndex)) do
+        table.insert(events, bonusIdx)
+    end
+    return events
 end
 
 function PlayerMat:removeTile(starIndex, slotIndex)

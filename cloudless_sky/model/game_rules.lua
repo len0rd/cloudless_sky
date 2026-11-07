@@ -38,6 +38,41 @@ GameRules.DEFAULTS.BASE_GAME_RULES = {
         },
         -- number of tiles in the center display to pick from when bonus is received
         numBonusTiles = 10,
+        -- the bonus spaces on the mat (MatBonus), in index order, and the {star, slot} pairs around
+        -- each. Stars sit as     1   2       star slots: 1 at the top, then clockwise
+        --                      6   7   3
+        --                        5   4
+        spaces = {
+            -- pillars: between star 7 and each outer star
+            { kind = "pillar", slots = { { 7, 1 }, { 7, 6 }, { 1, 3 }, { 1, 4 } } },
+            { kind = "pillar", slots = { { 7, 1 }, { 7, 2 }, { 2, 4 }, { 2, 5 } } },
+            { kind = "pillar", slots = { { 7, 2 }, { 7, 3 }, { 3, 5 }, { 3, 6 } } },
+            { kind = "pillar", slots = { { 7, 3 }, { 7, 4 }, { 4, 1 }, { 4, 6 } } },
+            { kind = "pillar", slots = { { 7, 4 }, { 7, 5 }, { 5, 1 }, { 5, 2 } } },
+            { kind = "pillar", slots = { { 7, 5 }, { 7, 6 }, { 6, 2 }, { 6, 3 } } },
+            -- statues: between neighboring outer stars (1-2, 2-3, ... 6-1)
+            { kind = "statue", slots = { { 1, 2 }, { 1, 3 }, { 2, 5 }, { 2, 6 } } },
+            { kind = "statue", slots = { { 2, 3 }, { 2, 4 }, { 3, 1 }, { 3, 6 } } },
+            { kind = "statue", slots = { { 3, 4 }, { 3, 5 }, { 4, 1 }, { 4, 2 } } },
+            { kind = "statue", slots = { { 4, 5 }, { 4, 6 }, { 5, 2 }, { 5, 3 } } },
+            { kind = "statue", slots = { { 5, 1 }, { 5, 6 }, { 6, 3 }, { 6, 4 } } },
+            { kind = "statue", slots = { { 6, 1 }, { 6, 2 }, { 1, 4 }, { 1, 5 } } },
+            -- windows: on the outside of each outer star, between its cost 5 and 6 slots
+            { kind = "window", slots = { { 1, 1 }, { 1, 6 } } },
+            { kind = "window", slots = { { 2, 1 }, { 2, 2 } } },
+            { kind = "window", slots = { { 3, 2 }, { 3, 3 } } },
+            { kind = "window", slots = { { 4, 3 }, { 4, 4 } } },
+            { kind = "window", slots = { { 5, 4 }, { 5, 5 } } },
+            { kind = "window", slots = { { 6, 5 }, { 6, 6 } } },
+            -- fountains: the outer area between neighboring outer stars (1-2, ... 6-1): cost 6 and 1
+            -- of the first, cost 4 and 5 of the next
+            { kind = "fountain", slots = { { 1, 1 }, { 1, 2 }, { 2, 1 }, { 2, 6 } } },
+            { kind = "fountain", slots = { { 2, 2 }, { 2, 3 }, { 3, 1 }, { 3, 2 } } },
+            { kind = "fountain", slots = { { 3, 3 }, { 3, 4 }, { 4, 2 }, { 4, 3 } } },
+            { kind = "fountain", slots = { { 4, 4 }, { 4, 5 }, { 5, 3 }, { 5, 4 } } },
+            { kind = "fountain", slots = { { 5, 5 }, { 5, 6 }, { 6, 4 }, { 6, 5 } } },
+            { kind = "fountain", slots = { { 6, 6 }, { 6, 1 }, { 1, 6 }, { 1, 5 } } },
+        },
     },
     wildPerRound = {
         "PURPLE",
@@ -147,6 +182,17 @@ GameRules.DEFAULTS.BASE_GAME_MONO_RULES.playerMat.stars = {
         cost = { 3, 3, 3, 3, 3, 3 },
     },
 }
+
+--- @param kind string MatBonus.KIND
+--- @return integer tiles a player picks from the bonus pool for achieving a \p kind bonus space.
+---     0 if that kind is disabled
+function GameRules.bonusTiles(rules, kind)
+    local surrounds = rules.bonusSurrounds
+    if not (surrounds and surrounds.enabled and surrounds.enabled[kind]) then
+        return 0
+    end
+    return (surrounds.bonusValueTiles and surrounds.bonusValueTiles[kind]) or 0
+end
 
 --- Rule sets a new game can be started with (the New Game menu), in display order
 GameRules.PRESETS = {

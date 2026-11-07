@@ -25,8 +25,9 @@ function Player.clampedPenalty(score, points)
     return math.max(0, math.min(points, score - Player.MIN_SCORE_AFTER_PENALTY))
 end
 
-function Player:new(starConfigs, startScore, name)
-    self.mat = PlayMat(starConfigs)
+--- @param bonusSpaces table|nil the mat's bonus spaces (GameRules bonusSurrounds.spaces)
+function Player:new(starConfigs, startScore, name, bonusSpaces)
+    self.mat = PlayMat(starConfigs, bonusSpaces)
     -- since this TileBag functions as the players hand, the game RNG is not needed
     self.hand = TileBag()
     self.score = startScore

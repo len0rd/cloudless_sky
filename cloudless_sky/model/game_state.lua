@@ -74,7 +74,7 @@ function GameState:new(gameRules, playerNames, rng, seed)
 
     self.players = {}
     for ii = 1, #playerNames do
-        local newPlayer = Player(gameRules.playerMat.stars, gameRules.startScore, playerNames[ii])
+        local newPlayer = Player(gameRules.playerMat.stars, gameRules.startScore, playerNames[ii], gameRules.bonusSurrounds.spaces)
         table.insert(self.players, newPlayer)
     end
 
