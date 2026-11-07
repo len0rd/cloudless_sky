@@ -29,6 +29,7 @@ require("cloudless_sky.action.pass")
 require("cloudless_sky.action.place_tile")
 require("cloudless_sky.action.score_end_game")
 require("cloudless_sky.action.start_placement_phase")
+require("cloudless_sky.action.take_bonus_tiles")
 require("cloudless_sky.action.take_tiles")
 
 local SaveGame = {}

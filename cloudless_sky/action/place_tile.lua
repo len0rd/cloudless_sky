@@ -2,12 +2,13 @@
 ---
 --- Follow-up actions:
 ---     - AddScoreAction for the placement's adjacency score
----     - TODO: placement bonuses (surrounding statues,windows, etc). PlayerMat:placeTile will
----       report these as additional events which should be turned into follow-up actions.
----       Bonuses require player input (choosing tiles), so they will need to be actions that the
----       turn state machine waits on rather than ones performed automatically.
+---
+--- Bonus spaces the placement completes (MatBonus) are recorded in ctx.bonuses (their indices) and
+--- ctx.bonusTiles (tiles earned, all bonuses added together). Only set when there are some. Picking the
+--- tiles up needs player input, so it's a separate choice (TakeBonusTilesAction, see BonusPickup)
 local Action = require("cloudless_sky.action.action")
 local AddScoreAction = require("cloudless_sky.action.add_score")
+local GameRules = require("cloudless_sky.model.game_rules")
 
 ---@class PlaceTileAction : Action
 ---@field score integer|nil Adjacency score of the placement. Set once performed
@@ -104,7 +105,17 @@ function PlaceTileAction:perform(gameState)
     assert(#events > 0, "PlayerMat:placeTile failed after validation passed")
     self.score = events[1]
 
-    -- TODO: events[2..n] will be placement bonuses. convert them into follow-up actions
+    -- events[2..n]: bonus spaces completed. Bonuses of a disabled kind earn nothing
+    local bonuses, bonusTiles = {}, 0
+    for ii = 2, #events do
+        local tiles = GameRules.bonusTiles(gameState.rules, player.mat:bonusAt(events[ii]).kind)
+        if tiles > 0 then
+            table.insert(bonuses, events[ii])
+            bonusTiles = bonusTiles + tiles
+        end
+    end
+    ctx.bonuses = #bonuses > 0 and bonuses or nil
+    ctx.bonusTiles = bonusTiles > 0 and bonusTiles or nil
     return { AddScoreAction(ctx.playerIdx, self.score) }
 end
 
@@ -115,6 +126,8 @@ function PlaceTileAction:undo(gameState)
     local player = gameState.players[ctx.playerIdx]
 
     player.mat:removeTile(ctx.starIdx, ctx.slotIdx)
+    ctx.bonuses = nil
+    ctx.bonusTiles = nil
 
     gameState.discard:removeTiles(p.tileType, p.tileCount - 1)
     if p.wildCount > 0 then

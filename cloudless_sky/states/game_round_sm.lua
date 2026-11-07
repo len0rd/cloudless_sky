@@ -6,6 +6,7 @@
 ---     4. round end upkeep (EndRoundAction), then pop back to the Game. After the final round there
 ---        is no upkeep: the game is over
 --- Turns are pushed on top of this state machine. When one pops, resume moves to the next player.
+--- After a placement turn the bonus pool is topped back up first (bonus tiles the player picked up).
 ---
 --- Entering also resumes a round part way through (a loaded save game): where the round is comes from
 --- the model and its history, so nothing is performed twice.
@@ -115,10 +116,21 @@ function GameRoundStateMachine:_resumeRound(fillIdx)
     end
 end
 
+--- @return boolean True if the bonus pool has room and there are tiles to top it up with (bag or tower)
+function GameRoundStateMachine.poolNeedsTopUp(gameState)
+    return gameState.bonusPool:total() < FillBonusPoolAction.capacity(gameState)
+        and gameState.tileBag:total() + gameState.discard:total() > 0
+end
+
 function GameRoundStateMachine:resume(fromState)
     -- only a turn ending moves the game on. Not eg: the menu closing, or a load replacing this game
     if self.abandoned or (fromState ~= self.selectionTurn and fromState ~= self.placementTurn) then
         return
+    end
+    if fromState == self.placementTurn and GameRoundStateMachine.poolNeedsTopUp(self.gameState) then
+        -- replace the bonus tiles picked up this turn. Between turns, so it can't be undone
+        local fill = performGameAction(self.gameState, FillBonusPoolAction())
+        self.graphicsState.table:playFill(fill[1].ctx.events)
     end
     self.gameState:incrementTurn()
 end
