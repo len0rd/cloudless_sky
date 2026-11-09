@@ -320,6 +320,14 @@ function StarView:_drawnSlotVertices(slotIdx, hoveredSlot)
     return ViewUtil.rotateVerticies(vertices, centerX, centerY, self.rotation)
 end
 
+--- Outline slot \p slotIdx as drawn (eg: the slots a bonus space needs, see PlayerMatEntity)
+function StarView:drawSlotOutline(slotIdx, color, lineWidth)
+    love.graphics.setColor(color)
+    love.graphics.setLineWidth(lineWidth)
+    love.graphics.setLineJoin("bevel")
+    love.graphics.polygon("line", self:_drawnSlotVertices(slotIdx, self.hovered_slot))
+end
+
 --- @return table color RGB color for slot cost labels: a darker variant of the slot's color,
 ---     or gray for stars without a single color
 function StarView:_costLabelColor(star, slotIdx)

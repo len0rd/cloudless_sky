@@ -95,8 +95,44 @@ function WorldStateMachine:handleCommonClick(pressCtx)
     elseif pressCtx.type == eventTypes.menuClicked then
         self:openMenu()
         return true
+    elseif pressCtx.type == eventTypes.matBonusClicked then
+        self:showBonusInfo(pressCtx.playerIdx, pressCtx.bonusIdx, pressCtx.x, pressCtx.y)
+        return true
     end
     return false
+end
+
+--- Open the info dialog for bonus space \p bonusIdx of player \p playerIdx's mat and outline the slots it
+--- needs. The dialog goes below the outlined slots (so it doesn't cover them), at the icon's x
+--- (\p x, \p y: the bottom of its icon)
+function WorldStateMachine:showBonusInfo(playerIdx, bonusIdx, x, y)
+    local BonusInfoDialogEntity = require("cloudless_sky.entities.bonus_info_dialog_entity")
+    local GameRules = require("cloudless_sky.model.game_rules")
+    local mat = self.gameState.players[playerIdx].mat
+    local bonus = mat:bonusAt(bonusIdx)
+    local filled = 0
+    for _, slot in ipairs(bonus.slots) do
+        if mat:isOccupied(slot[1], slot[2]) then
+            filled = filled + 1
+        end
+    end
+    local dialog = BonusInfoDialogEntity.new({
+        kind = bonus.kind,
+        tiles = GameRules.bonusTiles(self.gameState.rules, bonus.kind),
+        filled = filled,
+        total = #bonus.slots,
+    })
+    local matEntity = self.graphicsState.matEntities[playerIdx]
+    local bottom = y
+    for _, slot in ipairs(bonus.slots) do
+        local verts = matEntity.stars[slot[1]].polys[slot[2]].verticies
+        for ii = 2, #verts, 2 do
+            bottom = math.max(bottom, verts[ii])
+        end
+    end
+    dialog:placeNear(x, bottom)
+    self.graphicsState.world:addEntity(dialog)
+    self.graphicsState.matEntities[playerIdx]:selectBonus(bonusIdx, dialog)
 end
 
 --- Move the camera, update every entity, and clear this update's click events

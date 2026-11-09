@@ -77,6 +77,7 @@ Components.mouseHandler = {
         toggleViewClicked = 10,
         menuClicked = 11,
         bonusTilesTaken = 12,
+        matBonusClicked = 13,
     },
 }
 

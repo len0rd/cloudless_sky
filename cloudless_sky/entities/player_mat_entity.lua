@@ -10,16 +10,23 @@ local MatBonusView = require("cloudless_sky.view.mat_bonus_view")
 local StarView = require("cloudless_sky.view.star_view")
 local BoxedViewSys = require("cloudless_sky.systems.boxed_view")
 local EUtil = require("cloudless_sky.entities.e_util")
+local ViewUtil = require("cloudless_sky.view.view_util")
 
 ---@class PlayerMatEntity
 ---@field stars table[StarView] Mat-index-ordered list of star view objects
 ---@field bonusIcons table[] { bonusIdx, kind, x, y, size } an icon for each bonus space of an enabled
 ---     kind (MatBonusView), world coords
+---@field selectedBonus integer|nil bonus space whose slots are outlined (its info dialog is open)
 local PlayerMatEntity = {}
 PlayerMatEntity.__index = PlayerMatEntity
 
 -- padding between each star in pixels. must be an even number
 local STAR_PADDING = 2
+-- the slots of the selected bonus space
+local SELECTED_SLOT_COLOR = { 1, 0.84, 0.3, 1 }
+local SELECTED_SLOT_WIDTH = 6
+-- icons are clickable within this share of their size from their center
+local ICON_HIT_SHARE = 0.6
 
 PlayerMatEntity.DEFAULT_Y_PX = 100
 
@@ -137,7 +144,42 @@ function PlayerMatEntity:animateTileRemoved(starIdx, slotIdx, tileType, onComple
     self.stars[starIdx]:playRemoveAnimation(slotIdx, tileType, onComplete)
 end
 
+--- @return table|nil icon { bonusIdx, kind, x, y, size } of the bonus space icon under the world point
+function PlayerMatEntity:bonusAt(worldX, worldY)
+    for _, icon in ipairs(self.bonusIcons) do
+        if ViewUtil.ptInCircle(worldX, worldY, icon.x, icon.y, icon.size * ICON_HIT_SHARE) then
+            return icon
+        end
+    end
+    return nil
+end
+
+--- Outline the slots of bonus space \p bonusIdx while \p dialog (its info dialog) is open
+function PlayerMatEntity:selectBonus(bonusIdx, dialog)
+    self.selectedBonus = bonusIdx
+    self.bonusInfo = dialog
+end
+
+--- @return integer|nil the selected bonus space, while its info dialog is still open
+function PlayerMatEntity:_selectedBonus()
+    if self.bonusInfo and self.bonusInfo.ephemeral.done then
+        self.selectedBonus, self.bonusInfo = nil, nil
+    end
+    return self.selectedBonus
+end
+
 function PlayerMatEntity:mousePressed(cameraX, cameraY, worldX, worldY, button, istouch)
+    local icon = button == 1 and self:bonusAt(worldX, worldY)
+    if icon then
+        self.mouseHandler.clickEvent = {
+            type = Components.mouseHandler.eventTypes.matBonusClicked,
+            playerIdx = self.playerEntity.idx,
+            bonusIdx = icon.bonusIdx,
+            x = icon.x,
+            y = icon.y + icon.size / 2,
+        }
+        return true
+    end
     local starIdx, slotIdx = self:coordStarSlotIndex(worldX, worldY)
     if starIdx ~= 0 and slotIdx ~= 0 then
         -- we done been clicked!
@@ -184,6 +226,12 @@ function PlayerMatEntity:draw(gameState)
     for _, icon in ipairs(self.bonusIcons) do
         local bonus = mat:bonusAt(icon.bonusIdx)
         MatBonusView.drawIcon(icon.kind, icon.x, icon.y, icon.size, bonus and bonus:isAchieved(mat))
+    end
+    local selected = self:_selectedBonus()
+    if selected and mat:bonusAt(selected) then
+        for _, slot in ipairs(mat:bonusAt(selected).slots) do
+            self.stars[slot[1]]:drawSlotOutline(slot[2], SELECTED_SLOT_COLOR, SELECTED_SLOT_WIDTH)
+        end
     end
 end
 

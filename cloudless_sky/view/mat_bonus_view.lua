@@ -168,10 +168,11 @@ end
 
 --- Draw the icon for a \p kind (MatBonus.KIND) bonus space centered at (cx, cy), \p size across
 --- @param achieved boolean|nil the space is achieved: drawn with a gold outline
-function MatBonusView.drawIcon(kind, cx, cy, size, achieved)
+--- @param outlineColor table|nil outline when not achieved (eg: darker, on a light background)
+function MatBonusView.drawIcon(kind, cx, cy, size, achieved, outlineColor)
     local draw = DRAW[kind]
     assert(draw, "no icon for bonus kind " .. tostring(kind))
-    local outline = achieved and ACHIEVED_OUTLINE_COLOR or OUTLINE_COLOR
+    local outline = achieved and ACHIEVED_OUTLINE_COLOR or outlineColor or OUTLINE_COLOR
     draw(cx, cy, size, outline, math.max(1, size * 0.07))
 end
 
