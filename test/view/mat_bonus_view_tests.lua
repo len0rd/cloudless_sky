@@ -96,3 +96,32 @@ notion("BonusInfoDialogEntity text: the reward, the slots to fill and progress",
     check(text.progress).is("Achieved!")
     check(achieved).is(true)
 end)
+
+notion("Windows sit between their two points, arch out from the star, and the pane clears every slot", function()
+    local mat = newMat(allEnabled())
+    for _, icon in ipairs(mat.bonusIcons) do
+        if icon.kind == "window" then
+            local slots = GameRules.DEFAULTS.BASE_GAME_RULES.bonusSurrounds.spaces[icon.bonusIdx].slots
+            local star = mat.stars[slots[1][1]]
+            local nx, ny = MatBonusView.notch(star, slots[1][2], slots[2][2])
+            local cx, cy = star:center()
+            -- the arch ("up" rotated by rot) points the same way as star center -> notch
+            local upX, upY = math.sin(icon.rot), -math.cos(icon.rot)
+            local outX, outY = nx - cx, ny - cy
+            check((upX * outX + upY * outY) / math.sqrt(outX * outX + outY * outY) > 0.99).is(true)
+            -- further out than the notch
+            check(ViewUtil.euclidianDistance(cx, cy, icon.x, icon.y) > ViewUtil.euclidianDistance(cx, cy, nx, ny)).is(true)
+            for _, corner in ipairs(MatBonusView.windowCorners(icon.x, icon.y, icon.size, icon.rot)) do
+                for starIdx, view in ipairs(mat.stars) do
+                    for slotIdx, poly in ipairs(view.polys) do
+                        if ViewUtil.ptInConvexPoly(poly.verticies, corner[1], corner[2]) then
+                            error("window " .. icon.bonusIdx .. " corner is on star " .. starIdx .. " slot " .. slotIdx)
+                        end
+                    end
+                end
+            end
+        else
+            check(icon.rot).is(0)
+        end
+    end
+end)

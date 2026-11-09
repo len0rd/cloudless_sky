@@ -14,7 +14,7 @@ local ViewUtil = require("cloudless_sky.view.view_util")
 
 ---@class PlayerMatEntity
 ---@field stars table[StarView] Mat-index-ordered list of star view objects
----@field bonusIcons table[] { bonusIdx, kind, x, y, size } an icon for each bonus space of an enabled
+---@field bonusIcons table[] { bonusIdx, kind, x, y, size, rot } an icon for each bonus space of an enabled
 ---     kind (MatBonusView), world coords
 ---@field selectedBonus integer|nil bonus space whose slots are outlined (its info dialog is open)
 local PlayerMatEntity = {}
@@ -101,8 +101,8 @@ function PlayerMatEntity.bonusIconsFor(rules, starViews)
     local spaces = rules and rules.bonusSurrounds and rules.bonusSurrounds.spaces or {}
     for ii, space in ipairs(spaces) do
         if GameRules.bonusTiles(rules, space.kind) > 0 then
-            local x, y, size = MatBonusView.anchor(MatBonus(ii, space), starViews)
-            table.insert(icons, { bonusIdx = ii, kind = space.kind, x = x, y = y, size = size })
+            local x, y, size, rot = MatBonusView.anchor(MatBonus(ii, space), starViews)
+            table.insert(icons, { bonusIdx = ii, kind = space.kind, x = x, y = y, size = size, rot = rot })
         end
     end
     return icons
@@ -225,7 +225,7 @@ function PlayerMatEntity:draw(gameState)
     local mat = gameState.players[self.playerEntity.idx].mat
     for _, icon in ipairs(self.bonusIcons) do
         local bonus = mat:bonusAt(icon.bonusIdx)
-        MatBonusView.drawIcon(icon.kind, icon.x, icon.y, icon.size, bonus and bonus:isAchieved(mat))
+        MatBonusView.drawIcon(icon.kind, icon.x, icon.y, icon.size, bonus and bonus:isAchieved(mat), nil, icon.rot)
     end
     local selected = self:_selectedBonus()
     if selected and mat:bonusAt(selected) then
