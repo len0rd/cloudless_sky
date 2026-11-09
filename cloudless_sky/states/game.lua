@@ -43,7 +43,7 @@ function game:_setup(newGameState)
     }
     local starTypes = GameRules.matStarTypes(gameState.rules)
     for ii = 1, gameState:numPlayers() do
-        graphicsState.matEntities[ii] = PlayerMatEntity.new(ii, 600, starTypes)
+        graphicsState.matEntities[ii] = PlayerMatEntity.new(ii, 600, starTypes, gameState.rules)
         graphicsState.world:addEntity(graphicsState.matEntities[ii])
     end
     graphicsState.table = TableAreaEntity.new(gameState, graphicsState.matEntities)

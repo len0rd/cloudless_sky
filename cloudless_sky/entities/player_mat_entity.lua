@@ -4,12 +4,17 @@ local Concord = require("cloudless_sky.extern.concord")
 
 local Components = require("cloudless_sky.components")
 local Constants = require("cloudless_sky.constants")
+local GameRules = require("cloudless_sky.model.game_rules")
+local MatBonus = require("cloudless_sky.model.mat_bonus")
+local MatBonusView = require("cloudless_sky.view.mat_bonus_view")
 local StarView = require("cloudless_sky.view.star_view")
 local BoxedViewSys = require("cloudless_sky.systems.boxed_view")
 local EUtil = require("cloudless_sky.entities.e_util")
 
 ---@class PlayerMatEntity
 ---@field stars table[StarView] Mat-index-ordered list of star view objects
+---@field bonusIcons table[] { bonusIdx, kind, x, y, size } an icon for each bonus space of an enabled
+---     kind (MatBonusView), world coords
 local PlayerMatEntity = {}
 PlayerMatEntity.__index = PlayerMatEntity
 
@@ -24,7 +29,8 @@ local function determineWorldCoords(playerIdx, sizePx)
     return (2 * (playerIdx - 1) * sizePx), PlayerMatEntity.DEFAULT_Y_PX
 end
 
-function PlayerMatEntity.new(playerIdx, sizePx, starTypes)
+--- @param rules table|nil the game rules: icons are shown for its enabled bonus spaces. nil: no icons
+function PlayerMatEntity.new(playerIdx, sizePx, starTypes, rules)
     local entity = Concord.entity()
     assert(starTypes, "PlayerMatEntity must know what star types it has")
     local x, y = determineWorldCoords(playerIdx, sizePx)
@@ -75,7 +81,24 @@ function PlayerMatEntity.new(playerIdx, sizePx, starTypes)
     entity.focusStarIdx = 0
     entity.focusSlotIdx = 0
 
+    entity.bonusIcons = PlayerMatEntity.bonusIconsFor(rules, entity.stars)
+
     return entity
+end
+
+--- @param rules table|nil game rules (bonusSurrounds)
+--- @param starViews StarView[] the mat's stars
+--- @return table[] { bonusIdx, kind, x, y, size } for each bonus space of an enabled kind
+function PlayerMatEntity.bonusIconsFor(rules, starViews)
+    local icons = {}
+    local spaces = rules and rules.bonusSurrounds and rules.bonusSurrounds.spaces or {}
+    for ii, space in ipairs(spaces) do
+        if GameRules.bonusTiles(rules, space.kind) > 0 then
+            local x, y, size = MatBonusView.anchor(MatBonus(ii, space), starViews)
+            table.insert(icons, { bonusIdx = ii, kind = space.kind, x = x, y = y, size = size })
+        end
+    end
+    return icons
 end
 
 --- @return integer, integer starSlot: When not 0 this is the star index and the slot
@@ -156,6 +179,11 @@ end
 function PlayerMatEntity:draw(gameState)
     for _, starIdx in ipairs(self:_starDrawOrder()) do
         self.stars[starIdx]:draw(gameState:getStar(self.playerEntity.idx, starIdx))
+    end
+    local mat = gameState.players[self.playerEntity.idx].mat
+    for _, icon in ipairs(self.bonusIcons) do
+        local bonus = mat:bonusAt(icon.bonusIdx)
+        MatBonusView.drawIcon(icon.kind, icon.x, icon.y, icon.size, bonus and bonus:isAchieved(mat))
     end
 end
 
