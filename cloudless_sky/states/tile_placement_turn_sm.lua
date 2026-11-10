@@ -3,8 +3,8 @@ local TurnStateMachine = require("cloudless_sky.states.turn_sm_base")
 local WorldStateMachine = require("cloudless_sky.states.world_sm")
 
 local Anim = require("cloudless_sky.anim")
-local BonusPickup = require("cloudless_sky.model.bonus_pickup")
 local BonusPickupEntity = require("cloudless_sky.entities.bonus_pickup_entity")
+local LegalMoves = require("cloudless_sky.model.legal_moves")
 local MatBonus = require("cloudless_sky.model.mat_bonus")
 local TakeBonusTilesAction = require("cloudless_sky.action.take_bonus_tiles")
 local Components = require("cloudless_sky.components")
@@ -78,7 +78,7 @@ function TilePlacementTurnStateMachine:stateFromHistory()
     if not placed then
         return self.STATES.WAIT_FOR_PLACEMENT
     end
-    return BonusPickup.owed(self.gameState) and self.STATES.PICK_BONUS or self.STATES.WAIT_FOR_END
+    return LegalMoves.bonusPickup(self.gameState) and self.STATES.PICK_BONUS or self.STATES.WAIT_FOR_END
 end
 
 --- Set the turn state, opening the bonus pickup overlay on entering PICK_BONUS and closing it on leaving
@@ -103,7 +103,7 @@ function TilePlacementTurnStateMachine.bonusTitle(mat, bonuses)
 end
 
 function TilePlacementTurnStateMachine:_openBonusPickup()
-    local owed = BonusPickup.owed(self.gameState)
+    local owed = LegalMoves.bonusPickup(self.gameState)
     local pool = self.gameState.bonusPool
     local mat = self.gameState.players[self.playerIdx].mat
 
@@ -236,11 +236,7 @@ function TilePlacementTurnStateMachine:_addPlaceDialogEntity(pressCtx)
         -- TODO: look through action history to see all the cool things the player did by playing in this particular slot
         print("already played here!")
     else
-        local placementOpts = player:generatePlacementPossibilities(
-            pressCtx.starIdx,
-            pressCtx.slotIdx,
-            self.gameState:getCurrentWildType()
-        )
+        local placementOpts = LegalMoves.placementsAt(self.gameState, pressCtx.playerIdx, pressCtx.starIdx, pressCtx.slotIdx)
         local prompt = nil
         if placementOpts and #placementOpts > 0 then
             -- player has enough in hand to place here

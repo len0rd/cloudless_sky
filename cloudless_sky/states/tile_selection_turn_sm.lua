@@ -6,7 +6,7 @@ local WorldStateMachine = require("cloudless_sky.states.world_sm")
 
 local Components = require("cloudless_sky.components")
 local PickUpDialogEntity = require("cloudless_sky.entities.pick_up_dialog_entity")
-local TableAreaEntity = require("cloudless_sky.entities.table_area_entity")
+local LegalMoves = require("cloudless_sky.model.legal_moves")
 local TakeTilesAction = require("cloudless_sky.action.take_tiles")
 
 ---@class TileSelectionTurnStateMachine : TurnStateMachine
@@ -57,7 +57,7 @@ end
 --- Show what picking \p pressCtx.tileType from \p pressCtx.source would pick up, with a Pick Up button
 --- @param pressCtx table tableTileClicked click event from TableAreaEntity
 function TileSelectionTurnStateMachine:_openPickUpDialog(pressCtx)
-    local take = TableAreaEntity.takeFor(self.gameState, pressCtx.source, pressCtx.tileType)
+    local take = LegalMoves.takeFor(self.gameState, pressCtx.source, pressCtx.tileType)
     if not take then
         return
     end

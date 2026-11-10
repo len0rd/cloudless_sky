@@ -38,25 +38,50 @@ function LegalMoves.takes(gameState)
     return moves
 end
 
+--- @return PlacementPossibility[] the ways \p playerIdx can pay to place a tile in slot \p slotIdx of
+---     star \p starIdx with their hand and the round's wild. Empty if they can't (or it's occupied)
+function LegalMoves.placementsAt(gameState, playerIdx, starIdx, slotIdx)
+    local player = gameState.players[playerIdx]
+    if player:isSlotOccupied(starIdx, slotIdx) then
+        return {}
+    end
+    return player:generatePlacementPossibilities(starIdx, slotIdx, gameState:getCurrentWildType())
+end
+
+--- @return table[] every slot \p playerIdx can place a tile in: { starIdx, slotIdx, possibilities },
+---     stars and slots in order
+function LegalMoves.placeableSlots(gameState, playerIdx)
+    local slots = {}
+    for starIdx, star in ipairs(gameState.players[playerIdx].mat.stars) do
+        for slotIdx = 1, star:numSlots() do
+            local possibilities = LegalMoves.placementsAt(gameState, playerIdx, starIdx, slotIdx)
+            if #possibilities > 0 then
+                table.insert(slots, { starIdx = starIdx, slotIdx = slotIdx, possibilities = possibilities })
+            end
+        end
+    end
+    return slots
+end
+
 --- @return table[] every legal tile placement for \p playerIdx: { starIdx, slotIdx, possibility }
 ---     (possibility: a PlacementPossibility), stars and slots in order
 function LegalMoves.placements(gameState, playerIdx)
-    local player = gameState.players[playerIdx]
-    local wild = gameState:getCurrentWildType()
     local moves = {}
-    for starIdx, star in ipairs(player.mat.stars) do
-        for slotIdx = 1, star:numSlots() do
-            if not star:isOccupied(slotIdx) then
-                for _, possibility in ipairs(player:generatePlacementPossibilities(starIdx, slotIdx, wild)) do
-                    table.insert(moves, { starIdx = starIdx, slotIdx = slotIdx, possibility = possibility })
-                end
-            end
+    for _, slot in ipairs(LegalMoves.placeableSlots(gameState, playerIdx)) do
+        for _, possibility in ipairs(slot.possibilities) do
+            table.insert(moves, { starIdx = slot.starIdx, slotIdx = slot.slotIdx, possibility = possibility })
         end
     end
     return moves
 end
 
---- @return integer how many bonus tiles must be picked up now (BonusPickup.owed), 0 if none
+--- @return table|nil the bonus pickup owed right now: { playerIdx, count, bonuses, bonusTiles } (see
+---     BonusPickup.owed). nil if none
+function LegalMoves.bonusPickup(gameState)
+    return BonusPickup.owed(gameState)
+end
+
+--- @return integer how many bonus tiles must be picked up now, 0 if none
 function LegalMoves.bonusCount(gameState)
     local owed = BonusPickup.owed(gameState)
     return owed and owed.count or 0

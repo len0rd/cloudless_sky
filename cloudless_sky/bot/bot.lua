@@ -37,8 +37,6 @@ local VOLUNTARY_PASS_CHANCE = 0.1
 -- how close (world units) the camera must be to its target before clicking world things
 local CAMERA_SETTLED_DIST = 1
 
-local CENTER = 0
-
 local function out(msg)
     print("BOT " .. msg)
     io.stdout:flush()
@@ -178,14 +176,7 @@ function Bot:actSelection(sm)
             return
         end
         -- choose from the model's legal picks (not the visuals) so choices follow the seed
-        local choices = {}
-        for source = CENTER, gameState:numFactoryDisplays() do
-            for _, tileType in ipairs(TileType.ORDERED) do
-                if LegalMoves.takeFor(gameState, source, tileType) then
-                    table.insert(choices, { source = source, tileType = tileType })
-                end
-            end
-        end
+        local choices = LegalMoves.takes(gameState)
         if #choices == 0 then
             self:fail("no legal pick while selection continues")
             return
@@ -252,19 +243,7 @@ function Bot:actPlacement(sm)
         if not cameraSettled() then
             return
         end
-        local player = gameState.players[sm.playerIdx]
-        local wild = gameState:getCurrentWildType()
-        local slots = {}
-        for starIdx, star in ipairs(player.mat.stars) do
-            for slotIdx = 1, star:numSlots() do
-                if not star:isOccupied(slotIdx) then
-                    local options = player:generatePlacementPossibilities(starIdx, slotIdx, wild)
-                    if #options > 0 then
-                        table.insert(slots, { starIdx = starIdx, slotIdx = slotIdx })
-                    end
-                end
-            end
-        end
+        local slots = LegalMoves.placeableSlots(gameState, sm.playerIdx)
         if #slots == 0 or self.rng:random() < VOLUNTARY_PASS_CHANCE then
             self:clickRect(hud.passRect)
             return
