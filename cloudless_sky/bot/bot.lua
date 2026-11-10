@@ -20,7 +20,7 @@ local EndGameBonus = require("cloudless_sky.model.end_game_bonus")
 local GameEndStateMachine = require("cloudless_sky.states.game_end_sm")
 local Invariants = require("cloudless_sky.model.invariants")
 local SaveGame = require("cloudless_sky.model.save_game")
-local TableAreaEntity = require("cloudless_sky.entities.table_area_entity")
+local LegalMoves = require("cloudless_sky.model.legal_moves")
 local TileType = require("cloudless_sky.model.tile_type")
 
 local Bot = {}
@@ -181,7 +181,7 @@ function Bot:actSelection(sm)
         local choices = {}
         for source = CENTER, gameState:numFactoryDisplays() do
             for _, tileType in ipairs(TileType.ORDERED) do
-                if TableAreaEntity.takeFor(gameState, source, tileType) then
+                if LegalMoves.takeFor(gameState, source, tileType) then
                     table.insert(choices, { source = source, tileType = tileType })
                 end
             end
