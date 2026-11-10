@@ -202,13 +202,9 @@ function DRAW.window(cx, cy, s, outline, lw)
 end
 
 function DRAW.statue(cx, cy, s, outline, lw)
-    -- a flat diamond base with an upright block standing on it
-    local baseY = cy + s * 0.22
+    -- an upright block
     shape(function(mode)
-        love.graphics.polygon(mode, cx - s * 0.48, baseY, cx, baseY - s * 0.2, cx + s * 0.48, baseY, cx, baseY + s * 0.2)
-    end, outline, lw)
-    shape(function(mode)
-        love.graphics.rectangle(mode, cx - s * 0.14, cy - s * 0.48, s * 0.28, s * 0.66)
+        love.graphics.rectangle(mode, cx - s * 0.18, cy - s * 0.42, s * 0.36, s * 0.84)
     end, outline, lw)
 end
 
