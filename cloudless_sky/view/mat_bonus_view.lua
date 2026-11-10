@@ -115,7 +115,8 @@ end
 --- @param bonus MatBonus the space
 --- @param starViews StarView[] the mat's stars, by star index
 --- @return number x, number y, number size, number rot. Where the space's icon goes (its center), its
----     size in world units and its rotation (windows face out from their star; 0 for the rest)
+---     size in world units and its rotation (windows face out from their star, fountains out from the
+---     mat's center with their base toward it; 0 for the rest)
 function MatBonusView.anchor(bonus, starViews)
     -- the space's slots, by star
     local byStar, order = {}, {}
@@ -143,6 +144,7 @@ function MatBonusView.anchor(bonus, starViews)
     end
     local a, b = notches[1], notches[2]
     local x, y = (a.x + b.x) / 2, (a.y + b.y) / 2
+    local rot = 0
     if bonus.kind == "fountain" then
         -- away from the mat's center (the middle of all its stars)
         local mx, my = 0, 0
@@ -152,9 +154,12 @@ function MatBonusView.anchor(bonus, starViews)
         end
         local dist = ViewUtil.euclidianDistance(mx, my, x, y)
         local out = starSize * FOUNTAIN_OUT_SHARE
-        x, y = x + (x - mx) / dist * out, y + (y - my) / dist * out
+        local dx, dy = (x - mx) / dist, (y - my) / dist
+        x, y = x + dx * out, y + dy * out
+        -- base toward the mat's center: rotate the icon's "up" (0, -1) onto (dx, dy)
+        rot = math.atan2(dx, -dy)
     end
-    return x, y, starSize * MatBonusView.ICON_SHARE, 0
+    return x, y, starSize * MatBonusView.ICON_SHARE, rot
 end
 
 --------------------------------------------------------------------------------
@@ -209,15 +214,12 @@ function DRAW.statue(cx, cy, s, outline, lw)
 end
 
 function DRAW.fountain(cx, cy, s, outline, lw)
-    -- a triangular base, a wide bowl on it and a dome on top
+    -- a wide oval bowl with a smaller oval sitting on top of it
     shape(function(mode)
-        love.graphics.polygon(mode, cx - s * 0.45, cy + s * 0.42, cx + s * 0.45, cy + s * 0.42, cx, cy - s * 0.05)
+        love.graphics.ellipse(mode, cx, cy + s * 0.1, s * 0.45, s * 0.24)
     end, outline, lw)
     shape(function(mode)
-        love.graphics.ellipse(mode, cx, cy + s * 0.05, s * 0.32, s * 0.17)
-    end, outline, lw)
-    shape(function(mode)
-        love.graphics.ellipse(mode, cx, cy - s * 0.17, s * 0.2, s * 0.15)
+        love.graphics.ellipse(mode, cx, cy - s * 0.08, s * 0.24, s * 0.18)
     end, outline, lw)
 end
 

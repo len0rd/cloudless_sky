@@ -120,6 +120,12 @@ notion("Windows sit between their two points, arch out from the star, and the pa
                     end
                 end
             end
+        elseif icon.kind == "fountain" then
+            -- the top points away from the mat's center (star 7), so the base is toward it
+            local mx, my = mat.stars[7]:center()
+            local upX, upY = math.sin(icon.rot), -math.cos(icon.rot)
+            local outX, outY = icon.x - mx, icon.y - my
+            check((upX * outX + upY * outY) / math.sqrt(outX * outX + outY * outY) > 0.99).is(true)
         else
             check(icon.rot).is(0)
         end
