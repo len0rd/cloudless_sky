@@ -10,6 +10,13 @@ xhost +SI:localuser:$(id -un)
 
 Then the user you run with needs to have a matching UID/GID
 
+On Windows, ensure love is in the path:
+
+
+```
+$env:Path += ';C:\Program Files\LOVE\'
+```
+
 ## Testing
 
 Unit tests use [cute](cloudless_sky/extern/cute.lua):
@@ -19,21 +26,6 @@ love . --cute-headless   # run all tests, print results, exit (non-zero exit cod
 love . --cute            # run all tests, then launch the game with a results overlay ([h] to hide)
 ```
 
-The bot plays a whole game through the UI (simulated clicks), checking every frame that the game state
-is consistent ([invariants](cloudless_sky/model/invariants.lua): no tiles lost or duplicated, scores
-never below 1, valid players/rounds/phases) and that the table shows what the model holds:
-
-```
-love . --bot --seed 1234                 # exit code 0 = finished cleanly, 1 = a check failed, 2 = timeout, 3 = Lua error
-love . --bot --seed 1234 --bot-speed 8   # play faster (default 4x)
-love . --bot --seed 1234 --anim-speed 0  # animations off
-```
-
-Every game's seed is logged at startup and saved in the game state (`seed` in `GameState:serialize()`).
-Any game can be replayed with `love . --seed N`. The bot's run is fully repeatable: the same seed gives
-the same game and the same final `digest`. At the start of every round and at the end of the game the
-bot also checks that the game saves and loads back exactly.
-
 ## Save / load
 
 Save location:
@@ -42,20 +34,17 @@ Save location:
 
 Start from a save game at startup with: `love . path/to/savegame.json`
 
-A plain `love .` opens on the main menu (Continue loads the save above). `--seed`, `--bot` or a save
-path skip the menu and go straight into a game.
+A plain `love .` opens on the main menu.
 
 Test saves in [test/saves](test/saves):
 
-- `refill_on_next_fill.json`: 4 players, at the start of round 4 with 14 tiles in the bag and 64 in the
-    tower. Loading it starts the round's fill, which empties the bag and plays the refill (tower -> bag)
-    animation
-- `final_round_last_pass.json`: 2 players, round 6 (the final round), placement phase. One player has passed;
-    the other is up and is the last to pass. Passing (or the bot: `love . --bot test/saves/final_round_last_pass.json`)
-    starts the game end sequence: end-game bonuses, then final scores. Both players have a completed
-    (multicolor) star bonus, plus the every-1 number bonus
-- `placement_phase.json`: 2 players, round 1, at the start of the first tile placement turn (both players
-    have tiles in hand)
+- `refill_on_next_fill.json`: For playing the tower -> bag refill animation
+- `final_round_last_pass.json`: For testing final scoring. Player should get a star and tile bonus
+- `placement_phase.json`: Starts at the first tile placement turn (both players have tiles in hand)
+
+## iPad build
+
+A manually run GitHub workflow builds the game and uploads it to TestFlight.
 
 ## TODO
 
