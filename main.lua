@@ -16,11 +16,15 @@ launchOptions = {}
 --- with any of them it goes straight into a game:
 ---     --seed N        seed for the game's random generator. Defaults to the current time. The seed is
 ---                     saved in the game state so a game can be recreated
----     --bot           play the game automatically, checking invariants every frame, then exit
+---     --bot [ID]      play the game automatically, checking invariants every frame, then exit. Every
+---                     seat is played by bot ID (a BotPlayer id, default "easy")
 ---                     (exit code 0 = game finished with no problems). See cloudless_sky/bot/bot.lua
 ---     --bot-speed N   game speed multiplier while the bot plays (default 4)
 ---     --anim-speed N  animation speed multiplier (default 1, 0 = animations off). See cloudless_sky/anim.lua
 ---     <path>.json     load a save game (see cloudless_sky/model/save_game.lua) instead of starting a new game
+---     --sim           play games instantly with no graphics (bots in every seat), print results, exit.
+---                     With [--seed N] [--games K] [--players 2-4] [--bots ID,...]. See
+---                     cloudless_sky/bot/headless_match.lua
 local function parseLaunchOptions(args)
     local options = { bot = false, botSpeed = 4 }
     for ii, v in ipairs(args) do
@@ -28,6 +32,11 @@ local function parseLaunchOptions(args)
             options.seed = assert(tonumber(args[ii + 1]), "--seed requires a number")
         elseif v == "--bot" then
             options.bot = true
+            -- an optional bot id: the next argument, unless it's another option, a number or a save
+            local nextArg = args[ii + 1]
+            if nextArg and not nextArg:find("^%-") and not tonumber(nextArg) and not nextArg:find("%.json$") then
+                options.botId = nextArg
+            end
         elseif v == "--anim-speed" then
             options.animSpeed = assert(tonumber(args[ii + 1]), "--anim-speed requires a number")
         elseif v == "--bot-speed" then
@@ -56,8 +65,9 @@ local function launchGameState(options)
         Log.error("couldn't load " .. options.savePath .. ": " .. tostring(reason) .. ". starting a new game")
     end
     -- the bot's digests depend on these names (they're in the game state)
+    local names = require("cloudless_sky.bot.headless_match").LAUNCH_NAMES
     return require("cloudless_sky.model.game_setup").newGameState({
-        playerNames = { "lenord", "karoty" },
+        playerNames = { names[1], names[2] },
         seed = options.seed,
     })
 end
@@ -79,6 +89,22 @@ function love.load(args)
     -- end unit testing
 
     launchOptions = parseLaunchOptions(args)
+
+    -- headless games: play them, then quit (exit code 0 = every game finished cleanly)
+    local HeadlessMatch = require("cloudless_sky.bot.headless_match")
+    local simOptions, simError = HeadlessMatch.parseArgs(args)
+    if simOptions or simError then
+        io.stdout:setvbuf("no")
+        -- only warnings and errors: the game's trace/debug lines would drown the results
+        Log.level = "warn"
+        if simError then
+            print("SIM " .. simError)
+            love.event.quit(1)
+        else
+            love.event.quit(HeadlessMatch.runCli(simOptions))
+        end
+        return
+    end
     -- TODO: load from user settings once they exist
     require("cloudless_sky.anim").setSpeed(launchOptions.animSpeed or 1)
 

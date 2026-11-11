@@ -10,14 +10,13 @@
 ---
 --- Entering also resumes a round part way through (a loaded save game): where the round is comes from
 --- the model and its history, so nothing is performed twice.
+---
+--- The actions themselves come from GameFlow (model only, shared with headless games): this state
+--- machine adds the view, the animation and the timing around them.
 local WorldStateMachine = require("cloudless_sky.states.world_sm")
 local GameStateMachineMgr = require("cloudless_sky.extern.hump.gamestate")
 
-local EndRoundAction = require("cloudless_sky.action.end_round")
-local FillBonusPoolAction = require("cloudless_sky.action.fill_bonus_pool")
-local FillFactoryDisplaysAction = require("cloudless_sky.action.fill_factory_displays")
-local PassAction = require("cloudless_sky.action.pass")
-local StartPlacementPhaseAction = require("cloudless_sky.action.start_placement_phase")
+local GameFlow = require("cloudless_sky.model.game_flow")
 local TilePlacementTurnStateMachine = require("cloudless_sky.states.tile_placement_turn_sm")
 local TileSelectionTurnStateMachine = require("cloudless_sky.states.tile_selection_turn_sm")
 
@@ -35,40 +34,6 @@ function GameRoundStateMachine:new()
     self.placementTurn = TilePlacementTurnStateMachine()
 end
 
---- Perform a game (non-player) action. These should always be valid, so failing is a bug
-local function performGameAction(gameState, action)
-    local performed, reason = gameState:performAction(action)
-    if not performed then
-        error("game action " .. action.name .. " failed: " .. tostring(reason))
-    end
-    return performed
-end
-
---- @return integer|nil index in the action history of this round's FillFactoryDisplays. nil if the
----     displays haven't been filled yet this round
-local function roundFillIndex(gameState)
-    local history = gameState.actionHistory
-    for ii = #history, 1, -1 do
-        local name = history[ii].name
-        if name == "FillFactoryDisplays" then
-            return ii
-        elseif name == "EndRound" then
-            return nil
-        end
-    end
-    return nil
-end
-
---- @return boolean True once the bonus pool has been filled at the start of the game
-function GameRoundStateMachine.bonusPoolFilled(gameState)
-    for _, action in ipairs(gameState.actionHistory) do
-        if action.name == "FillBonusPool" then
-            return true
-        end
-    end
-    return false
-end
-
 function GameRoundStateMachine:enter(fromState, gameState, graphicsState)
     self:_bind(gameState, graphicsState)
 
@@ -79,7 +44,7 @@ function GameRoundStateMachine:enter(fromState, gameState, graphicsState)
     hud:setUndoEnabled(false)
     self:setViewFocus(WorldStateMachine.VIEW.TABLE)
 
-    local fillIdx = roundFillIndex(gameState)
+    local fillIdx = GameFlow.roundFillIndex(gameState)
     if fillIdx then
         self:_resumeRound(fillIdx)
         return
@@ -88,15 +53,17 @@ function GameRoundStateMachine:enter(fromState, gameState, graphicsState)
     Log.info("starting round " .. gameState.round.idx .. " (wild: " .. tostring(gameState:getCurrentWildType()) .. ")")
     self.state = self.STATES.FILLING
     self.fillDone = false
-    if not GameRoundStateMachine.bonusPoolFilled(gameState) then
-        -- the start of the game. Performed with the displays' fill, so a save can't come between them
-        local poolFill = performGameAction(gameState, FillBonusPoolAction())
-        graphicsState.table:playFill(poolFill[1].ctx.events)
+    -- the bonus pool's first fill (the start of the game) and the displays' fill, performed together so
+    -- a save can't come between them. The first turn begins once they've been animated (see update)
+    for _, action in ipairs(GameFlow.startRound(gameState)) do
+        if action.name == "FillBonusPool" then
+            graphicsState.table:playFill(action.ctx.events)
+        elseif action.name == "FillFactoryDisplays" then
+            graphicsState.table:playFill(action.ctx.events, function()
+                self.fillDone = true
+            end)
+        end
     end
-    local performed = performGameAction(gameState, FillFactoryDisplaysAction())
-    graphicsState.table:playFill(performed[1].ctx.events, function()
-        self.fillDone = true
-    end)
 end
 
 --- Pick a round back up part way through (a loaded save game). The view was built from the model,
@@ -112,14 +79,8 @@ function GameRoundStateMachine:_resumeRound(fillIdx)
     self.state = self.STATES.SELECTION
     if gameState:turnStartIndex() == fillIdx then
         -- saved while the fill was animating: the first turn hadn't begun yet (see FILLING in update)
-        gameState:beginTurn(gameState.startPlayer)
+        GameFlow.beginRound(gameState)
     end
-end
-
---- @return boolean True if the bonus pool has room and there are tiles to top it up with (bag or tower)
-function GameRoundStateMachine.poolNeedsTopUp(gameState)
-    return gameState.bonusPool:total() < FillBonusPoolAction.capacity(gameState)
-        and gameState.tileBag:total() + gameState.discard:total() > 0
 end
 
 function GameRoundStateMachine:resume(fromState)
@@ -127,19 +88,18 @@ function GameRoundStateMachine:resume(fromState)
     if self.abandoned or (fromState ~= self.selectionTurn and fromState ~= self.placementTurn) then
         return
     end
-    if fromState == self.placementTurn and GameRoundStateMachine.poolNeedsTopUp(self.gameState) then
-        -- replace the bonus tiles picked up this turn. Between turns, so it can't be undone
-        local fill = performGameAction(self.gameState, FillBonusPoolAction())
-        self.graphicsState.table:playFill(fill[1].ctx.events)
+    -- after a placement turn the bonus pool is topped back up (animated on the table)
+    for _, action in ipairs(GameFlow.endTurn(self.gameState, fromState == self.placementTurn)) do
+        if action.name == "FillBonusPool" then
+            self.graphicsState.table:playFill(action.ctx.events)
+        end
     end
-    self.gameState:incrementTurn()
 end
 
 --- Start the placement phase: the start player token holder goes first
 function GameRoundStateMachine:_startPlacement()
     local gameState = self.gameState
-    performGameAction(gameState, StartPlacementPhaseAction())
-    gameState:beginTurn(gameState.startTokenHolder or gameState.startPlayer)
+    GameFlow.startPlacement(gameState)
     self.state = self.STATES.PLACEMENT
     Log.info("placement phase. player " .. gameState.currentTurnPlayer .. " starts")
 end
@@ -147,23 +107,17 @@ end
 --- @return boolean True if the round is over (and this state machine popped)
 function GameRoundStateMachine:_updatePlacement()
     local gameState = self.gameState
-    if gameState:allPlayersPassed() then
-        if not gameState:isFinalRound() then
-            performGameAction(gameState, EndRoundAction())
-        end
+    if GameFlow.placementOver(gameState) then
+        GameFlow.endRound(gameState)
         GameStateMachineMgr.pop()
         return true
     end
 
-    local playerIdx = gameState.currentTurnPlayer
-    if gameState.players[playerIdx].hand:isEmpty() then
-        -- nothing to place: pass for them (no tiles, so no penalty) and move on
-        Log.debug("player " .. playerIdx .. " has no tiles. passing for them")
-        performGameAction(gameState, PassAction(playerIdx, {}))
-        gameState:incrementTurn()
+    -- nothing to place: they're passed for, and the next player is up
+    if GameFlow.passEmptyHand(gameState) then
         return false
     end
-    GameStateMachineMgr.push(self.placementTurn, playerIdx, gameState, self.graphicsState)
+    GameStateMachineMgr.push(self.placementTurn, gameState.currentTurnPlayer, gameState, self.graphicsState)
     return false
 end
 
@@ -172,7 +126,7 @@ function GameRoundStateMachine:update(dt)
 
     if self.state == self.STATES.FILLING then
         if self.fillDone then
-            gameState:beginTurn(gameState.startPlayer)
+            GameFlow.beginRound(gameState)
             self.state = self.STATES.SELECTION
         else
             local pressCtx = self:pendingClick()
@@ -185,7 +139,7 @@ function GameRoundStateMachine:update(dt)
     end
 
     if self.state == self.STATES.SELECTION then
-        if gameState:allTileSourcesEmpty() then
+        if GameFlow.selectionOver(gameState) then
             self:_startPlacement()
         else
             GameStateMachineMgr.push(self.selectionTurn, gameState.currentTurnPlayer, gameState, self.graphicsState)

@@ -50,6 +50,7 @@ A manually run GitHub workflow builds the game and uploads it to TestFlight.
 
 - Win32/64 binaries via python makelove package + Wine
 - MONO-STARS can turn into multi stars. you cant assume its a color-specific star after the first tile! need a second tile to know
+- a Bots state (if any) should become part of savegame.json. So a loaded game's bot(s) carry on exactly as they would have.
 
 ## design rules
 

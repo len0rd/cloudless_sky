@@ -2,6 +2,7 @@
 --     GameStateMachineMgr.switch(game, gameState)
 -- (from main.lua at launch, the main menu's Continue or the New Game menu). game:leaveTo goes back
 -- to the menus
+local GameFlow = require("cloudless_sky.model.game_flow")
 local GameRules = require("cloudless_sky.model.game_rules")
 
 local Concord = require("cloudless_sky.extern.concord")
@@ -107,7 +108,7 @@ function game:loadGame(loadedGameState)
 end
 
 function game:_checkGameOver()
-    if gameState:isFinalRound() and gameState:allPlayersPassed() then
+    if GameFlow.isGameOver(gameState) then
         -- end-game bonuses and final scores (GameEndStateMachine)
         Log.info("game over")
         self.gameOver = true

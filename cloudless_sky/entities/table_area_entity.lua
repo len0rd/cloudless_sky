@@ -18,7 +18,7 @@ local Components = require("cloudless_sky.components")
 local Constants = require("cloudless_sky.constants")
 local EUtil = require("cloudless_sky.entities.e_util")
 local RoundTrackView = require("cloudless_sky.view.round_track_view")
-local TakeTilesAction = require("cloudless_sky.action.take_tiles")
+local LegalMoves = require("cloudless_sky.model.legal_moves")
 local TileGroupView = require("cloudless_sky.view.tile_group_view")
 local TileType = require("cloudless_sky.model.tile_type")
 local TileView = require("cloudless_sky.view.tile_view")
@@ -524,20 +524,6 @@ function TableAreaEntity:_highlightFor(source, hovered, take)
     return set
 end
 
---- @return table|nil take TileType -> count picked up for \p tile at \p source, or nil if not allowed
-function TableAreaEntity.takeFor(gameState, source, tileType)
-    local bag = gameState:tileSource(source)
-    if not bag then
-        return nil
-    end
-    return TakeTilesAction.tilesToTake(
-        bag,
-        tileType,
-        gameState:getCurrentWildType(),
-        gameState.rules.factoryDisplay.maxWildPerTurn
-    )
-end
-
 function TableAreaEntity:mousePressed(cameraX, cameraY, worldX, worldY, button, istouch)
     if button ~= 1 then
         return false
@@ -594,7 +580,7 @@ function TableAreaEntity:update(dt, gameState)
     if self.selectable then
         local source, tile = self:tileAt(camera:mousePosition())
         if tile then
-            local take = TableAreaEntity.takeFor(gameState, source, tile.tileType)
+            local take = LegalMoves.takeFor(gameState, source, tile.tileType)
             if take then
                 self.hovered = { source = source, tile = tile }
                 self.highlight = self:_highlightFor(source, tile, take)
