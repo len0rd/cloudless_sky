@@ -89,7 +89,12 @@ function NewGameState.layout(w, h, count)
     local L = {
         rowH = rowH,
         pad = pad,
-        title = { x = math.floor((w - titleW) / 2), y = math.floor(h * TITLE_Y), w = titleW, h = math.floor(h * TITLE_H) },
+        title = {
+            x = math.floor((w - titleW) / 2),
+            y = math.floor(h * TITLE_Y),
+            w = titleW,
+            h = math.floor(h * TITLE_H),
+        },
         panel = { x = math.floor((w - panelW) / 2), y = math.floor(h * PANEL_TOP), w = panelW, h = panelH },
     }
     local innerX = L.panel.x + pad
@@ -212,7 +217,15 @@ end
 function NewGameState:_drawField(idx, r)
     local focused = self.focus == idx
     love.graphics.setColor(FIELD_COLOR)
-    ViewUtil.drawOutlinedRectangle(r.x, r.y, r.w, r.h, math.floor(r.h * 0.2), 2, focused and FIELD_FOCUS_COLOR or FIELD_OUTLINE_COLOR)
+    ViewUtil.drawOutlinedRectangle(
+        r.x,
+        r.y,
+        r.w,
+        r.h,
+        math.floor(r.h * 0.2),
+        2,
+        focused and FIELD_FOCUS_COLOR or FIELD_OUTLINE_COLOR
+    )
     local text = self.texts[idx]
     local font = ViewUtil.largestFontThatFits("Wy", r.w, r.h * 0.7)
     local inset = math.floor(r.h * 0.25)
@@ -250,18 +263,6 @@ function NewGameState:draw()
 
     self.ui:draw()
     love.graphics.setColor(1, 1, 1, 1)
-
-    -- TODO: remove. debugging the iOS on-screen keyboard not appearing
-    love.graphics.print(
-        string.format(
-            "focus=%s textInput=%s screenKb=%s",
-            tostring(love.window.hasFocus()),
-            tostring(love.keyboard.hasTextInput()),
-            tostring(love.keyboard.hasScreenKeyboard())
-        ),
-        10,
-        10
-    )
 end
 
 function NewGameState:mousepressed(x, y, button)
