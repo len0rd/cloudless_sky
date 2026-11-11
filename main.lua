@@ -16,7 +16,8 @@ launchOptions = {}
 --- with any of them it goes straight into a game:
 ---     --seed N        seed for the game's random generator. Defaults to the current time. The seed is
 ---                     saved in the game state so a game can be recreated
----     --bot           play the game automatically, checking invariants every frame, then exit
+---     --bot [ID]      play the game automatically, checking invariants every frame, then exit. Every
+---                     seat is played by bot ID (a BotPlayer id, default "easy")
 ---                     (exit code 0 = game finished with no problems). See cloudless_sky/bot/bot.lua
 ---     --bot-speed N   game speed multiplier while the bot plays (default 4)
 ---     --anim-speed N  animation speed multiplier (default 1, 0 = animations off). See cloudless_sky/anim.lua
@@ -28,6 +29,11 @@ local function parseLaunchOptions(args)
             options.seed = assert(tonumber(args[ii + 1]), "--seed requires a number")
         elseif v == "--bot" then
             options.bot = true
+            -- an optional bot id: the next argument, unless it's another option, a number or a save
+            local nextArg = args[ii + 1]
+            if nextArg and not nextArg:find("^%-") and not tonumber(nextArg) and not nextArg:find("%.json$") then
+                options.botId = nextArg
+            end
         elseif v == "--anim-speed" then
             options.animSpeed = assert(tonumber(args[ii + 1]), "--anim-speed requires a number")
         elseif v == "--bot-speed" then

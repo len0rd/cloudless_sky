@@ -1,5 +1,10 @@
 --- Plays a whole game through the UI (simulated mouse clicks) and checks it as it goes.
---- Run with:  love . --bot [--seed N] [--bot-speed N]
+--- Run with:  love . --bot [ID] [--seed N] [--bot-speed N]
+---
+--- What to do comes from a BotPlayer (ID, default "easy") for every seat: the same choices a headless
+--- game makes. This file is the UI driver: it turns each chosen action into the clicks a person would
+--- make (a tile, then the pick-up dialog's button; a slot, the place dialog's arrows to the chosen way
+--- to pay, then Place; Pass, then confirm; bonus tiles on the pickup overlay, then Take).
 ---
 --- Every frame it checks:
 ---     - the model invariants (cloudless_sky/model/invariants.lua)
@@ -11,29 +16,31 @@
 --- every player's end-game bonuses were scored exactly once
 --- Exit codes: 0 = game finished, every check held. 1 = a check failed. 2 = timed out. 3 = Lua error.
 ---
---- Runs are repeatable: the game's rng, the view's randomness and the bot's choices all follow the
---- seed. The final line prints the seed and a digest of the final game state; the same seed should
---- always give the same digest.
+--- Runs are repeatable: the game's rng, the view's randomness and the bots' choices all follow the
+--- seed. Each choice is asked for once, when the game reaches it, so how long animations take doesn't
+--- change the game. The final line prints the seed and a digest of the final game state; the same seed
+--- should always give the same digest.
 local GameStateMachineMgr = require("cloudless_sky.extern.hump.gamestate")
+local BotPlayer = require("cloudless_sky.bot.bot_player")
 local Canonical = require("cloudless_sky.model.canonical")
 local EndGameBonus = require("cloudless_sky.model.end_game_bonus")
 local GameEndStateMachine = require("cloudless_sky.states.game_end_sm")
 local Invariants = require("cloudless_sky.model.invariants")
 local SaveGame = require("cloudless_sky.model.save_game")
-local LegalMoves = require("cloudless_sky.model.legal_moves")
 local TileType = require("cloudless_sky.model.tile_type")
+-- registers the bots BotPlayer.create can make
+require("cloudless_sky.bot.players.easy_bot")
 
 local Bot = {}
+
+Bot.DEFAULT_BOT = "easy"
 
 -- real (wall clock) seconds
 local STALL_TIMEOUT_S = 30
 local RUN_TIMEOUT_S = 900
 -- updates to wait after a click before acting again. The click is handled during the next update;
--- counting updates (not seconds) keeps the bot from acting twice on a slow frame, which would use an
--- extra random draw and make runs with the same seed differ
+-- counting updates (not seconds) keeps the bot from acting twice on a slow frame
 local CLICK_COOLDOWN_FRAMES = 3
--- chance of passing during placement even when a tile could be placed (exercises the keep dialog)
-local VOLUNTARY_PASS_CHANCE = 0.1
 -- how close (world units) the camera must be to its target before clicking world things
 local CAMERA_SETTLED_DIST = 1
 
@@ -130,26 +137,41 @@ local function dialogOpen(dialog)
     return dialog ~= nil and not dialog.ephemeral.done
 end
 
-function Bot:pick(list)
-    return list[self.rng:random(1, #list)]
+--- The action the current player's bot chose for the decision the game is at now. The bot is asked
+--- once per decision (a decision is identified by the turn and the history length, which only change
+--- when an action is performed), then the same action is returned until it has been carried out
+--- @param ask function(bot, playerIdx) -> Action
+function Bot:decision(ask)
+    local key = gameState.turnIdx .. "|" .. #gameState.actionHistory
+    if not (self.plan and self.plan.key == key) then
+        local playerIdx = gameState.currentTurnPlayer
+        self.plan = { key = key, action = ask(self.players[playerIdx], playerIdx) }
+    end
+    return self.plan.action
 end
 
 --------------------------------------------------------------------------------
 -- tile selection
 --------------------------------------------------------------------------------
 
---- @return VisualTile|nil a tile of \p tileType at \p source that is on top where it's drawn (so
----     clicking its center clicks it)
-local function clickableTile(tableEntity, source, tileType)
-    for _, tile in ipairs(tableEntity.groups[source].tiles) do
+--- @return number|nil x, number|nil y. A world point that clicks a \p tileType tile at \p source: the
+---     center of one of those tiles, or a point near it, where the topmost tile drawn is one of them
+---     (tiles can overlap). nil if every one is covered
+local function clickPointFor(tableEntity, source, tileType)
+    local group = tableEntity.groups[source]
+    local offsets = { { 0, 0 }, { 0.2, 0 }, { -0.2, 0 }, { 0, 0.2 }, { 0, -0.2 } }
+    for _, tile in ipairs(group.tiles) do
         if tile.tileType == tileType then
-            local hitSource, hitTile = tableEntity:tileAt(tile.x, tile.y)
-            if hitSource == source and hitTile == tile then
-                return tile
+            for _, o in ipairs(offsets) do
+                local x, y = tile.x + o[1] * group.tileSize, tile.y + o[2] * group.tileSize
+                local hitSource, hitTile = tableEntity:tileAt(x, y)
+                if hitSource == source and hitTile and hitTile.tileType == tileType then
+                    return x, y
+                end
             end
         end
     end
-    return nil
+    return nil, nil
 end
 
 function Bot:actSelection(sm)
@@ -157,43 +179,33 @@ function Bot:actSelection(sm)
     if sm.state == states.WAIT_FOR_END then
         self:clickRect(graphicsState.hud.container.doneRect)
     elseif sm.state == states.WAIT_FOR_PICK then
-        if dialogOpen(sm.pickUpDialog) then
-            local dialog, intended = sm.pickUpDialog, self.intendedPick
-            if intended and (dialog.source ~= intended.source or dialog.tileType ~= intended.tileType) then
-                self:fail(string.format(
-                    "clicked %s at source %d but the dialog is for %s at source %d",
-                    intended.tileType, intended.source, dialog.tileType, dialog.source
-                ))
-                return
-            end
-            if dialogSettled(sm.pickUpDialog) and sm.pickUpDialog.actionButton then
-                self:clickRect(sm.pickUpDialog.actionButton)
-            end
-            return
-        end
         local tableEntity = graphicsState.table
         if tableEntity:isAnimating() or not cameraSettled() then
             return
         end
-        -- choose from the model's legal picks (not the visuals) so choices follow the seed
-        local choices = LegalMoves.takes(gameState)
-        if #choices == 0 then
-            self:fail("no legal pick while selection continues")
-            return
-        end
-        -- tiles can overlap: if every tile of the chosen pick is covered at its center, choose again
-        while #choices > 0 do
-            local idx = self.rng:random(1, #choices)
-            local choice = choices[idx]
-            local tile = clickableTile(tableEntity, choice.source, choice.tileType)
-            if tile then
-                self.intendedPick = choice
-                self:clickWorld(tile.x, tile.y)
+        local take = self:decision(function(bot, playerIdx)
+            return bot:chooseTake(gameState, playerIdx)
+        end).ctx
+        if dialogOpen(sm.pickUpDialog) then
+            local dialog = sm.pickUpDialog
+            if dialog.source ~= take.source or dialog.tileType ~= take.tileType then
+                self:fail(string.format(
+                    "clicked %s at source %d but the dialog is for %s at source %d",
+                    take.tileType, take.source, dialog.tileType, dialog.source
+                ))
                 return
             end
-            table.remove(choices, idx)
+            if dialogSettled(dialog) and dialog.actionButton then
+                self:clickRect(dialog.actionButton)
+            end
+            return
         end
-        self:fail("every legal pick is covered by other tiles")
+        local x, y = clickPointFor(tableEntity, take.source, take.tileType)
+        if not x then
+            self:fail(string.format("every %s tile at source %d is covered by other tiles", take.tileType, take.source))
+            return
+        end
+        self:clickWorld(x, y)
     end
 end
 
@@ -201,56 +213,102 @@ end
 -- tile placement
 --------------------------------------------------------------------------------
 
+--- @return boolean True if placement option \p a (PlacementPossibility) is the same payment as \p b
+local function samePayment(a, b)
+    return a.tileType == b.tileType
+        and a.tileCount == b.tileCount
+        and (a.wildCount or 0) == (b.wildCount or 0)
+        and ((a.wildCount or 0) == 0 or a.wildType == b.wildType)
+end
+
+--- @return boolean True if TileType -> count tables \p a and \p b hold the same tiles
+local function sameTiles(a, b)
+    for _, tileType in ipairs(TileType.ORDERED) do
+        if (a[tileType] or 0) ~= (b[tileType] or 0) then
+            return false
+        end
+    end
+    return true
+end
+
 function Bot:actPlacement(sm)
     local states = sm.STATES
     local hud = graphicsState.hud.container
     if sm.state == states.WAIT_FOR_END then
         self:clickRect(hud.doneRect)
     elseif sm.state == states.CONFIRM_PASS then
-        if sm.passDialog and sm.passDialog.confirmRect then
-            self:clickRect(sm.passDialog.confirmRect)
+        local dialog = sm.passDialog
+        if not (dialog and dialog.confirmRect) then
+            return
         end
+        local pass = self.plan and self.plan.action
+        if not (pass and pass.name == "Pass") then
+            self:fail("the pass dialog is open but the bot didn't choose to pass")
+            return
+        end
+        -- the dialog starts with PassAction.suggestKeep's tiles. Changing them isn't driven yet
+        if not sameTiles(dialog:keep(), pass.ctx.keep) then
+            self:fail("the bot chose to keep different tiles than the pass dialog suggests (not supported yet)")
+            return
+        end
+        self:clickRect(dialog.confirmRect)
     elseif sm.state == states.PICK_BONUS then
-        -- select random tiles one click at a time, then Take
         local overlay = sm.bonusPickup
         if not (overlay and overlay:settled()) then
             return
         end
-        if overlay:canTake() then
+        local tiles = self:decision(function(bot, playerIdx)
+            return bot:chooseBonusTiles(gameState, playerIdx, overlay.count)
+        end).ctx.tiles
+        local selected = overlay:selectedTiles()
+        if sameTiles(selected, tiles) then
             self:clickRect(overlay.takeRect)
             return
         end
-        local unselected = {}
+        -- select one more tile of a color still needed (or deselect one that isn't)
         for _, tile in ipairs(overlay.pool.tiles) do
-            if not overlay.selected[tile] then
-                table.insert(unselected, tile)
+            local wanted = (tiles[tile.tileType] or 0) - (selected[tile.tileType] or 0)
+            if (wanted > 0 and not overlay.selected[tile]) or (wanted < 0 and overlay.selected[tile]) then
+                self:click(tile.x, tile.y)
+                return
             end
         end
-        local tile = self:pick(unselected)
-        self:click(tile.x, tile.y)
+        self:fail("the bonus pickup overlay doesn't have the tiles the bot chose")
     elseif sm.state == states.WAIT_FOR_PLACEMENT then
-        if dialogOpen(sm.placeDialog) then
-            if dialogSettled(sm.placeDialog) then
-                if sm.placeDialog.actionButton then
-                    self:clickRect(sm.placeDialog.actionButton)
-                else
-                    -- "need more tiles": the bot only clicks placeable slots, so this is a bug
-                    self:fail("bot opened a slot it can't place in")
-                end
-            end
-            return
-        end
         if not cameraSettled() then
             return
         end
-        local slots = LegalMoves.placeableSlots(gameState, sm.playerIdx)
-        if #slots == 0 or self.rng:random() < VOLUNTARY_PASS_CHANCE then
+        local action = self:decision(function(bot, playerIdx)
+            return bot:choosePlacement(gameState, playerIdx)
+        end)
+        if action.name == "Pass" then
             self:clickRect(hud.passRect)
             return
         end
-        local slot = self:pick(slots)
+        local place = action.ctx
+        local dialog = sm.placeDialog
+        if dialogOpen(dialog) then
+            if not dialogSettled(dialog) then
+                return
+            end
+            local anchor = dialog.playerMatTileAnchor
+            if not dialog.actionButton or anchor.starIdx ~= place.starIdx or anchor.slotIdx ~= place.slotIdx then
+                self:fail(string.format("the place dialog is for star %d slot %d, not the chosen star %d slot %d",
+                    anchor.starIdx, anchor.slotIdx, place.starIdx, place.slotIdx))
+                return
+            end
+            if samePayment(dialog.placementOptions[dialog.placementOptIdx], place.placement) then
+                self:clickRect(dialog.actionButton)
+            elseif dialog.rightArrowRect then
+                -- the next way to pay
+                self:clickRect(dialog.rightArrowRect)
+            else
+                self:fail("the place dialog doesn't offer the chosen way to pay")
+            end
+            return
+        end
         local mat = graphicsState.matEntities[sm.playerIdx]
-        self:clickWorld(mat:centerOfSlot(slot.starIdx, slot.slotIdx))
+        self:clickWorld(mat:centerOfSlot(place.starIdx, place.slotIdx))
     end
 end
 
@@ -426,8 +484,20 @@ end
 --- @param options table launchOptions (botSpeed)
 function Bot.install(options)
     local bot = setmetatable({}, { __index = Bot })
-    -- the bot's own choices follow the seed too, without touching the game's rng
-    bot.rng = love.math.newRandomGenerator(gameState.seed + 1)
+    -- a BotPlayer per seat. Their choices follow the seed too, without touching the game's rng
+    bot.botId = options.botId or Bot.DEFAULT_BOT
+    if not BotPlayer.known[bot.botId] then
+        out("unknown bot '" .. tostring(bot.botId) .. "'. bots: " .. table.concat(BotPlayer.ids, ", "))
+        love.event.quit(1)
+        bot.done = true
+        return bot
+    end
+    bot.players = {}
+    for seat = 1, gameState:numPlayers() do
+        bot.players[seat] = BotPlayer.create(bot.botId, gameState.seed, seat)
+    end
+    -- the current decision: { key, action } (see Bot:decision)
+    bot.plan = nil
     bot.cooldown = 0
     bot.realTime = 0
     bot.lastProgressTime = 0
@@ -435,7 +505,7 @@ function Bot.install(options)
     bot.round = nil
     local speed = options.botSpeed or 1
 
-    out("starting seed=" .. tostring(gameState.seed) .. " speed=" .. speed)
+    out("starting seed=" .. tostring(gameState.seed) .. " bot=" .. bot.botId .. " speed=" .. speed)
 
     local origUpdate = love.update
     love.update = function(dt)
