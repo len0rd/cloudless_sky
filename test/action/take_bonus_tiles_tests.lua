@@ -2,7 +2,7 @@ local cute = require("cloudless_sky.extern.cute")
 local BonusPickup = require("cloudless_sky.model.bonus_pickup")
 local Canonical = require("cloudless_sky.model.canonical")
 local FillBonusPoolAction = require("cloudless_sky.action.fill_bonus_pool")
-local GameRoundStateMachine = require("cloudless_sky.states.game_round_sm")
+local GameFlow = require("cloudless_sky.model.game_flow")
 local PlaceTileAction = require("cloudless_sky.action.place_tile")
 local PlacementPossibility = require("cloudless_sky.model.placement_possibility")
 local SaveGame = require("cloudless_sky.model.save_game")
@@ -178,9 +178,9 @@ end)
 
 notion("The bonus pool is topped up after a turn only when it has room and there are tiles", function()
     local gameState = TestUtil.newGame()
-    check(GameRoundStateMachine.poolNeedsTopUp(gameState)).is(true)
+    check(GameFlow.poolNeedsTopUp(gameState)).is(true)
     gameState:performAction(FillBonusPoolAction())
-    check(GameRoundStateMachine.poolNeedsTopUp(gameState)).is(false)
+    check(GameFlow.poolNeedsTopUp(gameState)).is(false)
 
     -- one tile short, with tiles in the bag
     local some = firstPoolTiles(gameState, 1)
@@ -188,14 +188,14 @@ notion("The bonus pool is topped up after a turn only when it has room and there
         gameState.bonusPool:removeTiles(tileType, n)
         gameState.tileBag:addTiles(tileType, n)
     end
-    check(GameRoundStateMachine.poolNeedsTopUp(gameState)).is(true)
+    check(GameFlow.poolNeedsTopUp(gameState)).is(true)
     -- bag and tower empty: nothing to top up with
     for _, bag in ipairs({ gameState.tileBag, gameState.discard }) do
         for _, tileType in ipairs(TileType.ORDERED) do
             bag:removeTiles(tileType, bag:num(tileType))
         end
     end
-    check(GameRoundStateMachine.poolNeedsTopUp(gameState)).is(false)
+    check(GameFlow.poolNeedsTopUp(gameState)).is(false)
 end)
 
 notion("PlaceTile's bonus record and TakeBonusTiles survive serializing (as in a save)", function()

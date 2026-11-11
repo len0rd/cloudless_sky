@@ -14,9 +14,8 @@
 --- (Player.endGameBonus) aren't scored again (see GameEndStateMachine.resumePoint).
 local WorldStateMachine = require("cloudless_sky.states.world_sm")
 local Anim = require("cloudless_sky.anim")
-local BeginTurnAction = require("cloudless_sky.action.begin_turn")
 local EndGameBonus = require("cloudless_sky.model.end_game_bonus")
-local ScoreEndGameAction = require("cloudless_sky.action.score_end_game")
+local GameFlow = require("cloudless_sky.model.game_flow")
 local BonusIconView = require("cloudless_sky.view.bonus_icon_view")
 local UiStyle = require("cloudless_sky.view.ui_style")
 local ViewUtil = require("cloudless_sky.view.view_util")
@@ -58,21 +57,11 @@ local BONUS_ROW_H = 0.075
 -- pure helpers (tested)
 --------------------------------------------------------------------------------
 
---- @return integer|nil index of the first player whose end-game bonuses haven't been scored
-local function firstUnscored(gameState)
-    for ii, player in ipairs(gameState.players) do
-        if player.endGameBonus == nil then
-            return ii
-        end
-    end
-    return nil
-end
-
 --- Where the sequence starts for \p gameState (a finished game)
 --- @return integer state GameEndStateMachine.STATES value
 --- @return integer|nil playerIdx the player to score next
 function GameEndStateMachine.resumePoint(gameState)
-    local nextPlayer = firstUnscored(gameState)
+    local nextPlayer = GameFlow.nextToScore(gameState)
     if not nextPlayer then
         return GameEndStateMachine.STATES.FINAL_SCORES, nil
     end
@@ -144,14 +133,7 @@ end
 --- Start scoring \p playerIdx: their turn begins (unless it already has, eg: a save made mid-way)
 function GameEndStateMachine:_enterPlayer(playerIdx)
     self.playerIdx = playerIdx
-    local history = self.gameState.actionHistory
-    local last = history[#history]
-    if not (last and last.name == "BeginTurn" and last.ctx.playerIdx == playerIdx) then
-        local performed, reason = self.gameState:performAction(BeginTurnAction(playerIdx))
-        if not performed then
-            error("game end: BeginTurn failed: " .. tostring(reason))
-        end
-    end
+    GameFlow.beginScoring(self.gameState, playerIdx)
     self.bonuses = EndGameBonus.forPlayer(self.gameState.rules, self.gameState.players[playerIdx])
     -- how many of self.bonuses are showing
     self.shown = 0
@@ -215,7 +197,7 @@ function GameEndStateMachine:_step(dt)
         end
     elseif self.state == states.PLAYER_TOTAL then
         if self.timer >= Anim.time(TOTAL_S) then
-            local nextPlayer = firstUnscored(self.gameState)
+            local nextPlayer = GameFlow.nextToScore(self.gameState)
             if nextPlayer then
                 self:_enterPlayer(nextPlayer)
             else
@@ -226,11 +208,7 @@ function GameEndStateMachine:_step(dt)
 end
 
 function GameEndStateMachine:_scorePlayer()
-    local performed, reason = self.gameState:performAction(ScoreEndGameAction(self.playerIdx))
-    if not performed then
-        error("game end: ScoreEndGame failed: " .. tostring(reason))
-    end
-    self.scoredTotal = performed[1].ctx.total
+    self.scoredTotal = GameFlow.scorePlayer(self.gameState, self.playerIdx)[1].ctx.total
     self:_setState(self.STATES.PLAYER_TOTAL)
 end
 
