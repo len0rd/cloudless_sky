@@ -86,6 +86,20 @@ function PlaceTileDialogEntity:actionEvent()
     }
 end
 
+--- A press on an arrow shows the previous / next placement option. Otherwise as any pop-in dialog
+--- (the Place button, claiming presses inside it)
+function PlaceTileDialogEntity:mousePressed(cameraX, cameraY, worldX, worldY, button, istouch)
+    if button == 1 then
+        for step, r in pairs({ [-1] = self.leftArrowRect, [1] = self.rightArrowRect }) do
+            if r and ViewUtil.ptInRect(cameraX, cameraY, r.x, r.y, r.w, r.h) then
+                self:_cycleOption(step)
+                return true
+            end
+        end
+    end
+    return PopInDialog.mousePressed(self, cameraX, cameraY, worldX, worldY, button, istouch)
+end
+
 function PlaceTileDialogEntity:_cycleOption(step)
     self.placementOptIdx = ((self.placementOptIdx - 1 + step) % #self.placementOptions) + 1
 end
@@ -112,16 +126,18 @@ function PlaceTileDialogEntity:layoutContent(dt, promptW, promptH)
     end
 
     self.ui.layout:newRow()
+    -- the arrows cycle the option on a press (see mousePressed); suit only draws them
+    self.leftArrowRect, self.rightArrowRect = nil, nil
     if displayOptionSelectBtns then
-        if self.ui:Button("placeOptLArr", { draw = leftArrowDraw }, self.ui.layout:col(cellWidth / 2, cellHeight)).hit then
-            self:_cycleOption(-1)
-        end
+        local x, y, w, h = self.ui.layout:col(cellWidth / 2, cellHeight)
+        self.ui:Button("placeOptLArr", { draw = leftArrowDraw }, x, y, w, h)
+        self.leftArrowRect = { x = x, y = y, w = w, h = h }
     end
     self:tileCountCols(option.tileType, option.tileCount, option.wildType, option.wildCount, tileCellWidth, cellHeight)
     if displayOptionSelectBtns then
-        if self.ui:Button("placeOptRArr", { draw = rightArrowDraw }, self.ui.layout:col(cellWidth / 2, cellHeight)).hit then
-            self:_cycleOption(1)
-        end
+        local x, y, w, h = self.ui.layout:col(cellWidth / 2, cellHeight)
+        self.ui:Button("placeOptRArr", { draw = rightArrowDraw }, x, y, w, h)
+        self.rightArrowRect = { x = x, y = y, w = w, h = h }
     end
 
     self.ui.layout:newRow()
