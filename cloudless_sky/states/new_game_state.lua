@@ -148,8 +148,13 @@ end
 function NewGameState:_setFocus(idx)
     self.focus = idx
     self.time = 0
-    -- the on-screen keyboard (touch devices)
-    love.keyboard.setTextInput(idx ~= nil)
+    -- the on-screen keyboard (touch devices), told where the box is so it can avoid covering it
+    if idx then
+        local r = self.rects.names[idx][1]
+        love.keyboard.setTextInput(true, r.x, r.y, r.w, r.h)
+    else
+        love.keyboard.setTextInput(false)
+    end
 end
 
 function NewGameState:_setCount(count)
@@ -245,6 +250,18 @@ function NewGameState:draw()
 
     self.ui:draw()
     love.graphics.setColor(1, 1, 1, 1)
+
+    -- TODO: remove. debugging the iOS on-screen keyboard not appearing
+    love.graphics.print(
+        string.format(
+            "focus=%s textInput=%s screenKb=%s",
+            tostring(love.window.hasFocus()),
+            tostring(love.keyboard.hasTextInput()),
+            tostring(love.keyboard.hasScreenKeyboard())
+        ),
+        10,
+        10
+    )
 end
 
 function NewGameState:mousepressed(x, y, button)
