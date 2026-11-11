@@ -22,7 +22,7 @@
 --- should always give the same digest.
 local GameStateMachineMgr = require("cloudless_sky.extern.hump.gamestate")
 local BotPlayer = require("cloudless_sky.bot.bot_player")
-local Canonical = require("cloudless_sky.model.canonical")
+local HeadlessMatch = require("cloudless_sky.bot.headless_match")
 local EndGameBonus = require("cloudless_sky.model.end_game_bonus")
 local GameEndStateMachine = require("cloudless_sky.states.game_end_sm")
 local Invariants = require("cloudless_sky.model.invariants")
@@ -55,11 +55,7 @@ end
 
 --- @return string hex digest of everything serialized for \p gameState, plus its action history
 function Bot.digest(gameState)
-    local parts = { Canonical.encode(gameState:serialize()) }
-    for _, action in ipairs(gameState.actionHistory) do
-        table.insert(parts, Canonical.encode(action:serialize()))
-    end
-    return Canonical.hash(table.concat(parts))
+    return HeadlessMatch.digest(gameState)
 end
 
 --------------------------------------------------------------------------------
