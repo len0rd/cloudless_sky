@@ -83,12 +83,12 @@ notion("PlayerMatEntity.bonusAt finds each icon at its center and nothing on a s
     end
 end)
 
-notion("BonusInfoDialogEntity text: the reward, the slots to fill and progress", function()
+notion("BonusInfoDialogEntity text: the reward and progress", function()
     local BonusInfoDialogEntity = require("cloudless_sky.entities.bonus_info_dialog_entity")
     local text, achieved = BonusInfoDialogEntity.lines({ kind = "statue", tiles = 2, filled = 1, total = 4 })
     check(text.title).is("Statue")
     check(text.reward).is("Pick up 2 bonus tiles")
-    check(text.instruction).is("Fill the 4 outlined slots")
+    check(text.instruction == nil).is(true)
     check(text.progress).is("1 / 4 filled")
     check(achieved).is(false)
     text, achieved = BonusInfoDialogEntity.lines({ kind = "pillar", tiles = 1, filled = 4, total = 4 })
