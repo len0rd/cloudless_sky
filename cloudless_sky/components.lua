@@ -78,6 +78,7 @@ Components.mouseHandler = {
         menuClicked = 11,
         bonusTilesTaken = 12,
         matBonusClicked = 13,
+        viewAreaClicked = 14,
     },
 }
 

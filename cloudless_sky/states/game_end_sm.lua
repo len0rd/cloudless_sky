@@ -118,7 +118,7 @@ function GameEndStateMachine:enter(fromState, gameState, graphicsState)
     if state == self.STATES.FINAL_SCORES then
         self:_enterFinalScores()
     elseif state == self.STATES.TITLE then
-        self:setViewFocus(graphicsState.viewFocus)
+        self:setViewFocus(graphicsState.homeView or WorldStateMachine.VIEW.TABLE)
         self:_setState(state)
     else
         self:_enterPlayer(playerIdx)

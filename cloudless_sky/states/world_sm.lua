@@ -1,9 +1,15 @@
 --- Base class for state machines that drive the ECS world: updating/drawing it, routing mouse
---- presses, and pointing the camera at the current view (the table or the current player's mat).
+--- presses, and pointing the camera at the current view.
+---
+--- Views: each phase has a home view (setViewFocus: the table while selecting, the current player's mat
+--- while placing). The HUD's view button zooms out from it to the overview (the whole game: table and
+--- every mat). There, clicking the table or any mat shows that area; the button (named after the home
+--- view) goes back home.
 --- Only the top state machine on the GameStateMachineMgr stack gets love callbacks, so each one
 --- drives the world itself through these helpers.
 local Object = require("cloudless_sky.extern.classic")
 local Components = require("cloudless_sky.components")
+local Anim = require("cloudless_sky.anim")
 local BoxedViewSys = require("cloudless_sky.systems.boxed_view")
 local MousePressedSys = require("cloudless_sky.systems.mouse_pressed")
 local GameStateMachineMgr = require("cloudless_sky.extern.hump.gamestate")
@@ -18,6 +24,14 @@ local WorldStateMachine = Object:extend()
 WorldStateMachine.VIEW = {
     TABLE = "table",
     MAT = "mat",
+    OVERVIEW = "overview",
+}
+
+-- the view button's label when it leads to each view
+local VIEW_LABEL = {
+    table = "Table",
+    mat = "Mat",
+    overview = "Overview",
 }
 
 function WorldStateMachine:_bind(gameState, graphicsState)
@@ -26,39 +40,102 @@ function WorldStateMachine:_bind(gameState, graphicsState)
     self.mouseClicked = false
 end
 
---- Point the camera at \p focus (WorldStateMachine.VIEW) and update the HUD's view toggle button
+--- Make \p focus (WorldStateMachine.VIEW.TABLE or MAT: the current player's) the phase's home view,
+--- and show it
 function WorldStateMachine:setViewFocus(focus)
-    self.graphicsState.viewFocus = focus
-    local label = focus == WorldStateMachine.VIEW.TABLE and "Mat" or "Table"
-    self.graphicsState.hud.container:setViewToggle(label, true)
+    self.graphicsState.homeView = focus
+    self:showView(focus, nil)
 end
 
+--- Point the camera at \p focus (WorldStateMachine.VIEW), and update the HUD's view button
+--- @param matIdx integer|nil for VIEW.MAT: whose mat. nil: the current player's
+function WorldStateMachine:showView(focus, matIdx)
+    local gs = self.graphicsState
+    gs.viewFocus = focus
+    gs.viewMatIdx = matIdx
+    if gs.overview then
+        gs.overview.active = focus == WorldStateMachine.VIEW.OVERVIEW
+    end
+    local target = self:atHome() and WorldStateMachine.VIEW.OVERVIEW or gs.homeView
+    gs.hud.container:setViewToggle(VIEW_LABEL[target], true)
+end
+
+--- @return boolean True if the camera is on the phase's home view
+function WorldStateMachine:atHome()
+    local gs = self.graphicsState
+    if gs.viewFocus ~= gs.homeView then
+        return false
+    end
+    return gs.viewFocus ~= WorldStateMachine.VIEW.MAT
+        or gs.viewMatIdx == nil
+        or gs.viewMatIdx == self.gameState.currentTurnPlayer
+end
+
+--- The HUD's view button: from the home view, zoom out to the overview. Anywhere else, back home
 function WorldStateMachine:toggleViewFocus()
-    if self.graphicsState.viewFocus == WorldStateMachine.VIEW.TABLE then
-        self:setViewFocus(WorldStateMachine.VIEW.MAT)
+    if self:atHome() then
+        self:showView(WorldStateMachine.VIEW.OVERVIEW, nil)
     else
-        self:setViewFocus(WorldStateMachine.VIEW.TABLE)
+        self:showView(self.graphicsState.homeView, nil)
     end
 end
 
 --- @return table entity the world entity the camera is focused on
 function WorldStateMachine:focusEntity()
-    if self.graphicsState.viewFocus == WorldStateMachine.VIEW.TABLE then
-        return self.graphicsState.table
+    local gs = self.graphicsState
+    if gs.viewFocus == WorldStateMachine.VIEW.TABLE then
+        return gs.table
+    elseif gs.viewFocus == WorldStateMachine.VIEW.OVERVIEW and gs.overview then
+        return gs.overview
     end
-    return self.graphicsState.matEntities[self.gameState.currentTurnPlayer]
+    return gs.matEntities[gs.viewMatIdx or self.gameState.currentTurnPlayer]
 end
 
-function WorldStateMachine:focusCamera()
-    -- fit and center the focused entity in the space right of the HUD (and left of rightInset)
-    local hudW = self.graphicsState.hud.container.boundingBox.w
-    local screenW = love.graphics.getPixelDimensions()
-    local centerX, centerY, zoom = BoxedViewSys.worldFocus(self:focusEntity(), hudW, screenW - self:rightInset())
+-- how quickly the camera eases to a new view (see Anim.cameraStep)
+local CAMERA_STIFFNESS = 5
+-- close enough to the target to stop easing: world units, and zoom ratio
+local CAMERA_SNAP_DIST = 0.25
+local CAMERA_SNAP_ZOOM = 1e-4
 
-    camera:zoomTo(zoom)
-    camera:lockPosition(centerX, centerY)
-    -- where the camera is heading (it eases there). Lets automation wait for it to settle
-    self.graphicsState.cameraTarget = { x = centerX, y = centerY }
+--- Ease the camera toward the focused view: the focused entity fitted and centered in the space right
+--- of the HUD (and left of rightInset).
+---
+--- The world point on the area's center and the zoom ease together, by the same share each frame (the
+--- zoom in log space, so zooming in and out feel alike), so a change of view is one smooth zoom + pan.
+--- The camera itself is placed from those each frame, keeping the eased point on the area's center at
+--- any zoom
+--- @param dt number|nil seconds since the last frame. nil: jump straight there
+function WorldStateMachine:focusCamera(dt)
+    local gs = self.graphicsState
+    local hudW = gs.hud.container.boundingBox.w
+    local screenW = love.graphics.getPixelDimensions()
+    local areaLeft, areaRight = hudW, screenW - self:rightInset()
+    local centerX, centerY, zoom = BoxedViewSys.worldFocus(self:focusEntity(), areaLeft, areaRight)
+    -- the world point to put on the area's center: undo worldFocus's shift for the HUD
+    local offset = (areaLeft + areaRight) / 2 - screenW / 2
+    local targetX = centerX + offset / zoom
+
+    local view = gs.cameraView
+    local step = dt and Anim.cameraStep(CAMERA_STIFFNESS, dt) or 1
+    if not view then
+        view = { x = targetX, y = centerY, zoom = zoom }
+        gs.cameraView = view
+    else
+        view.x = view.x + (targetX - view.x) * step
+        view.y = view.y + (centerY - view.y) * step
+        view.zoom = math.exp(math.log(view.zoom) + (math.log(zoom) - math.log(view.zoom)) * step)
+    end
+    if math.abs(view.x - targetX) < CAMERA_SNAP_DIST
+        and math.abs(view.y - centerY) < CAMERA_SNAP_DIST
+        and math.abs(view.zoom / zoom - 1) < CAMERA_SNAP_ZOOM
+    then
+        view.x, view.y, view.zoom = targetX, centerY, zoom
+    end
+
+    camera:zoomTo(view.zoom)
+    camera:lookAt(view.x - offset / view.zoom, view.y)
+    -- where the camera is heading. Lets automation wait for it to settle
+    gs.cameraTarget = { x = centerX, y = centerY }
 end
 
 --- @return number screen pixels on the right the camera leaves free (eg: for a panel). 0 by default
@@ -94,6 +171,14 @@ function WorldStateMachine:handleCommonClick(pressCtx)
         return true
     elseif pressCtx.type == eventTypes.menuClicked then
         self:openMenu()
+        return true
+    elseif pressCtx.type == eventTypes.viewAreaClicked then
+        -- an area picked in the overview
+        if pressCtx.area == "table" then
+            self:showView(WorldStateMachine.VIEW.TABLE, nil)
+        else
+            self:showView(WorldStateMachine.VIEW.MAT, pressCtx.playerIdx)
+        end
         return true
     elseif pressCtx.type == eventTypes.matBonusClicked then
         self:showBonusInfo(pressCtx.playerIdx, pressCtx.bonusIdx, pressCtx.x, pressCtx.y)
@@ -137,7 +222,7 @@ end
 
 --- Move the camera, update every entity, and clear this update's click events
 function WorldStateMachine:updateWorld(dt)
-    self:focusCamera()
+    self:focusCamera(dt)
     self.graphicsState.world:emit("update", dt, self.gameState)
     if self.mouseClicked then
         self.mouseClicked = false

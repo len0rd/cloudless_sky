@@ -10,6 +10,8 @@ local Constants = {
         tableArea = 50,
         tileScoreAnimations = 47,
         tilePlacePrompt = 44,
+        -- the zoomed out view of the whole game: over the world, under the hud
+        overview = 30,
 
         -- hud elements should end up on top
         hudPlayerHand = 20,

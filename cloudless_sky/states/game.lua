@@ -16,6 +16,7 @@ local EnforceEphemeralSys = require("cloudless_sky.systems.enforce_ephemeral")
 local PlayerMatEntity = require("cloudless_sky.entities.player_mat_entity")
 local PlayerHudContainerEntity = require("cloudless_sky.entities.player_hud_container")
 local TableAreaEntity = require("cloudless_sky.entities.table_area_entity")
+local OverviewEntity = require("cloudless_sky.entities.overview_entity")
 
 local GameEndStateMachine = require("cloudless_sky.states.game_end_sm")
 local GameRoundStateMachine = require("cloudless_sky.states.game_round_sm")
@@ -39,8 +40,14 @@ function game:_setup(newGameState)
         },
         -- factory displays, center of the table, bag and tower
         table = nil,
-        -- what the camera is looking at (WorldStateMachine.VIEW)
+        -- what the camera is looking at (WorldStateMachine.VIEW), and for VIEW.MAT whose mat (nil: the
+        -- current player's)
         viewFocus = WorldStateMachine.VIEW.TABLE,
+        viewMatIdx = nil,
+        -- the phase's own view, the view button's way back from the overview
+        homeView = WorldStateMachine.VIEW.TABLE,
+        -- the whole game, zoomed out (OverviewEntity)
+        overview = nil,
     }
     local starTypes = GameRules.matStarTypes(gameState.rules)
     for ii = 1, gameState:numPlayers() do
@@ -49,6 +56,8 @@ function game:_setup(newGameState)
     end
     graphicsState.table = TableAreaEntity.new(gameState, graphicsState.matEntities)
     graphicsState.world:addEntity(graphicsState.table)
+    graphicsState.overview = OverviewEntity.new(graphicsState.table, graphicsState.matEntities)
+    graphicsState.world:addEntity(graphicsState.overview)
     graphicsState.world:addEntity(graphicsState.hud.container)
 
     --- REMEMBER: systems are called in the order they are added

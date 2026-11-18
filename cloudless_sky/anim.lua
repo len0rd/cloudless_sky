@@ -60,6 +60,16 @@ function Anim.join(n, done)
     end
 end
 
+--- How far (0..1) an eased camera should move toward its target this frame: the same damped easing as
+--- cameraSmoother, for easing the zoom and position together. 1 when animations are off
+--- @param dt number seconds this frame
+function Anim.cameraStep(stiffness, dt)
+    if speed == 0 then
+        return 1
+    end
+    return math.min(1, dt * stiffness * speed)
+end
+
 --- A hump.camera smoother that eases the camera toward its target, faster or slower with the
 --- animation speed, and jumps straight there when animations are off.
 --- Like hump's Camera.smooth.damped(stiffness)

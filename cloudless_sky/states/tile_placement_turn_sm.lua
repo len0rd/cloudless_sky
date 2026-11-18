@@ -303,8 +303,9 @@ end
 function TilePlacementTurnStateMachine:onClickEvent(pressCtx, entity)
     local eventTypes = Components.mouseHandler.eventTypes
     if pressCtx.type == eventTypes.matSlotClicked then
-        -- only one placement per turn
-        if self.state == self.STATES.WAIT_FOR_PLACEMENT then
+        -- only one placement per turn, and only on their own mat (others' can be looked at, see the
+        -- overview)
+        if self.state == self.STATES.WAIT_FOR_PLACEMENT and pressCtx.playerIdx == self.playerIdx then
             self:_addPlaceDialogEntity(pressCtx)
         end
     elseif pressCtx.type == eventTypes.placeTileClicked then
