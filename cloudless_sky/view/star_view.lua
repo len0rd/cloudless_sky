@@ -43,6 +43,9 @@ local COST_LABEL_TIP_INSET = 0.3
 -- max cost label height as a fraction of the star's on-screen size. All slots in a star share
 -- the same font so the labels are consistent
 local COST_LABEL_MAX_HEIGHT = 0.1
+-- the labels are hidden once the smallest font is more than this many times their box's height (the
+-- font's line height includes empty space above and below the digit, so it may overhang a little)
+StarView.COST_LABEL_OVERFLOW = 1.6
 
 
 -- stylua: ignore start
@@ -359,6 +362,12 @@ function StarView:drawCostLabels(star, worldToScreen, worldScale)
     local boxSize = math.floor(self.size * worldScale * COST_LABEL_MAX_HEIGHT)
     -- costs are single digits, so any digit gives the font's footprint
     local font = ViewUtil.largestFontThatFits("6", boxSize, boxSize)
+    -- zoomed out so far that even the smallest pixel font is too big for the slot (eg: the overview):
+    -- no labels, rather than numbers spilling out of their slots. Pixel fonts can't shrink further
+    -- without blurring
+    if font:getHeight() > boxSize * StarView.COST_LABEL_OVERFLOW or font:getWidth("6") > boxSize then
+        return
+    end
 
     for ii = 1, #StarView.SLOT_VERTEX_SCALARS do
         local removing = self.animatingSlots[ii] and self.animatingSlots[ii].removing
