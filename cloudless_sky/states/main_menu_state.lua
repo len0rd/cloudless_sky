@@ -1,5 +1,6 @@
 --- The main menu, shown when the app opens (see main.lua) and after leaving a game: "Cloudless Sky"
---- on a sky gradient, with Continue (only if there's a save), New Game and Quit.
+--- on a drifting sky of blues, breathing slowly, with Continue (only if there's a save), New Game and
+--- Quit (not on phones and tablets: apps there aren't quit from inside).
 local GameStateMachineMgr = require("cloudless_sky.extern.hump.gamestate")
 local MenuBackground = require("cloudless_sky.view.menu_background")
 local NewGameState = require("cloudless_sky.states.new_game_state")
@@ -19,12 +20,26 @@ local TITLE_Y = 0.1
 local TITLE_H = 0.26
 local TITLE_W = 0.8
 local BUTTONS_Y = 0.46
+-- the title grows and shrinks by this much, once every BREATH_S seconds
+local BREATH_SCALE = 0.04
+local BREATH_S = 3.2
 
 local BUTTON_LABELS = {
     continue = "Continue",
     newGame = "New Game",
     quit = "Quit",
 }
+
+--- @return boolean True on a phone or tablet (iOS, Android), where apps aren't quit from inside
+function MainMenuState.isMobile()
+    local os = love.system.getOS()
+    return os == "iOS" or os == "Android"
+end
+
+--- @return number the title's scale \p t seconds in: a slow breath in and out around 1
+function MainMenuState.breathScale(t)
+    return 1 + BREATH_SCALE * math.sin(2 * math.pi * t / BREATH_S)
+end
 
 function MainMenuState:enter()
     self.ui = suit.new()
@@ -35,7 +50,10 @@ function MainMenuState:enter()
         table.insert(self.buttons, "continue")
     end
     table.insert(self.buttons, "newGame")
-    table.insert(self.buttons, "quit")
+    if not MainMenuState.isMobile() then
+        table.insert(self.buttons, "quit")
+    end
+    self.time = 0
     self:resize(love.graphics.getPixelDimensions())
 end
 
@@ -55,6 +73,7 @@ function MainMenuState:_newGame()
 end
 
 function MainMenuState:update(dt)
+    self.time = self.time + dt
     self.ui:enterFrame()
     for _, id in ipairs(self.buttons) do
         local r = self.buttonRects[id]
@@ -72,7 +91,7 @@ function MainMenuState:draw()
     local w, h = love.graphics.getPixelDimensions()
     MenuBackground.draw(w, h)
     local t = self.titleRect
-    MenuBackground.drawTitle("Cloudless Sky", t.x, t.y, t.w, t.h)
+    MenuBackground.drawTitle("Cloudless Sky", t.x, t.y, t.w, t.h, MainMenuState.breathScale(self.time))
 
     self.ui:draw()
 
